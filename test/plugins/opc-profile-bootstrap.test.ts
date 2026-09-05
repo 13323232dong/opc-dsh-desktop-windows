@@ -75,4 +75,29 @@ describe('ensureOpcDesktopProfile', () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+
+  it('repairs an interrupted patch that contains both the old empty root and OPC rows', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
+    const profile = join(root, 'profiles', 'web')
+    const plugins = join(root, 'bundled-plugins')
+    await mkdir(profile, { recursive: true })
+    await mkdir(plugins)
+    await Promise.all([
+      writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
+      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz'), ''),
+      writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {
+        '@opc/dsh-brand': `file:${join(plugins, 'opc-dsh-brand-0.1.0.tgz')}`,
+        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz')}`
+      }, dsh: { profile: { bundles: ['@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'] } } })),
+      writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: opc-brand\n')
+    ])
+    try {
+      await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
+      const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
+      expect(patch).not.toMatch(/^\[\]$/mu)
+      expect(patch).toContain('- id: opc-brand')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })

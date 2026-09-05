@@ -75,14 +75,14 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
   return { changed, plugins: artifacts.map(({ name }) => name) }
 }
 
-/** DSH's initial patch is comments followed by `[]`; append to its comments,
- * not after its already-complete YAML sequence. */
+/**
+ * DSH's initial patch is comments followed by `[]`. Once the OPC rows exist,
+ * that old empty root can still remain above them after an interrupted prior
+ * launch, producing two YAML roots. Remove only standalone empty-root lines;
+ * a valid patch never needs one alongside mappings.
+ */
 function removeEmptyPatchSequence(value: string): string {
-  const meaningful = value
-    .split(/\r?\n/u)
-    .filter((line) => line.trim() && !line.trimStart().startsWith('#'))
-  if (meaningful.length !== 1 || meaningful[0]?.trim() !== '[]') return value.trim()
-  return value.replace(/^\s*\[\]\s*$/mu, '').trim()
+  return value.replace(/^\s*\[\]\s*$(?:\r?\n)?/gmu, '').trim()
 }
 
 async function readManifest(path: string): Promise<ProfileManifest> {
