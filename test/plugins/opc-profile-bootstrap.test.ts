@@ -13,7 +13,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(plugins)
     await Promise.all([
       writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz'), ''),
+      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz'), ''),
       writeFile(join(profile, 'package.json'), JSON.stringify({
         name: 'dsh-profile-web', private: true,
         dependencies: {},
@@ -25,7 +25,7 @@ describe('ensureOpcDesktopProfile', () => {
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(manifest.dependencies).toEqual({
         '@opc/dsh-brand': `file:${join(plugins, 'opc-dsh-brand-0.1.0.tgz')}`,
-        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz')}`
+        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz')}`
       })
       expect(manifest.dsh.profile.bundles).toEqual([
         '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'
@@ -61,7 +61,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(plugins)
     await Promise.all([
       writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz'), ''),
+      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz'), ''),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {} })),
       writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n')
     ])
@@ -84,10 +84,10 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(plugins)
     await Promise.all([
       writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz'), ''),
+      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz'), ''),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {
         '@opc/dsh-brand': `file:${join(plugins, 'opc-dsh-brand-0.1.0.tgz')}`,
-        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz')}`
+        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz')}`
       }, dsh: { profile: { bundles: ['@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'] } } })),
       writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: opc-brand\n')
     ])

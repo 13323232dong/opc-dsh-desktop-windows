@@ -5,7 +5,10 @@ import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recover
 
 const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0.tgz'],
-  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8.tgz']
+  // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
+  // desktop build retains Agent Teams while deferring only that optional route
+  // selection bridge to the host's provider defaults.
+  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.2.tgz']
 ] as const
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
