@@ -26,7 +26,6 @@ describe('AccountRuntimeManager', () => {
   it('starts a runtime only after its scoped credential and owner directory validate', async () => {
     const fixture = await createManager()
     try {
-      await fixture.credentials.save('0'.repeat(64), credential(a))
       await fixture.credentials.saveFor(a, credential(a))
 
       const context = await fixture.manager.switchTo(a)
