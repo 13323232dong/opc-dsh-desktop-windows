@@ -53,7 +53,7 @@ describe('LocalCapabilityBroker', () => {
     expect(oversized.status).toBe(413)
   })
 
-  it('proxies only relative OPC API paths, strips forged credentials, and requires idempotency for writes', async () => {
+  it('proxies only registered OPC cloud paths, strips forged credentials, and requires idempotency for writes', async () => {
     const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
     brokers.push(broker)
@@ -61,20 +61,39 @@ describe('LocalCapabilityBroker', () => {
 
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: 'https://evil.example/x' })).status).toBe(400)
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/%2e%2e/private' })).status).toBe(400)
-    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/v1/tasks', method: 'POST' })).status).toBe(400)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/admin/users' })).status).toBe(400)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/v1/health' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/conversations/6f5de5b4-1ec4-43bb-8c6e-bfb03eb1f536/messages',
+      method: 'POST'
+    })).status).toBe(400)
 
     const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
-      path: '/api/v1/tasks',
+      path: '/api/v1/agent/conversations/6f5de5b4-1ec4-43bb-8c6e-bfb03eb1f536/messages',
       method: 'POST',
-      headers: { authorization: 'Bearer forged', cookie: 'fake=yes', 'x-opc-tenant-id': 'other', 'x-request-id': 'safe' },
+      headers: {
+        authorization: 'Bearer forged',
+        cookie: 'fake=yes',
+        host: 'evil.example',
+        'x-forwarded-for': '198.51.100.1',
+        'x-opc-tenant-id': 'other',
+        'X-OPC-Signature': 'forged',
+        'x-opc-timestamp': '0',
+        'x-opc-nonce': 'forged',
+        'x-request-id': 'safe'
+      },
       body: { name: 'test' }
     }, { 'idempotency-key': 'unique-call-1' })
     expect(response.status).toBe(200)
-    expect(fetchCloud.mock.calls[0]?.[0]).toBe('https://opc.example.test/api/v1/tasks')
-    const outboundHeaders = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
+    expect(fetchCloud.mock.calls[1]?.[0]).toBe('https://opc.example.test/api/v1/agent/conversations/6f5de5b4-1ec4-43bb-8c6e-bfb03eb1f536/messages')
+    const outboundHeaders = fetchCloud.mock.calls[1]?.[1]?.headers as Headers
     expect(outboundHeaders.has('authorization')).toBe(false)
     expect(outboundHeaders.has('cookie')).toBe(false)
     expect(outboundHeaders.has('x-opc-tenant-id')).toBe(false)
+    expect(outboundHeaders.has('x-opc-signature')).toBe(false)
+    expect(outboundHeaders.has('x-opc-timestamp')).toBe(false)
+    expect(outboundHeaders.has('x-opc-nonce')).toBe(false)
+    expect(outboundHeaders.has('x-forwarded-for')).toBe(false)
   })
 
   it('only reveals paths whose real location remains inside the runtime workspace', async () => {
