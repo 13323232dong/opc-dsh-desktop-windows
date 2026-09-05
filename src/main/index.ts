@@ -492,7 +492,7 @@ function attachWindowsMenuView(window: BrowserWindow): void {
 function configureAppIdentity(): void {
   if (developmentBuild) {
     app.setName('DSH Desktop Dev')
-    app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop-dev'))
+    app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop-dev'))
     return
   }
 
@@ -501,7 +501,7 @@ function configureAppIdentity(): void {
   // branding changes. Harness stores workspaces, sessions, credentials, and
   // custom presets below userData, so deriving this path from app.getName()
   // would make an ordinary upgrade look like a fresh installation.
-  app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop'))
+  app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop'))
 }
 
 async function syncNativeTheme(window: BrowserWindow): Promise<void> {

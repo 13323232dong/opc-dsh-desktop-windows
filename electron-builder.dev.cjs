@@ -16,7 +16,7 @@ module.exports = {
   artifactName: 'opc-desktop-dev-${os}-${arch}.${ext}',
   nsis: {
     ...packageJson.build.nsis,
-    artifactName: 'dsh-desktop-dev-windows-${arch}-setup.${ext}'
+    artifactName: 'opc-desktop-dev-windows-${arch}-setup.${ext}'
   },
   publish: null
 }
