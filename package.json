@@ -345,6 +345,10 @@
         "to": "dsh-desktop.patch.yml"
       },
       {
+        "from": "packages/opc-profile",
+        "to": "opc-profile"
+      },
+      {
         "from": "build/splash.html",
         "to": "splash.html"
       },

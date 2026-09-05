@@ -76,6 +76,7 @@ import {
   rollBackMigration
 } from './state/generation-migration'
 import { runProfileStartupMaintenance } from './state/profile-startup-maintenance'
+import { ensureOpcDesktopProfile } from './state/opc-profile-bootstrap'
 import { cleanupPluginOwnedComponents } from './state/plugin-component-cleanup'
 import {
   cleanupVerifiedRemovalBackup,
@@ -1223,6 +1224,23 @@ function launchHarness(): Promise<void> {
     }
     maintenanceRecoveryLocked = false
     maintenanceAllowedRestoreId = undefined
+    const opcProfile = await ensureOpcDesktopProfile(
+      dshHome,
+      join(desktopResourcePath('opc-profile'), 'plugins')
+    )
+    if (opcProfile.changed) {
+      runtime.note(`[desktop] provisioning OPC profile: ${opcProfile.plugins.join(', ')}`)
+      await clearProfileInstallMarker(dshHome)
+      const provision = await installProfileDependenciesWithDsh({
+        dshHome,
+        dshEntryPath: dshEntryPath(),
+        nodeExecutablePath: bundledNodePath(),
+        pnpmEntryPath: bundledPnpmEntryPath(),
+        pnpmRunnerPath: bundledPnpmRunnerPath()
+      })
+      if (!provision.ok) throw new Error(`opc_desktop_profile_install_failed: ${provision.detail ?? 'unknown'}`)
+      await markProfileInstallComplete(dshHome)
+    }
     await refreshMigrationRecoveryLock(dshHome)
     await auditInstalledLaunchAgents(dshHome)
     desktopStorageManager?.switchProfile(join(dshHome, 'profiles', 'web'))
