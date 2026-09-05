@@ -122,6 +122,20 @@ describe('Harness launch contract', () => {
     expect(options.env).not.toHaveProperty('ELECTRON_RUN_AS_NODE')
   })
 
+  it('passes only the runtime-scoped broker environment supplied by the desktop host', () => {
+    const options = buildHarnessSpawnOptions('/launch-root', '/account/dsh-home', 'darwin', { PATH: '/usr/bin' }, {
+      OPC_LOCAL_BROKER_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a',
+      OPC_LOCAL_BROKER_TOKEN: 'ephemeral-token',
+      OPC_ACCOUNT_KEY: 'a'.repeat(64)
+    })
+    expect(options.env).toMatchObject({
+      DSH_HOME: '/account/dsh-home',
+      OPC_LOCAL_BROKER_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a',
+      OPC_LOCAL_BROKER_TOKEN: 'ephemeral-token',
+      OPC_ACCOUNT_KEY: 'a'.repeat(64)
+    })
+  })
+
   it('does not detach the Harness on macOS or Linux', () => {
     // `detached: true` is a Windows-only escape hatch. The macOS path uses
     // Electron's UtilityProcess fork, and Linux spawns are unaffected by
