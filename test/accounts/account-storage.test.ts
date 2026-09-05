@@ -25,7 +25,7 @@ describe('AccountStorage', () => {
 
     const layout = await storage.open({ accountKey, tenantId: 'tenant-a', userId: 'user-a' })
 
-    expect(layout.root).toBe(join(root, 'accounts', accountKey))
+    expect(layout.root).toBe(join(root, 'accounts', 'v1', accountKey))
     expect(layout.dshHome).toBe(join(layout.root, 'dsh-home'))
     expect(layout.workspace).toBe(join(layout.root, 'workspace'))
     expect(JSON.parse(await readFile(layout.ownerPath, 'utf8'))).toMatchObject({
@@ -53,13 +53,13 @@ describe('AccountStorage', () => {
   it('fails closed when owner metadata is malformed or missing in a pre-existing directory', async () => {
     const root = await testRoot()
     const accountKey = accountKeyFor('tenant-a', 'user-a')
-    await mkdir(join(root, 'accounts', accountKey), { recursive: true })
+    await mkdir(join(root, 'accounts', 'v1', accountKey), { recursive: true })
     const storage = new AccountStorage(root)
 
     await expect(storage.open({ accountKey, tenantId: 'tenant-a', userId: 'user-a' }))
       .rejects.toThrow('desktop_account_owner_missing')
 
-    await writeFile(join(root, 'accounts', accountKey, 'owner.json'), '{not json')
+    await writeFile(join(root, 'accounts', 'v1', accountKey, 'owner.json'), '{not json')
     await expect(storage.open({ accountKey, tenantId: 'tenant-a', userId: 'user-a' }))
       .rejects.toThrow('desktop_account_owner_invalid')
   })

@@ -25,7 +25,7 @@ export class AccountStorage {
 
   async open(identity: AccountIdentity): Promise<AccountLayout> {
     if (!isAccountKey(identity.accountKey)) throw new Error('desktop_account_key_invalid')
-    const accountRoot = join(this.root, 'accounts', identity.accountKey)
+    const accountRoot = join(this.root, 'accounts', 'v1', identity.accountKey)
     const ownerPath = join(accountRoot, 'owner.json')
     const existed = await this.pathExists(accountRoot)
 
