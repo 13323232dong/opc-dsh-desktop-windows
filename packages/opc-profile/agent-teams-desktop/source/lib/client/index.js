@@ -3,15 +3,13 @@ import { Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ActivityPanel } from "./ActivityPanel.js";
 import { AgentTeamsCard } from "./AgentTeamsCard.js";
-import { agentTeamsCardDefinition } from "./agent-teams-card-definition.js";
 import { openMemberSubagent } from "./member-navigation.js";
 import { createToolLibraryClient } from "./tool-library-client.js";
 import { SessionArtifactDownloads } from "./session-artifact-downloads.js";
 /**
  * DSH 0.1.2-rc.1 exposes slots and session navigation but not the newer
  * conversation-events card registry. The activity panel remains the primary
- * desktop surface; install the inline card only when that optional service is
- * present.
+ * desktop surface, so this host does not access that unavailable service.
  */
 export const inject = ['slots', 'sessions'];
 /**
@@ -30,7 +28,6 @@ export function apply(ctx) {
         root.unmount();
         host.remove();
     }, 'agent-teams: activity panel');
-    ctx.conversationEvents?.register?.(agentTeamsCardDefinition);
     ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
         name: 'conversation.chat.node',
         key: 'agent-teams',

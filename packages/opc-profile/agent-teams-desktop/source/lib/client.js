@@ -33507,7 +33507,6 @@ window.__ModuleLoader__.load({
 				root.unmount();
 				host.remove();
 			}, "agent-teams: activity panel");
-			ctx.conversationEvents?.register?.(agentTeamsCardDefinition);
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
 				key: "agent-teams",
