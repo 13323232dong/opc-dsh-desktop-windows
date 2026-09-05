@@ -33484,7 +33484,6 @@ window.__ModuleLoader__.load({
 		//#region lib/client/index.js
 		/** Required services: conversation nodes, slots, and sessions navigation. */
 		const inject = [
-			"conversationEvents",
 			"slots",
 			"sessions"
 		];
@@ -33508,7 +33507,7 @@ window.__ModuleLoader__.load({
 				root.unmount();
 				host.remove();
 			}, "agent-teams: activity panel");
-			ctx.conversationEvents.register(agentTeamsCardDefinition);
+			ctx.conversationEvents?.register?.(agentTeamsCardDefinition);
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
 				key: "agent-teams",
