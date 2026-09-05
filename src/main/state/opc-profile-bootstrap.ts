@@ -64,12 +64,25 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
   }
 
   const currentPatch = await readFile(patchPath, 'utf8').catch(() => '')
-  if (!currentPatch.includes('# OPC desktop baseline.')) {
-    const existingRows = currentPatch.trim() === '[]' ? '' : currentPatch.trim()
-    await writeFile(patchPath, `${existingRows}${existingRows ? '\n' : ''}${OPC_DESKTOP_PATCH}`, 'utf8')
+  const normalizedPatch = removeEmptyPatchSequence(currentPatch)
+  if (!normalizedPatch.includes('# OPC desktop baseline.')) {
+    await writeFile(patchPath, `${normalizedPatch}${normalizedPatch ? '\n' : ''}${OPC_DESKTOP_PATCH}`, 'utf8')
+    changed = true
+  } else if (normalizedPatch !== currentPatch.trim()) {
+    await writeFile(patchPath, `${normalizedPatch}\n`, 'utf8')
     changed = true
   }
   return { changed, plugins: artifacts.map(({ name }) => name) }
+}
+
+/** DSH's initial patch is comments followed by `[]`; append to its comments,
+ * not after its already-complete YAML sequence. */
+function removeEmptyPatchSequence(value: string): string {
+  const meaningful = value
+    .split(/\r?\n/u)
+    .filter((line) => line.trim() && !line.trimStart().startsWith('#'))
+  if (meaningful.length !== 1 || meaningful[0]?.trim() !== '[]') return value.trim()
+  return value.replace(/^\s*\[\]\s*$/mu, '').trim()
 }
 
 async function readManifest(path: string): Promise<ProfileManifest> {

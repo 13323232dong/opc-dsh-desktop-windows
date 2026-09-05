@@ -52,4 +52,27 @@ describe('ensureOpcDesktopProfile', () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+
+  it('replaces the commented upstream empty patch with one valid OPC patch sequence', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
+    const profile = join(root, 'profiles', 'web')
+    const plugins = join(root, 'bundled-plugins')
+    await mkdir(profile, { recursive: true })
+    await mkdir(plugins)
+    await Promise.all([
+      writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
+      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8.tgz'), ''),
+      writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {} })),
+      writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n')
+    ])
+    try {
+      await ensureOpcDesktopProfile(root, plugins)
+      const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
+      expect(patch).not.toMatch(/^\[\]$/mu)
+      expect(patch).toContain('# upstream patch documentation')
+      expect(patch).toContain('# OPC desktop baseline.')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })
