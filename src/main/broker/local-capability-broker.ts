@@ -10,14 +10,38 @@ const CLOUD_REQUEST_TIMEOUT_MS = 15_000
 const FORGED_CLOUD_HEADERS = new Set([
   'authorization',
   'cookie',
-  'host',
-  'x-forwarded-for',
-  'x-forwarded-host',
-  'x-forwarded-proto',
-  'x-opc-tenant-id',
-  'x-opc-user-id',
-  'x-opc-session-id'
+  'host'
 ])
+
+// This is intentionally a route-level, compile-time allowlist. Adding an OPC
+// API route requires changing this list and its security test; there is no
+// generic `/api/*` escape hatch in the desktop broker.
+const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
+  /^\/api\/v1\/health$/u,
+  /^\/api\/v1\/agent\/conversations$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/messages$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/events$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/runs\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/interrupt$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/runs\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/interactions\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/responses$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/plans\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
+  /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/plans\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(answers|revision|approval|material-supplements)$/u,
+  /^\/api\/v1\/agent\/feedback$/u,
+  /^\/api\/v1\/agent\/feedback\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
+  /^\/api\/v1\/agent\/feedback-center\/(summary|feedback|clusters)$/u,
+  /^\/api\/v1\/agent\/feedback-center\/clusters\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(approve|reject)$/u,
+  /^\/api\/v1\/agent\/feedback-center\/knowledge\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/withdraw$/u,
+  /^\/api\/v1\/agent\/tools$/u,
+  /^\/api\/v1\/agent\/tools\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
+  /^\/api\/v1\/agent\/tools\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(health|preflight|trial|proposals)$/u,
+  /^\/api\/v1\/agent\/tools\/calls\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/status$/u,
+  /^\/api\/v1\/agent\/tools\/trial-context$/u,
+  /^\/api\/v1\/agent\/approvals\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/decision$/u,
+  /^\/api\/v1\/agent\/(experiences|profiles)$/u,
+  /^\/api\/v1\/agent\/experiences\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(\/disable)?$/u,
+  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(memory|disable)$/u,
+  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u
+] as const
 
 export interface BrokerRuntimeRegistration {
   runtimeId: string
@@ -257,10 +281,14 @@ function parseCloudBaseUrl(value: string): URL {
 }
 
 function isAllowedCloudPath(value: unknown): value is string {
-  if (typeof value !== 'string' || !value.startsWith('/api/')) return false
+  if (typeof value !== 'string') return false
   try {
     const url = new URL(value, 'https://local.invalid')
-    return url.origin === 'https://local.invalid' && url.pathname.startsWith('/api/')
+    return (
+      url.origin === 'https://local.invalid' &&
+      url.hash === '' &&
+      OPC_DESKTOP_CLOUD_PATH_TEMPLATES.some((template) => template.test(url.pathname))
+    )
   } catch {
     return false
   }
@@ -271,7 +299,13 @@ function safeHeaders(value: unknown): Headers {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return headers
   for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
     const normalized = name.toLowerCase()
-    if (FORGED_CLOUD_HEADERS.has(normalized) || normalized === 'idempotency-key' || normalized === 'x-request-id') continue
+    if (
+      FORGED_CLOUD_HEADERS.has(normalized) ||
+      normalized.startsWith('x-opc-') ||
+      normalized.startsWith('x-forwarded-') ||
+      normalized === 'idempotency-key' ||
+      normalized === 'x-request-id'
+    ) continue
     if (typeof raw === 'string') headers.set(normalized, raw)
   }
   return headers
