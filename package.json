@@ -1,11 +1,11 @@
 {
-  "name": "dsh-desktop",
+  "name": "opc-dsh-desktop",
   "version": "0.1.1",
   "description": "A cross-platform desktop shell for DeepSeek Harness.",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
-  "author": "DataElement",
+  "author": "伟东 OPC",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -300,8 +300,8 @@
     "koffi": "3.1.5"
   },
   "build": {
-    "appId": "io.dsh.desktop",
-    "productName": "DSH Desktop",
+    "appId": "cc.ohmycode.opc.desktop",
+    "productName": "伟东 OPC",
     "asar": false,
     "npmRebuild": false,
     "compression": "maximum",
@@ -369,14 +369,9 @@
         "to": "windows-menu.html"
       }
     ],
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "https://dshdesktop.com/updates/latest/"
-      }
-    ],
+    "publish": [],
     "detectUpdateChannel": false,
-    "artifactName": "dsh-desktop-${os}-${arch}.${ext}",
+    "artifactName": "opc-desktop-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",

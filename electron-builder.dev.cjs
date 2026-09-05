@@ -2,18 +2,18 @@ const packageJson = require('./package.json')
 
 module.exports = {
   ...packageJson.build,
-  appId: 'io.dsh.desktop.dev',
-  productName: 'DSH Desktop Dev',
+  appId: 'cc.ohmycode.opc.desktop.dev',
+  productName: '伟东 OPC Dev',
   directories: {
     ...packageJson.build.directories,
     output: 'dist-dev'
   },
   extraMetadata: {
-    name: 'dsh-desktop-dev',
-    productName: 'DSH Desktop Dev',
+    name: 'opc-dsh-desktop-dev',
+    productName: '伟东 OPC Dev',
     dshDesktopChannel: 'development'
   },
-  artifactName: 'dsh-desktop-dev-${os}-${arch}.${ext}',
+  artifactName: 'opc-desktop-dev-${os}-${arch}.${ext}',
   nsis: {
     ...packageJson.build.nsis,
     artifactName: 'dsh-desktop-dev-windows-${arch}-setup.${ext}'
