@@ -1,6 +1,6 @@
 {
   "name": "opc-dsh-desktop",
-  "version": "0.1.1",
+  "version": "0.7.3",
   "description": "A cross-platform desktop shell for DeepSeek Harness.",
   "private": true,
   "type": "module",
@@ -396,7 +396,7 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "verifyUpdateCodeSignature": false,
+      "verifyUpdateCodeSignature": true,
       "target": [
         {
           "target": "nsis",

@@ -286,9 +286,10 @@ describe('GitHub release contract', () => {
 
     expect(packageJson.dependencies['electron-updater']).toBeTruthy()
     // The upstream update endpoint must never deliver builds to OPC users.
-    // Phase 7 introduces the separately signed OPC update channel.
+    // Windows builds must reject unsigned update payloads even while the OPC
+    // release feed itself remains configured outside this repository.
     expect(packageJson.build.publish).toEqual([])
-    expect(packageJson.build.win.verifyUpdateCodeSignature).toBe(false)
+    expect(packageJson.build.win.verifyUpdateCodeSignature).toBe(true)
     for (const asset of [
       'latest-mac-arm64.yml',
       'latest-mac-x64.yml',
