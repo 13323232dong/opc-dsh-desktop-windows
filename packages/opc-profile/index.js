@@ -58,7 +58,7 @@ function clone(value) {
 
 const profile = {
   schemaVersion: 1,
-  id: 'opc-macos-desktop',
+  id: 'opc-desktop',
   harnessVersion: '0.1.2-rc.1',
   plugins: PLUGINS.map(([name, client, clientInject]) => ({
     name,
@@ -79,6 +79,7 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
     desktopDisposition: plugin.name === '@opc/DSH-dong-computer-use'
       ? 'broker-adapter'
       : plugin.client ? 'client-and-runtime' : 'runtime-only',
+    windowsDisposition: windowsDispositionFor(plugin.name),
     harnessTarget: '0.1.2-rc.1',
     status: 'requires-adapter-validation'
   }))
@@ -101,7 +102,7 @@ function isPortableArtifact(value) {
 
 export function validateDesktopProfile(candidate) {
   const issues = []
-  if (!candidate || candidate.schemaVersion !== 1 || candidate.id !== 'opc-macos-desktop') {
+  if (!candidate || candidate.schemaVersion !== 1 || candidate.id !== 'opc-desktop') {
     return ['profile has an unsupported identity or schema version']
   }
   if (!Array.isArray(candidate.plugins)) return ['profile plugins must be an array']
@@ -129,6 +130,14 @@ export function validateDesktopProfile(candidate) {
     }
   }
   return issues
+}
+
+function windowsDispositionFor(name) {
+  if (name === '@opc/DSH-dong-computer-use' || name === '@opc/dsh-dong-mobile-control') {
+    return 'requires-native-adapter'
+  }
+  if (name === '@opc/dsh-feishu-docs') return 'requires-browser-provider'
+  return 'supported'
 }
 
 function importedModules(source) {
