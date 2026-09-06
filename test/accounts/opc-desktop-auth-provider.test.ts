@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { InMemoryCredentialStore } from '../../src/main/accounts/credential-store'
+import { accountKeyFor } from '../../src/main/accounts/account-key'
 import { OpcDesktopAuthProvider } from '../../src/main/accounts/opc-desktop-auth-provider'
 
 const principal = { tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session-a' }
@@ -34,6 +35,29 @@ describe('OpcDesktopAuthProvider', () => {
     try {
       const provider = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: fetcher as typeof fetch })
       await expect(provider.signIn({ username: 'merchant', password: 'correct-password' })).rejects.toThrow('desktop_auth_account_changed')
+    } finally { await rm(root, { recursive: true, force: true }) }
+  })
+
+  it('keeps an encrypted local session on a transient verification failure', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
+    const credentials = new InMemoryCredentialStore()
+    const onlineFetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/login')) return new Response(JSON.stringify(principal), { headers: { 'set-cookie': 'opc_session=opaque-token; HttpOnly' } })
+      return new Response(JSON.stringify(principal))
+    })
+    try {
+      const online = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: onlineFetcher as typeof fetch })
+      const signedIn = await online.signIn({ username: 'merchant', password: 'correct-password' })
+      await credentials.saveFor(principal, signedIn!.credential)
+      const offline = new OpcDesktopAuthProvider({
+        apiBaseUrl: 'https://opc.example.test',
+        credentials,
+        activeAccountPath: join(root, 'active.json'),
+        fetch: vi.fn(async () => { throw new TypeError('network unavailable') }) as typeof fetch
+      })
+
+      await expect(offline.currentSession()).rejects.toThrow('desktop_auth_session_verification_failed')
+      await expect(credentials.load({ ...principal, accountKey: accountKeyFor(principal.tenantId, principal.userId) })).resolves.toMatchObject({ accessToken: 'opaque-token' })
     } finally { await rm(root, { recursive: true, force: true }) }
   })
 })

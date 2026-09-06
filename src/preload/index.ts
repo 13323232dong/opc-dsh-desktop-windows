@@ -360,6 +360,14 @@ contextBridge.exposeInMainWorld(
 )
 
 contextBridge.exposeInMainWorld(
+  'dshDesktopAuth',
+  Object.freeze({
+    signIn: (input: { username: string; password: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out')
+  })
+)
+
+contextBridge.exposeInMainWorld(
   'dshRecovery',
   Object.freeze({
     action: (action: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('recovery:action', action)

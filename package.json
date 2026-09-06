@@ -353,6 +353,10 @@
         "to": "splash.html"
       },
       {
+        "from": "build/login.html",
+        "to": "login.html"
+      },
+      {
         "from": "build/dsh-loader.gif",
         "to": "dsh-loader.gif"
       },

@@ -49,7 +49,10 @@ export class OpcDesktopAuthProvider implements DesktopAuthProvider {
       const session = { principal: verified, credential: { ...credential, ...verified } }
       this.active = session
       return session
-    } catch {
+    } catch (error) {
+      if (!isInvalidSessionError(error)) {
+        throw new Error('desktop_auth_session_verification_failed')
+      }
       await this.options.credentials.remove(scoped)
       await this.clearActiveAccount()
       return undefined
@@ -153,4 +156,13 @@ function principalFromApiResponse(value: unknown): PrincipalInput {
 
 function samePrincipal(left: PrincipalInput, right: PrincipalInput): boolean {
   return left.tenantId === right.tenantId && left.userId === right.userId && left.sessionId === right.sessionId
+}
+
+function isInvalidSessionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : ''
+  return (
+    message === 'desktop_auth_account_changed' ||
+    message === 'desktop_auth_session_invalid:401' ||
+    message === 'desktop_auth_session_invalid:403'
+  )
 }
