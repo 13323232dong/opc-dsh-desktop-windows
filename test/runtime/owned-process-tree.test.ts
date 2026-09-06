@@ -36,4 +36,15 @@ describe('OwnedProcessTree', () => {
     await tree.stop('runtime-a')
     expect(process.kill).not.toHaveBeenCalled()
   })
+
+  it('does not treat a process without a signalCode property as exited', async () => {
+    const process = child()
+    delete (process as { signalCode?: NodeJS.Signals | null }).signalCode
+    const tree = new OwnedProcessTree({ graceMs: 1, hardKillWaitMs: 1 })
+    tree.register('runtime-a', process)
+
+    await tree.stop('runtime-a')
+
+    expect(process.kill).toHaveBeenCalledWith('SIGTERM')
+  })
 })
