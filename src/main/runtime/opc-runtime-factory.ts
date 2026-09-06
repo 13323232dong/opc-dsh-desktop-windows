@@ -38,7 +38,8 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
       const broker = await options.broker.registerRuntime({
         runtimeId,
         capabilities: ['cloud.proxy', 'filesystem.pick', 'filesystem.reveal', 'ego.status', 'ego.launch', 'ego.run'],
-        workspace: input.layout.workspace
+        workspace: input.layout.workspace,
+        cloudSessionToken: input.credential.accessToken
       })
       const harness = options.buildHarness({
         dshHome: input.layout.dshHome,
@@ -70,7 +71,13 @@ function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBroker
   return {
     OPC_LOCAL_BROKER_URL: broker.endpoint,
     OPC_LOCAL_BROKER_TOKEN: broker.token,
-    OPC_ACCOUNT_KEY: principal.accountKey
+    OPC_ACCOUNT_KEY: principal.accountKey,
+    OPC_TENANT_ID: principal.tenantId,
+    OPC_USER_ID: principal.userId,
+    OPC_LOGIN_SESSION_ID: principal.sessionId,
+    OPC_DSH_TENANT_ID: principal.tenantId,
+    OPC_DSH_USER_ID: principal.userId,
+    OPC_DSH_LOGIN_SESSION_ID: principal.sessionId
   }
 }
 

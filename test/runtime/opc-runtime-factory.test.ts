@@ -32,9 +32,12 @@ describe('createOpcRuntimeFactory', () => {
       environment: expect.objectContaining({
         OPC_LOCAL_BROKER_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a',
         OPC_LOCAL_BROKER_TOKEN: 'broker-secret',
-        OPC_ACCOUNT_KEY: principal.accountKey
+        OPC_ACCOUNT_KEY: principal.accountKey,
+        OPC_TENANT_ID: principal.tenantId,
+        OPC_USER_ID: principal.userId
       })
     }))
+    expect(broker.registerRuntime).toHaveBeenCalledWith(expect.objectContaining({ cloudSessionToken: credential.accessToken }))
     expect(harness.start).toHaveBeenCalledWith(layout.workspace)
     expect(handle.descriptor).toMatchObject({ runtimeId: 'runtime-a', accountKey: principal.accountKey, dshHome: layout.dshHome, workspace: layout.workspace })
     await handle.stop()

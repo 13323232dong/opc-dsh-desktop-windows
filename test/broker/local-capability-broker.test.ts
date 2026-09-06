@@ -57,7 +57,7 @@ describe('LocalCapabilityBroker', () => {
     const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
     brokers.push(broker)
-    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['cloud.proxy'] })
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-issued-session' })
 
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: 'https://evil.example/x' })).status).toBe(400)
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/%2e%2e/private' })).status).toBe(400)
@@ -88,7 +88,7 @@ describe('LocalCapabilityBroker', () => {
     expect(fetchCloud.mock.calls[1]?.[0]).toBe('https://opc.example.test/api/v1/agent/conversations/6f5de5b4-1ec4-43bb-8c6e-bfb03eb1f536/messages')
     const outboundHeaders = fetchCloud.mock.calls[1]?.[1]?.headers as Headers
     expect(outboundHeaders.has('authorization')).toBe(false)
-    expect(outboundHeaders.has('cookie')).toBe(false)
+    expect(outboundHeaders.get('cookie')).toBe('opc_session=server-issued-session')
     expect(outboundHeaders.has('x-opc-tenant-id')).toBe(false)
     expect(outboundHeaders.has('x-opc-signature')).toBe(false)
     expect(outboundHeaders.has('x-opc-timestamp')).toBe(false)
