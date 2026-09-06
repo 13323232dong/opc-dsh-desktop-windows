@@ -365,6 +365,10 @@
         "to": "safe-mode.html"
       },
       {
+        "from": "build/community-wechat-qr.png",
+        "to": "community-wechat-qr.png"
+      },
+      {
         "from": "build/windows-menu.html",
         "to": "windows-menu.html"
       }
