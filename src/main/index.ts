@@ -290,7 +290,7 @@ function appendRendererPluginRecoveryLog(logs: readonly string[]): void {
       .map((line) => `[renderer] ${line}`)
       .join('\n')
     appendFileSync(
-      join(app.getPath('logs'), 'harness.log'),
+      currentHarnessLogPath(),
       `\n[desktop] frontend plugin recovery ${new Date().toISOString()}\n${evidence}\n`,
       'utf8'
     )
@@ -303,7 +303,7 @@ function appendPluginRecoveryDetectionLog(plugins: readonly string[]): void {
   try {
     const result = plugins.length > 0 ? plugins.join(', ') : 'unresolved'
     appendFileSync(
-      join(app.getPath('logs'), 'harness.log'),
+      currentHarnessLogPath(),
       `[desktop] plugin recovery detection: ${result}\n`,
       'utf8'
     )
@@ -1562,7 +1562,7 @@ async function executeDesktopMenuCommand(command: DesktopMenuCommand): Promise<n
       void showSafeMode().catch(showUnexpectedError)
       break
     case 'show-harness-log':
-      shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+      if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
       break
     case 'check-for-updates':
       await checkForUpdates(true)
@@ -1863,7 +1863,7 @@ async function showPluginRecovery(options?: {
         }
         continue
       } else if (action === 'show-log') {
-        shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+        if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
         continue
       } else if (action === 'safe-mode') {
         safeModeSuspectedPlugins = [...new Set(detection.plugins)]
@@ -2532,7 +2532,9 @@ function installMenu(): void {
         },
         {
           label: isChinese ? '查看 Harness 日志' : 'Show Harness Log',
-          click: () => shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+          click: () => {
+            if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
+          }
         },
         ...(process.platform === 'darwin'
           ? []
