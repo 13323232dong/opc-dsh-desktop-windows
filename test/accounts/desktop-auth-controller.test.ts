@@ -23,7 +23,7 @@ describe('DesktopAuthController', () => {
     const credentials = { save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined) }
     const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
 
-    const context = await controller.signIn()
+    const context = await controller.signIn({ username: 'merchant', password: 'password' })
 
     expect(context?.principal).toMatchObject(session.principal)
     expect(credentials.save).toHaveBeenCalledWith(expect.objectContaining(session.principal), session.credential)
@@ -36,7 +36,7 @@ describe('DesktopAuthController', () => {
     const credentials = { save: vi.fn(), remove: vi.fn() }
     const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
 
-    await expect(controller.signIn()).rejects.toThrow('desktop_auth_account_changed')
+    await expect(controller.signIn({ username: 'merchant', password: 'password' })).rejects.toThrow('desktop_auth_account_changed')
     expect(credentials.save).not.toHaveBeenCalled()
     expect(runtime.switchTo).not.toHaveBeenCalled()
   })

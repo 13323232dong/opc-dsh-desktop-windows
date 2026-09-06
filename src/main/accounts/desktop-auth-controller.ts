@@ -16,7 +16,7 @@ export interface DesktopAuthSession {
  */
 export interface DesktopAuthProvider {
   currentSession(): Promise<DesktopAuthSession | undefined>
-  signIn(): Promise<DesktopAuthSession | undefined>
+  signIn(input: { username: string; password: string }): Promise<DesktopAuthSession | undefined>
   signOut(): Promise<void>
 }
 
@@ -33,8 +33,8 @@ export class DesktopAuthController {
     return await this.activate(await this.options.provider.currentSession())
   }
 
-  async signIn(): Promise<AccountRuntimeContext | undefined> {
-    return await this.activate(await this.options.provider.signIn())
+  async signIn(input: { username: string; password: string }): Promise<AccountRuntimeContext | undefined> {
+    return await this.activate(await this.options.provider.signIn(input))
   }
 
   async signOut(): Promise<void> {
