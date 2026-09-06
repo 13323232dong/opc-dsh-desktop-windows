@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.1",
+  "platform": "win32",
+  "arch": "x64",
+  "profileId": "opc-desktop",
+  "harnessVersion": "0.1.2-rc.1",
+  "plugins": [
+    {
+      "name": "@opc/dsh-brand",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-brand-0.1.0.tgz",
+      "sha256": "0b497260fd875355d08b23dcbdf47289d42edaae7f8d0da340af607f606dcd05"
+    },
+    {
+      "name": "@nanmicoder/dsh-agent-teams",
+      "version": "0.1.8-opc-desktop.5",
+      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz",
+      "sha256": "df7d6013a8cdc6ad9c4b274bfde4cce713fb35429e197f3144ce2899d74e2e29"
+    },
+    {
+      "name": "@opc/dsh-assets",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-assets-0.1.0.tgz",
+      "sha256": "2e850e277b9512aaaedb657aa525f685b20502641f1864eaeee5a47e6c0a4f91"
+    },
+    {
+      "name": "@opc/dsh-assets-workbench",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-assets-workbench-0.1.0.tgz",
+      "sha256": "8c476bd58350395a95e7645e448127a45009cdf9458910ba97980670f8ddb503"
+    },
+    {
+      "name": "@opc/dsh-file-attachments",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-file-attachments-0.1.0.tgz",
+      "sha256": "b47752517ccddb06dcd4eb36226ccd0d243258c86013eb0e416c9f5df52cbe2a"
+    },
+    {
+      "name": "@opc/dsh-realtime-voice",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-realtime-voice-0.1.0.tgz",
+      "sha256": "44547b111fc26c7f62493655a18727c6478fe7ae1ba57920fe9e0233c0913505"
+    },
+    {
+      "name": "@opc/dsh-task-tracker",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-task-tracker-0.1.0.tgz",
+      "sha256": "64cd959bb0ac310dffb8d70bac9a8e15f2443146e0b19d783b9b77615e9fa5f7"
+    },
+    {
+      "name": "@opc/dsh-viral-chase",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-viral-chase-0.1.0.tgz",
+      "sha256": "512a4ef87984a95880e1b7cd8f26682ae5f313d0b15a71f32b75db68f42fdd72"
+    },
+    {
+      "name": "@opc/dsh-douyin-comment-ops",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz",
+      "sha256": "14f1028b5eae5f0e4b039ae5f2956ad0b09ef1ef243cf4b7bfc380b569dd2889"
+    },
+    {
+      "name": "@opc/dsh-session-context",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-session-context-0.1.0.tgz",
+      "sha256": "2ec488a1aa94bfe0ddf8a3bfa7f8748342972bf6b53da5db7cf7a00c77f84cf0"
+    }
+  ]
+}

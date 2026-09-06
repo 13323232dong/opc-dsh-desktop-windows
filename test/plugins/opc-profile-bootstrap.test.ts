@@ -4,6 +4,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ensureOpcDesktopProfile } from '../../src/main/state/opc-profile-bootstrap'
 
+const desktopPlugins = [
+  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0.tgz'],
+  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz'],
+  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.0.tgz'],
+  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.0.tgz'],
+  ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
+  ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],
+  ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.0.tgz'],
+  ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
+  ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
+  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.0.tgz']
+] as const
+
 describe('ensureOpcDesktopProfile', () => {
   it('adds only bundled, verified OPC plugins to the initial web profile', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
@@ -12,8 +25,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.4.tgz'), ''),
+      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
       writeFile(join(profile, 'package.json'), JSON.stringify({
         name: 'dsh-profile-web', private: true,
         dependencies: {},
@@ -21,14 +33,11 @@ describe('ensureOpcDesktopProfile', () => {
       }))
     ])
     try {
-      await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toEqual({ changed: true, plugins: ['@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'] })
+      await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toEqual({ changed: true, plugins: desktopPlugins.map(([name]) => name) })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
-      expect(manifest.dependencies).toEqual({
-        '@opc/dsh-brand': `file:${join(plugins, 'opc-dsh-brand-0.1.0.tgz')}`,
-        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.4.tgz')}`
-      })
+      expect(manifest.dependencies).toEqual(Object.fromEntries(desktopPlugins.map(([name, artifact]) => [name, `file:${join(plugins, artifact)}`])))
       expect(manifest.dsh.profile.bundles).toEqual([
-        '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'
+        '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', ...desktopPlugins.map(([name]) => name)
       ])
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(patch).toContain('ui-brand-official')
@@ -60,8 +69,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.4.tgz'), ''),
+      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {} })),
       writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n')
     ])
@@ -83,12 +91,10 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      writeFile(join(plugins, 'opc-dsh-brand-0.1.0.tgz'), ''),
-      writeFile(join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.4.tgz'), ''),
+      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {
-        '@opc/dsh-brand': `file:${join(plugins, 'opc-dsh-brand-0.1.0.tgz')}`,
-        '@nanmicoder/dsh-agent-teams': `file:${join(plugins, 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.4.tgz')}`
-      }, dsh: { profile: { bundles: ['@opc/dsh-brand', '@nanmicoder/dsh-agent-teams'] } } })),
+        ...Object.fromEntries(desktopPlugins.map(([name, artifact]) => [name, `file:${join(plugins, artifact)}`]))
+      }, dsh: { profile: { bundles: desktopPlugins.map(([name]) => name) } } })),
       writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: opc-brand\n')
     ])
     try {

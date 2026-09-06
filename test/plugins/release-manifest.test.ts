@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReleaseManifest, verifyReleaseArtifacts } from '../../packages/opc-profile/release-manifest.js'
+import { DESKTOP_PROFILE_MANIFEST } from '../../packages/opc-profile/index.js'
 
 const profile = {
   schemaVersion: 1,
@@ -35,5 +36,9 @@ describe('OPC desktop release manifest', () => {
       expect(manifest.plugins[0]).toMatchObject({ name: '@opc/dsh-brand', artifact: 'plugins/opc-dsh-brand-0.1.0.tgz' })
       expect(manifest.plugins[0]?.sha256).toMatch(/^[a-f0-9]{64}$/)
     } finally { await rm(root, { recursive: true, force: true }) }
+  })
+
+  it('ships an artifact for every Windows desktop plugin declared by the profile', async () => {
+    await expect(verifyReleaseArtifacts(DESKTOP_PROFILE_MANIFEST, join(process.cwd(), 'packages', 'opc-profile'))).resolves.toEqual([])
   })
 })

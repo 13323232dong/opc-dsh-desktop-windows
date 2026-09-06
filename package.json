@@ -32,6 +32,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:win-release": "node scripts/verify-opc-desktop-release.mjs win32 x64",
     "package:dir": "npm run build && electron-builder --dir",
     "package:dev:dir": "npm run build && electron-builder --dir --config electron-builder.dev.cjs",
     "package:dev:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never --config electron-builder.dev.cjs",
@@ -40,7 +41,7 @@
     "package:mac": "npm run build && electron-builder --mac --publish never",
     "package:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never",
     "package:mac:x64": "node scripts/verify-target.mjs darwin x64 && npm run build && electron-builder --mac --x64 --publish never",
-    "package:win": "node scripts/verify-target.mjs win32 x64 && npm run build && electron-builder --win --x64 --publish never"
+    "package:win": "node scripts/verify-target.mjs win32 x64 && npm run build && npm run verify:win-release && electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "file:packages/harness-0.1.2-rc.1/npm-vendor/deepseek-ai-cordis-4.0.2.tgz",
