@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { access, readFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 
 function isArtifactPath(value) {
   return typeof value === 'string' && value.startsWith('plugins/') && !value.includes('..') && !value.includes('\\')
@@ -9,7 +9,10 @@ function isArtifactPath(value) {
 function resolvedArtifact(root, artifact) {
   const base = resolve(root)
   const path = resolve(base, artifact)
-  if (!path.startsWith(`${base}/`)) throw new Error('desktop_release_artifact_path_invalid')
+  const relativePath = relative(base, path)
+  if (relativePath === '..' || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath)) {
+    throw new Error('desktop_release_artifact_path_invalid')
+  }
   return path
 }
 
