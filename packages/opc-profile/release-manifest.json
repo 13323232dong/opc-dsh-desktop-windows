@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.3",
+  "version": "0.7.4",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",

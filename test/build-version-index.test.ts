@@ -44,7 +44,7 @@ describe('buildVersionIndex', () => {
     expect(entry).toEqual({
       version: '3.4.5',
       tag: 'v3.4.5',
-      archiveUrl: 'https://dshdesktop.com/updates/archive/3.4.5/'
+      archiveUrl: 'https://opc.ohmycode.cc/updates/windows/archive/3.4.5/'
     })
   })
 
