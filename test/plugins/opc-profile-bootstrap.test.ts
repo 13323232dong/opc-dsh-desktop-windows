@@ -2,20 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ensureOpcDesktopProfile } from '../../src/main/state/opc-profile-bootstrap'
+import { ensureOpcDesktopProfile, OPC_DESKTOP_PLUGINS } from '../../src/main/state/opc-profile-bootstrap'
 
-const desktopPlugins = [
-  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0.tgz'],
-  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz'],
-  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.0.tgz'],
-  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.0.tgz'],
-  ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
-  ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],
-  ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.0.tgz'],
-  ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
-  ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
-  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.0.tgz']
-] as const
+const desktopPlugins = OPC_DESKTOP_PLUGINS
+
+async function materializePluginArtifacts(directory: string): Promise<void> {
+  await Promise.all(desktopPlugins.map(([, artifact]) => writeFile(join(directory, artifact), '')))
+}
 
 describe('ensureOpcDesktopProfile', () => {
   it('adds only bundled, verified OPC plugins to the initial web profile', async () => {
@@ -25,7 +18,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
+      materializePluginArtifacts(plugins),
       writeFile(join(profile, 'package.json'), JSON.stringify({
         name: 'dsh-profile-web', private: true,
         dependencies: {},
@@ -41,6 +34,11 @@ describe('ensureOpcDesktopProfile', () => {
       ])
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(patch).toContain('ui-brand-official')
+      expect(patch).toContain('desktopMode: true')
+      expect(patch).toContain('controlPlaneEnabled: true')
+      expect(desktopPlugins.map(([name]) => name)).not.toContain('@opc/DSH-dong-computer-use')
+      expect(desktopPlugins.map(([name]) => name)).not.toContain('@opc/dsh-dong-mobile-control')
+      expect(desktopPlugins.map(([name]) => name)).not.toContain('@opc/dsh-desktop-orb')
       expect(patch.trimStart().startsWith('[]')).toBe(false)
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -69,7 +67,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
+      materializePluginArtifacts(plugins),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {} })),
       writeFile(join(profile, 'cordis.patch.yml'), '# upstream patch documentation\n[]\n')
     ])
@@ -91,7 +89,7 @@ describe('ensureOpcDesktopProfile', () => {
     await mkdir(profile, { recursive: true })
     await mkdir(plugins)
     await Promise.all([
-      ...desktopPlugins.map(([, artifact]) => writeFile(join(plugins, artifact), '')),
+      materializePluginArtifacts(plugins),
       writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: {
         ...Object.fromEntries(desktopPlugins.map(([name, artifact]) => [name, `file:${join(plugins, artifact)}`]))
       }, dsh: { profile: { bundles: desktopPlugins.map(([name]) => name) } } })),

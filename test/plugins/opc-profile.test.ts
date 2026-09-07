@@ -13,6 +13,20 @@ describe('OPC desktop profile', () => {
     expect(Object.isFrozen(profile)).toBe(true)
     expect(profile.id).toBe('opc-desktop')
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@nanmicoder/dsh-agent-teams')
+    expect(profile.plugins.map((plugin) => plugin.name)).toEqual([
+      '@opc/dsh-brand', '@nanmicoder/dsh-agent-teams', '@opc/dsh-assets',
+      '@opc/dsh-assets-workbench', '@opc/dsh-file-attachments', 'dsh-file-picker',
+      '@opc/dsh-douyin-comment-ops', '@opc/dsh-douyin-publisher', '@opc/dsh-feishu-docs',
+      '@opc/dsh-context-retrieval', '@omdsh-dev/dsh-genui', '@opc/dsh-publish-precheck',
+      'DSH-opc-material-matcher', '@opc/dsh-realtime-voice', '@opc/dsh-task-tracker',
+      '@opc/dsh-viral-chase', '@opc/dsh-session-context'
+    ])
+    expect(profile.plugins).toContainEqual(expect.objectContaining({
+      name: '@opc/dsh-brand', artifact: 'plugins/opc-dsh-brand-0.1.0-opc-desktop.2.tgz'
+    }))
+    expect(profile.plugins).toContainEqual(expect.objectContaining({
+      name: '@opc/dsh-feishu-docs', artifact: 'plugins/opc-dsh-feishu-docs-0.1.0.tgz', client: false
+    }))
     expect(validateDesktopProfile(profile)).toEqual([])
   })
 

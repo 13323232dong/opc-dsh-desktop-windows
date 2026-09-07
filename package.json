@@ -354,6 +354,10 @@
         "to": "splash.html"
       },
       {
+        "from": "build/evan-super-employee.svg",
+        "to": "evan-super-employee.svg"
+      },
+      {
         "from": "build/login.html",
         "to": "login.html"
       },

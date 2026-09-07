@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Evan 超级员工 Logo</title>
+  <desc id="desc">A charcoal E monogram inside an orange collaboration orbit with three task nodes.</desc>
+  <defs>
+    <linearGradient id="orbit" x1="72" y1="64" x2="440" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6A343"/>
+      <stop offset="1" stop-color="#E87524"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#101010"/>
+  <path d="M256 54c111.562 0 202 90.438 202 202s-90.438 202-202 202S54 367.562 54 256 144.438 54 256 54Z" fill="none" stroke="url(#orbit)" stroke-width="18" stroke-dasharray="470 64" stroke-linecap="round" transform="rotate(-20 256 256)"/>
+  <path d="M155 146h178v48H210v39h105v45H210v46h123v48H155V146Z" fill="#F4F1EB"/>
+  <circle cx="393" cy="143" r="24" fill="#F4F1EB" stroke="#E87524" stroke-width="10"/>
+  <circle cx="423" cy="349" r="24" fill="#E87524"/>
+  <circle cx="112" cy="330" r="19" fill="#F4F1EB"/>
+  <path d="M112 330c42-16 75-44 97-83M333 170c25-15 43-25 60-27M334 340c30 1 60 4 89 9" fill="none" stroke="#E87524" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+</svg>

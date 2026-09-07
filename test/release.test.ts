@@ -178,6 +178,10 @@ describe('GitHub release contract', () => {
       to: 'splash.html'
     })
     expect(packageJson.build.extraResources).toContainEqual({
+      from: 'build/evan-super-employee.svg',
+      to: 'evan-super-employee.svg'
+    })
+    expect(packageJson.build.extraResources).toContainEqual({
       from: 'build/dsh-loader.gif',
       to: 'dsh-loader.gif'
     })
@@ -234,8 +238,8 @@ describe('GitHub release contract', () => {
     expect(main).toContain("query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light' }")
     expect(main).toContain('nativeTheme.themeSource = harnessThemePreference()')
     expect(splash).toContain('Starting DSH Desktop')
-    expect(splash).toContain('src="dsh-loader.gif"')
-    expect(splash).toContain('src="dsh-loader-dark.gif"')
+    expect(splash).toContain('src="evan-super-employee.svg"')
+    expect(splash).toContain('正在唤醒 Evan 超级员工')
     expect(splash).toContain("document.documentElement.dataset.theme = splashTheme === 'dark'")
     expect(splash).toContain(":root[data-theme='dark']")
     expect(splash).toContain('brightness(2.4) saturate(0.72)')
