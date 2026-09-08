@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { LocalCapabilityBroker } from '../../src/main/broker/local-capability-broker'
+import type { LocalMediaRuntime } from '../../src/main/broker/local-media-runtime'
 
 const brokers: LocalCapabilityBroker[] = []
 
@@ -124,5 +125,24 @@ describe('LocalCapabilityBroker', () => {
 
     const response = await request(runtime.endpoint, runtime.token, 'filesystem.pick', {})
     expect(await response.json()).toEqual({ paths: [await realpath(inside)] })
+  })
+
+  it('routes only explicitly granted media capabilities to the local media runtime', async () => {
+    const mediaRuntime = {
+      handle: vi.fn(async () => ({ status: 200, body: { components: [] } }))
+    } as unknown as LocalMediaRuntime
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', mediaRuntime })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({
+      runtimeId: 'runtime-media',
+      mediaScopeId: 'account-opaque',
+      capabilities: ['media.status', 'media.install', 'media.claim', 'media.run', 'media.progress', 'media.cancel']
+    })
+
+    expect((await request(runtime.endpoint, runtime.token, 'media.status', {})).status).toBe(200)
+    expect(mediaRuntime.handle).toHaveBeenCalledWith('media.status', {}, { runtimeId: 'account-opaque' })
+
+    const denied = await broker.registerRuntime({ runtimeId: 'runtime-denied', capabilities: ['ego.status'] })
+    expect((await request(denied.endpoint, denied.token, 'media.status', {})).status).toBe(403)
   })
 })

@@ -4,6 +4,11 @@ import type { AddressInfo } from 'node:net'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { isLocalCapability, type LocalCapability } from '../../shared/broker-contracts'
+import {
+  isMediaCapability,
+  type LocalMediaRuntime,
+  type MediaCapability
+} from './local-media-runtime'
 
 const MAX_BODY_BYTES = 64 * 1024
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
@@ -45,8 +50,10 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
 
 export interface BrokerRuntimeRegistration {
   runtimeId: string
-  capabilities: readonly LocalCapability[]
+  capabilities: readonly BrokerCapability[]
   workspace?: string
+  /** Stable opaque account namespace used only for durable local media tasks. */
+  mediaScopeId?: string
   /** Opaque OPC session retained by the main-process Broker only. */
   cloudSessionToken?: string
 }
@@ -67,12 +74,16 @@ export interface LocalCapabilityBrokerOptions {
   revealPath?: (path: string) => Promise<void>
   pickPaths?: () => Promise<string[]>
   requestTimeoutMs?: number
+  mediaRuntime?: Pick<LocalMediaRuntime, 'handle'>
 }
+
+export type BrokerCapability = LocalCapability | MediaCapability
 
 interface RuntimeRecord {
   tokenHash: Buffer
-  capabilities: ReadonlySet<LocalCapability>
+  capabilities: ReadonlySet<BrokerCapability>
   workspace?: string
+  mediaScopeId: string
   cloudSessionToken?: string
 }
 
@@ -102,7 +113,10 @@ export class LocalCapabilityBroker {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(registration.runtimeId)) {
       throw new Error('desktop_broker_invalid_runtime_id')
     }
-    if (registration.capabilities.some((capability) => !isLocalCapability(capability))) {
+    if (registration.mediaScopeId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(registration.mediaScopeId)) {
+      throw new Error('desktop_broker_invalid_media_scope')
+    }
+    if (registration.capabilities.some((capability) => !isBrokerCapability(capability))) {
       throw new Error('desktop_broker_invalid_capability')
     }
     await this.start()
@@ -111,6 +125,7 @@ export class LocalCapabilityBroker {
       tokenHash: digest(token),
       capabilities: new Set(registration.capabilities),
       workspace: registration.workspace ? await realpath(registration.workspace) : undefined,
+      mediaScopeId: registration.mediaScopeId ?? registration.runtimeId,
       cloudSessionToken: registration.cloudSessionToken
     })
     const origin = this.origin!
@@ -158,7 +173,7 @@ export class LocalCapabilityBroker {
       return this.send(response, 401, { code: 'desktop_broker_unauthorized' })
     }
     const capability = decodeURIComponent(match[2])
-    if (!isLocalCapability(capability) || !runtime.capabilities.has(capability)) {
+    if (!isBrokerCapability(capability) || !runtime.capabilities.has(capability)) {
       return this.send(response, 403, { code: 'desktop_broker_capability_denied' })
     }
     const body = await this.readJson(request, response)
@@ -166,7 +181,21 @@ export class LocalCapabilityBroker {
     if (capability === 'cloud.proxy') return this.proxyCloud(body, request, runtime, response)
     if (capability === 'filesystem.pick') return this.pickWorkspacePaths(runtime, response)
     if (capability === 'filesystem.reveal') return this.revealWorkspacePath(body, runtime, response)
+    if (isMediaCapability(capability)) return this.handleMedia(capability, body, runtime.mediaScopeId, response)
     return this.send(response, 501, { code: 'desktop_broker_capability_not_configured' })
+  }
+
+  private async handleMedia(
+    capability: MediaCapability,
+    body: Record<string, unknown>,
+    mediaScopeId: string,
+    response: ServerResponse
+  ): Promise<void> {
+    if (!this.options.mediaRuntime) {
+      return this.send(response, 503, { code: 'desktop_broker_media_runtime_unavailable' })
+    }
+    const result = await this.options.mediaRuntime.handle(capability, body, { runtimeId: mediaScopeId })
+    this.send(response, result.status, result.body)
   }
 
   private validToken(authorization: string | undefined, expectedHash: Buffer): boolean {
@@ -297,6 +326,10 @@ function isAllowedCloudPath(value: unknown): value is string {
   } catch {
     return false
   }
+}
+
+function isBrokerCapability(value: unknown): value is BrokerCapability {
+  return isLocalCapability(value) || isMediaCapability(value)
 }
 
 function safeHeaders(value: unknown): Headers {

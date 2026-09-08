@@ -38,7 +38,18 @@ describe('createOpcRuntimeFactory', () => {
         OPC_USER_ID: principal.userId
       })
     }))
-    expect(broker.registerRuntime).toHaveBeenCalledWith(expect.objectContaining({ cloudSessionToken: credential.accessToken }))
+    expect(broker.registerRuntime).toHaveBeenCalledWith(expect.objectContaining({
+      cloudSessionToken: credential.accessToken,
+      mediaScopeId: principal.accountKey,
+      capabilities: expect.arrayContaining([
+        'media.status',
+        'media.install',
+        'media.claim',
+        'media.run',
+        'media.progress',
+        'media.cancel'
+      ])
+    }))
     expect(harness.start).toHaveBeenCalledWith(layout.workspace)
     expect(handle.descriptor).toMatchObject({ runtimeId: 'runtime-a', accountKey: principal.accountKey, dshHome: layout.dshHome, workspace: layout.workspace })
     await handle.stop()

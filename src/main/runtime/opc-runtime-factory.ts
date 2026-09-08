@@ -37,8 +37,22 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
       const runtimeId = createRuntimeId()
       const broker = await options.broker.registerRuntime({
         runtimeId,
-        capabilities: ['cloud.proxy', 'filesystem.pick', 'filesystem.reveal', 'ego.status', 'ego.launch', 'ego.run'],
+        capabilities: [
+          'cloud.proxy',
+          'filesystem.pick',
+          'filesystem.reveal',
+          'ego.status',
+          'ego.launch',
+          'ego.run',
+          'media.status',
+          'media.install',
+          'media.claim',
+          'media.run',
+          'media.progress',
+          'media.cancel'
+        ],
         workspace: input.layout.workspace,
+        mediaScopeId: input.principal.accountKey,
         cloudSessionToken: input.credential.accessToken
       })
       const harness = options.buildHarness({

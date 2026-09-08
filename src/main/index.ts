@@ -149,6 +149,7 @@ import { DesktopAuthController } from './accounts/desktop-auth-controller'
 import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
 import { createPlatformCredentialStore } from './accounts/platform-credential-store'
 import { LocalCapabilityBroker } from './broker/local-capability-broker'
+import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
 import { createOpcRuntimeFactory, type AccountHarnessConfiguration } from './runtime/opc-runtime-factory'
 
@@ -2720,7 +2721,8 @@ async function bootstrap(): Promise<void> {
     root: app.getPath('userData'),
     safeStorage
   })
-  const broker = new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl })
+  const mediaRuntime = createDesktopMediaRuntime(app.getPath('userData'))
+  const broker = new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl, mediaRuntime })
   accountRuntimeManager = new AccountRuntimeManager({
     root: app.getPath('userData'),
     credentialStore,
