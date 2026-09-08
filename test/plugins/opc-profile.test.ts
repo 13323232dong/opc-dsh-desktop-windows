@@ -5,13 +5,13 @@ import {
   validateDesktopProfile
 } from '../../packages/opc-profile/index.js'
 
-describe('OPC macOS desktop profile', () => {
+describe('OPC desktop profile', () => {
   it('exports an immutable, self-contained plugin manifest', () => {
     const profile = createDesktopProfileManifest()
 
     expect(profile).toEqual(DESKTOP_PROFILE_MANIFEST)
     expect(Object.isFrozen(profile)).toBe(true)
-    expect(profile.id).toBe('opc-macos-desktop')
+    expect(profile.id).toBe('opc-desktop')
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@nanmicoder/dsh-agent-teams')
     expect(validateDesktopProfile(profile)).toEqual([])
   })

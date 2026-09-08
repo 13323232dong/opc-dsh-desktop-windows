@@ -1,6 +1,6 @@
 {
   "name": "opc-dsh-desktop",
-  "version": "0.1.1",
+  "version": "0.7.3",
   "description": "A cross-platform desktop shell for DeepSeek Harness.",
   "private": true,
   "type": "module",
@@ -32,6 +32,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:win-release": "node scripts/verify-opc-desktop-release.mjs win32 x64",
     "package:dir": "npm run build && electron-builder --dir",
     "package:dev:dir": "npm run build && electron-builder --dir --config electron-builder.dev.cjs",
     "package:dev:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never --config electron-builder.dev.cjs",
@@ -40,7 +41,7 @@
     "package:mac": "npm run build && electron-builder --mac --publish never",
     "package:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never",
     "package:mac:x64": "node scripts/verify-target.mjs darwin x64 && npm run build && electron-builder --mac --x64 --publish never",
-    "package:win": "node scripts/verify-target.mjs win32 x64 && npm run build && electron-builder --win --x64 --publish never",
+    "package:win": "node scripts/verify-target.mjs win32 x64 && npm run build && npm run verify:win-release && electron-builder --win --x64 --publish never",
     "ppt:build": "node scripts/generate-zara-ppt-templates.mjs && node scripts/localize-ppt-templates.mjs && node scripts/enrich-ppt-templates.mjs && node scripts/build-ppt-runtime.mjs"
   },
   "dependencies": {
@@ -354,6 +355,10 @@
         "to": "splash.html"
       },
       {
+        "from": "build/login.html",
+        "to": "login.html"
+      },
+      {
         "from": "build/dsh-loader.gif",
         "to": "dsh-loader.gif"
       },
@@ -396,7 +401,7 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "verifyUpdateCodeSignature": false,
+      "verifyUpdateCodeSignature": true,
       "target": [
         {
           "target": "nsis",

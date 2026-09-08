@@ -9,6 +9,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  safeStorage,
   shell,
   Tray,
   utilityProcess,
@@ -144,6 +145,12 @@ import {
   MAIN_WINDOW_RECOVERY_RELOAD_COOLDOWN_MS,
   shouldReloadAfterMainWindowRendererLoss
 } from './main-window-recovery'
+import { DesktopAuthController } from './accounts/desktop-auth-controller'
+import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
+import { createPlatformCredentialStore } from './accounts/platform-credential-store'
+import { LocalCapabilityBroker } from './broker/local-capability-broker'
+import { AccountRuntimeManager } from './runtime/account-runtime-manager'
+import { createOpcRuntimeFactory, type AccountHarnessConfiguration } from './runtime/opc-runtime-factory'
 
 type PluginRecoveryAction = 'uninstall' | 'upgrade' | 'show-log' | 'quit' | 'restart' | 'refresh' | 'safe-mode'
 type SafeModeAction =
@@ -176,6 +183,10 @@ let runtime: HarnessRuntime
 let desktopStorageManager: DesktopStorageManager | undefined
 let mobileBridge: LanMobileBridge
 let launchDirectory: string
+let activeDshHome: string | undefined
+let activeHarnessLogPath: string | undefined
+let accountRuntimeManager: AccountRuntimeManager | undefined
+let desktopAuthController: DesktopAuthController | undefined
 let quitting = false
 let failureRecoveryVisible = false
 let harnessLaunchOperation: Promise<void> | undefined
@@ -216,6 +227,16 @@ let harnessRendered = false
 let gpuFallbackState: GpuFallbackState = defaultGpuFallbackState
 let gpuFallbackRelaunching = false
 let gpuStableLaunchTimer: NodeJS.Timeout | undefined
+
+function currentDshHome(): string {
+  if (!activeDshHome) throw new Error('desktop_auth_required')
+  return activeDshHome
+}
+
+function currentHarnessLogPath(): string {
+  if (!activeHarnessLogPath) throw new Error('desktop_auth_required')
+  return activeHarnessLogPath
+}
 
 function appendRendererPluginFailureLog(message: string): void {
   const trimmed = message.trim()
@@ -270,7 +291,7 @@ function appendRendererPluginRecoveryLog(logs: readonly string[]): void {
       .map((line) => `[renderer] ${line}`)
       .join('\n')
     appendFileSync(
-      join(app.getPath('logs'), 'harness.log'),
+      currentHarnessLogPath(),
       `\n[desktop] frontend plugin recovery ${new Date().toISOString()}\n${evidence}\n`,
       'utf8'
     )
@@ -283,7 +304,7 @@ function appendPluginRecoveryDetectionLog(plugins: readonly string[]): void {
   try {
     const result = plugins.length > 0 ? plugins.join(', ') : 'unresolved'
     appendFileSync(
-      join(app.getPath('logs'), 'harness.log'),
+      currentHarnessLogPath(),
       `[desktop] plugin recovery detection: ${result}\n`,
       'utf8'
     )
@@ -619,9 +640,12 @@ function dshBrandLogoPath(variant: 'light' | 'dark'): string {
 }
 
 function harnessLocale(): 'en' | 'zh' {
+  if (!activeDshHome) {
+    return resolveHarnessLocale(undefined, app.getPreferredSystemLanguages())
+  }
   try {
     const settings = parse(
-      readFileSync(join(app.getPath('userData'), 'harness', 'settings.yaml'), 'utf8')
+      readFileSync(join(activeDshHome, 'settings.yaml'), 'utf8')
     ) as { locale?: { preference?: unknown } }
     return resolveHarnessLocale(
       settings.locale?.preference,
@@ -716,7 +740,7 @@ function scheduleNormalProfileBootConfirmation(): void {
       return
     }
     profileBootConfirmationComplete = true
-    const dshHome = join(app.getPath('userData'), 'harness')
+    const dshHome = currentDshHome()
     void (async () => {
       await confirmMigration(dshHome, (line) => runtime.note(line), healthy)
       if (!healthy()) {
@@ -821,9 +845,10 @@ function configureApplicationLocale(): void {
 }
 
 function harnessThemePreference(): 'light' | 'dark' | 'system' {
+  if (!activeDshHome) return 'system'
   try {
     const settings = parse(
-      readFileSync(join(app.getPath('userData'), 'harness', 'settings.yaml'), 'utf8')
+      readFileSync(join(activeDshHome, 'settings.yaml'), 'utf8')
     ) as { 'ui-theme'?: { preference?: unknown } }
     const preference = settings['ui-theme']?.preference
     return preference === 'light' || preference === 'dark' || preference === 'system'
@@ -841,6 +866,19 @@ function isPluginRecoveryPage(url: string): boolean {
   } catch {
     return false
   }
+}
+
+function isLoginPage(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'file:' && parsed.pathname.endsWith('/login.html')
+  } catch {
+    return false
+  }
+}
+
+function hasActiveRuntime(): boolean {
+  return accountRuntimeManager?.snapshot().phase === 'active' && !!runtime
 }
 
 function resolvePluginRecoveryAction(action: PluginRecoveryAction): void {
@@ -884,6 +922,8 @@ function restoreMainWindow(): void {
     void openHarness(snapshot.url, 'user').catch(showUnexpectedError)
   } else if (snapshot?.phase === 'idle') {
     void launchHarness().catch(showUnexpectedError)
+  } else {
+    void showLoginPage().catch(showUnexpectedError)
   }
 }
 
@@ -1178,7 +1218,7 @@ function launchHarness(): Promise<void> {
 
   harnessLaunchOperation = (async () => {
     safeModeVisible = false
-    const dshHome = join(app.getPath('userData'), 'harness')
+    const dshHome = currentDshHome()
     await showSplash()
     // Migration and generation projection only hold on a stopped Harness, and
     // a restart still has the previous one running: start() stops it, but that
@@ -1293,7 +1333,7 @@ function launchSafeHarness(): Promise<void> {
 
   harnessLaunchOperation = (async () => {
     safeModeVisible = true
-    const dshHome = join(app.getPath('userData'), 'harness')
+    const dshHome = currentDshHome()
     await refreshMigrationRecoveryLock(dshHome)
     await showSplash()
     await runtime.stop()
@@ -1320,7 +1360,7 @@ function restartHarness(): Promise<void> {
 }
 
 async function uninstallMarketAndRestart(): Promise<{ ok: boolean }> {
-  const dshHome = join(app.getPath('userData'), 'harness')
+  const dshHome = currentDshHome()
   await showSplash()
   await runtime.stop()
   const result = await removeProfilePluginWithDsh(
@@ -1470,6 +1510,7 @@ function assertTrustedMainWindowEvent(event: IpcMainInvokeEvent): void {
   ) {
     throw new Error('This action is only available from the main DSH Desktop window.')
   }
+  if (!hasActiveRuntime()) throw new Error('desktop_auth_required')
 }
 
 function assertTrustedSafeModeManagerEvent(event: IpcMainInvokeEvent): void {
@@ -1534,7 +1575,7 @@ async function executeDesktopMenuCommand(command: DesktopMenuCommand): Promise<n
       void showSafeMode().catch(showUnexpectedError)
       break
     case 'show-harness-log':
-      shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+      if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
       break
     case 'check-for-updates':
       await checkForUpdates(true)
@@ -1635,7 +1676,7 @@ async function showPluginRecovery(options?: {
   if (failureRecoveryVisible || quitting) return
   failureRecoveryVisible = true
 
-  const dshHome = join(app.getPath('userData'), 'harness')
+  const dshHome = currentDshHome()
   const isChinese = harnessLocale() === 'zh'
   cancelPluginRecoverySessionReset()
   const removedPlugins = pluginRecoveryRemovedPlugins
@@ -1835,7 +1876,7 @@ async function showPluginRecovery(options?: {
         }
         continue
       } else if (action === 'show-log') {
-        shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+        if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
         continue
       } else if (action === 'safe-mode') {
         safeModeSuspectedPlugins = [...new Set(detection.plugins)]
@@ -2066,7 +2107,7 @@ async function showSafeModeManager(initial?: {
 }): Promise<void> {
   if (!safeModeVisible || safeModeManagerVisible || quitting) return
   safeModeManagerVisible = true
-  const dshHome = join(app.getPath('userData'), 'harness')
+  const dshHome = currentDshHome()
   const isChinese = harnessLocale() === 'zh'
   let notice = initial?.notice
   let noticeTone = initial?.noticeTone
@@ -2477,7 +2518,9 @@ function installMenu(): void {
         },
         {
           label: isChinese ? '查看 Harness 日志' : 'Show Harness Log',
-          click: () => shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+          click: () => {
+            if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
+          }
         },
         ...(process.platform === 'darwin'
           ? []
@@ -2539,6 +2582,10 @@ function broadcastMobileStatus(connected: boolean): void {
 }
 
 async function showMobilePairing(): Promise<void> {
+  if (!hasActiveRuntime()) {
+    await showLoginPage('请先登录后再连接移动设备。')
+    return
+  }
   if (runtime.snapshot().phase !== 'ready') {
     const options: MessageBoxOptions = {
       type: 'info',
@@ -2595,41 +2642,60 @@ async function showMobilePairing(): Promise<void> {
   mobileWindow.focus()
 }
 
-async function bootstrap(): Promise<void> {
-  if (process.platform === 'darwin') app.dock?.setIcon(desktopIconPath())
-  launchDirectory = await ensureLaunchRoot(app.getPath('userData'))
-  registerUpdateHandlers()
-  nativeTheme.themeSource = harnessThemePreference()
-  ensureTray()
-  const dshHome = join(app.getPath('userData'), 'harness')
-  desktopStorageManager = new DesktopStorageManager(join(dshHome, 'profiles', 'web'), {
-    onError: (error, context) => {
-      console.warn(`[desktop-storage] error during ${context}:`, error)
-    }
+function createAccountHarness(configuration: AccountHarnessConfiguration) {
+  activeDshHome = configuration.dshHome
+  activeHarnessLogPath = configuration.logPath
+  launchDirectory = configuration.workspace
+  desktopStorageManager = new DesktopStorageManager(join(configuration.dshHome, 'profiles', 'web'), {
+    onError: (error, context) => console.warn(`[desktop-storage] error during ${context}:`, error)
   })
-  createWindow()
   runtime = new HarnessRuntime({
     dshEntryPath: dshEntryPath(),
     nodeExecutablePath: bundledNodePath(),
     nodeEntryPath: harnessNodeEntryPath(),
     dshPatchPath: desktopResourcePath('dsh-desktop.patch.yml'),
-    dshHome: join(app.getPath('userData'), 'harness'),
-    logPath: join(app.getPath('logs'), 'harness.log'),
+    dshHome: configuration.dshHome,
+    logPath: configuration.logPath,
+    environment: configuration.environment,
     launchProcess: (executablePath, args, options) =>
       process.platform === 'darwin'
-        ? launchDisclaimedUtilityProcess(utilityProcess, args, options, {
-          disclaim: !developmentBuild
-        })
+        ? launchDisclaimedUtilityProcess(utilityProcess, args, options, { disclaim: !developmentBuild })
         : spawn(executablePath, args, options),
     onChanged: (snapshot) => {
-      if (snapshot.phase === 'ready' && snapshot.url) {
-        void openHarness(snapshot.url).catch(showUnexpectedError)
-      } else if (snapshot.phase === 'failed') {
-        void showRuntimeFailure(snapshot)
-      }
+      if (snapshot.phase === 'ready' && snapshot.url) void openHarness(snapshot.url).catch(showUnexpectedError)
+      else if (snapshot.phase === 'failed') void showRuntimeFailure(snapshot)
     }
   })
-  registerHarnessHandlers()
+  return {
+    start: async () => {
+      await launchHarness()
+      if (!startInSafeMode) void mobileBridge.start().catch(showUnexpectedError)
+    },
+    stop: async () => {
+      await mobileBridge.stop()
+      await runtime.stop()
+    },
+    snapshot: () => ({ url: runtime.snapshot().url })
+  }
+}
+
+async function showLoginPage(message?: string): Promise<void> {
+  const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createWindow()
+  clearProfileBootConfirmation()
+  await window.loadFile(desktopResourcePath('login.html'), { query: message ? { message } : undefined })
+  window.show()
+  window.focus()
+}
+
+async function bootstrap(): Promise<void> {
+  if (process.platform === 'darwin') app.dock?.setIcon(desktopIconPath())
+  // The shared root is only used for application metadata. Every DSH home and
+  // workspace is opened later by AccountRuntimeManager for one verified account.
+  launchDirectory = await ensureLaunchRoot(app.getPath('userData'))
+  registerUpdateHandlers()
+  nativeTheme.themeSource = harnessThemePreference()
+  ensureTray()
+  createWindow()
   mobileBridge = new LanMobileBridge({
     harnessUrl: () => runtime.snapshot().url,
     harnessAuthToken: () => runtime.snapshot().authToken,
@@ -2648,7 +2714,66 @@ async function bootstrap(): Promise<void> {
     },
     onConnectedChange: (connected) => broadcastMobileStatus(connected)
   })
-  if (!startInSafeMode) void mobileBridge.start().catch(showUnexpectedError)
+  const apiBaseUrl = process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'
+  const credentialStore = createPlatformCredentialStore({
+    platform: process.platform,
+    root: app.getPath('userData'),
+    safeStorage
+  })
+  const broker = new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl })
+  accountRuntimeManager = new AccountRuntimeManager({
+    root: app.getPath('userData'),
+    credentialStore,
+    runtimeFactory: createOpcRuntimeFactory({ broker, buildHarness: createAccountHarness }),
+    localTokenStore: { revoke: async () => undefined }
+  })
+  desktopAuthController = new DesktopAuthController({
+    provider: new OpcDesktopAuthProvider({
+      apiBaseUrl,
+      credentials: credentialStore,
+      activeAccountPath: join(app.getPath('userData'), 'active-account.json')
+    }),
+    runtime: accountRuntimeManager,
+    credentials: credentialStore
+  })
+  registerHarnessHandlers()
+  ipcMain.removeHandler('desktop-auth:sign-in')
+  ipcMain.handle('desktop-auth:sign-in', async (event, input: unknown) => {
+    if (
+      !mainWindow ||
+      mainWindow.isDestroyed() ||
+      event.sender !== mainWindow.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame ||
+      !isLoginPage(mainWindow.webContents.getURL())
+    ) {
+      throw new Error('desktop_auth_login_page_required')
+    }
+    if (!input || typeof input !== 'object') throw new Error('desktop_auth_credentials_required')
+    const { username, password } = input as { username?: unknown; password?: unknown }
+    if (
+      typeof username !== 'string' ||
+      typeof password !== 'string' ||
+      username.trim().length === 0 ||
+      username.length > 128 ||
+      password.length === 0 ||
+      password.length > 1024
+    ) throw new Error('desktop_auth_credentials_required')
+    const context = await desktopAuthController!.signIn({ username, password })
+    if (!context) throw new Error('desktop_auth_login_failed')
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:sign-out')
+  ipcMain.handle('desktop-auth:sign-out', async (event) => {
+    assertTrustedMainWindowEvent(event)
+    if (!hasActiveRuntime()) return { ok: true }
+    await desktopAuthController!.signOut()
+    activeDshHome = undefined
+    activeHarnessLogPath = undefined
+    desktopStorageManager = undefined
+    clearProfileBootConfirmation()
+    await showLoginPage()
+    return { ok: true }
+  })
   ipcMain.handle('directory-picker:open', async (event) => {
     if (
       !mainWindow ||
@@ -2659,6 +2784,7 @@ async function bootstrap(): Promise<void> {
       throw new Error('Directory picker requests are only allowed from the main Harness window')
     }
 
+    if (!hasActiveRuntime()) throw new Error('desktop_auth_required')
     const result = await dialog.showOpenDialog(mainWindow, {
       title: harnessLocale() === 'zh' ? '选择工作区目录' : 'Select Workspace Directory',
       properties: ['openDirectory']
@@ -2666,9 +2792,9 @@ async function bootstrap(): Promise<void> {
     return result.canceled ? null : result.filePaths[0] ?? null
   })
   ipcMain.handle('mobile:open-pairing', () => showMobilePairing())
-  ipcMain.handle('mobile:status', () => ({ connected: mobileBridge.snapshot().connected }))
+  ipcMain.handle('mobile:status', () => ({ connected: hasActiveRuntime() && mobileBridge.snapshot().connected }))
   ipcMain.handle('harness:show-log', () => {
-    shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+    if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
   })
   ipcMain.handle('harness:open-in-finder', async (event, path?: unknown) => {
     assertTrustedMainWindowEvent(event)
@@ -2682,7 +2808,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.removeHandler('harness:renderer-healthy')
   ipcMain.handle('harness:renderer-healthy', (event) => {
     assertTrustedMainWindowEvent(event)
-    if (safeModeVisible || failureRecoveryVisible || runtime.snapshot().phase !== 'ready') {
+    if (!hasActiveRuntime() || safeModeVisible || failureRecoveryVisible || runtime.snapshot().phase !== 'ready') {
       return { ok: false }
     }
     scheduleNormalProfileBootConfirmation()
@@ -2731,7 +2857,8 @@ async function bootstrap(): Promise<void> {
     ) {
       return { ok: false }
     }
-    await refreshMigrationRecoveryLock(join(app.getPath('userData'), 'harness'))
+    if (!hasActiveRuntime()) return { ok: false }
+    await refreshMigrationRecoveryLock(currentDshHome())
     if (
       (action === 'apply' || action === 'upgrade' || action === 'backup-delete') && profileRecoveryLocked()
     ) return { ok: false }
@@ -2767,7 +2894,7 @@ async function bootstrap(): Promise<void> {
       if (typeof removalId !== 'string' || removalId.length === 0) return { ok: false }
       if (
         action === 'backup-restore' &&
-        !await canRetryLockedPluginRestore(join(app.getPath('userData'), 'harness'), removalId)
+        !await canRetryLockedPluginRestore(currentDshHome(), removalId)
       ) return { ok: false }
       resolveSafeModeAction({ type: action, removalId })
     } else {
@@ -2791,7 +2918,8 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('safe-mode:exit', async (event) => {
     assertTrustedMainWindowEvent(event)
     if (!safeModeVisible) return { ok: false }
-    const dshHome = join(app.getPath('userData'), 'harness')
+    if (!hasActiveRuntime()) return { ok: false }
+    const dshHome = currentDshHome()
     if (await refreshMigrationRecoveryLock(dshHome)) {
       resolveSafeModeAction({ type: 'agent' })
       await launchHarness()
@@ -2826,23 +2954,33 @@ async function bootstrap(): Promise<void> {
     if (pluginName !== undefined && typeof pluginName !== 'string') {
       throw new Error('The failing plugin name must be a string.')
     }
-    const dshHome = join(app.getPath('userData'), 'harness')
+    if (!hasActiveRuntime()) throw new Error('desktop_auth_required')
+    const dshHome = currentDshHome()
     await resetPluginProfile(dshHome, pluginName)
     await launchHarness()
     return { ok: runtime.snapshot().phase === 'ready' }
   })
   installMenu()
-  if (startInSafeMode) {
-    void showSafeMode().catch(showUnexpectedError)
-  } else {
-    await launchHarness()
+  try {
+    const restored = await desktopAuthController.restore()
+    if (restored) {
+      if (startInSafeMode) void showSafeMode().catch(showUnexpectedError)
+    } else {
+      await showLoginPage()
+    }
+  } catch {
+    // A timeout or temporary network outage must not erase the encrypted
+    // session. The user can retry from the login page when connectivity returns.
+    await showLoginPage('无法验证登录状态，请检查网络后重试。')
   }
   if (!developmentBuild) {
     startUpdateManager({
       prepareToInstall: async () => {
-        await runtime.stop()
-        const dshHome = join(app.getPath('userData'), 'harness')
-        await quarantineInstalledLaunchAgentsForUpdate(dshHome)
+        if (hasActiveRuntime()) {
+          const dshHome = currentDshHome()
+          await runtime.stop()
+          await quarantineInstalledLaunchAgentsForUpdate(dshHome)
+        }
         quitting = true
         stopUpdateManager()
       }
@@ -2868,12 +3006,15 @@ if (isDaemonLaunch(process.env, process.platform)) {
     app.on('second-instance', (_event, argv) => {
       if (!isUserInitiatedInstance(argv)) return
       if (shouldStartInSafeMode(argv)) {
-        void showSafeMode().catch(showUnexpectedError)
+        if (hasActiveRuntime()) void showSafeMode().catch(showUnexpectedError)
+        else void showLoginPage().catch(showUnexpectedError)
         return
       }
       const snapshot = runtime?.snapshot()
       if (snapshot?.phase === 'ready' && snapshot.url) {
         void openHarness(snapshot.url, 'user').catch(showUnexpectedError)
+      } else {
+        void showLoginPage().catch(showUnexpectedError)
       }
     })
     app.whenReady().then(bootstrap).catch((error: unknown) => {
@@ -2891,6 +3032,8 @@ if (isDaemonLaunch(process.env, process.platform)) {
         void openHarness(snapshot.url, 'user').catch(showUnexpectedError)
       } else if (snapshot?.phase === 'idle') {
         void launchHarness().catch(showUnexpectedError)
+      } else {
+        void showLoginPage().catch(showUnexpectedError)
       }
     })
     app.on('window-all-closed', () => {

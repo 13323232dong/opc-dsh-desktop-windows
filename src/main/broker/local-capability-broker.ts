@@ -47,6 +47,8 @@ export interface BrokerRuntimeRegistration {
   runtimeId: string
   capabilities: readonly LocalCapability[]
   workspace?: string
+  /** Opaque OPC session retained by the main-process Broker only. */
+  cloudSessionToken?: string
 }
 
 export interface RegisteredBrokerRuntime {
@@ -71,6 +73,7 @@ interface RuntimeRecord {
   tokenHash: Buffer
   capabilities: ReadonlySet<LocalCapability>
   workspace?: string
+  cloudSessionToken?: string
 }
 
 interface CloudProxyRequest {
@@ -107,7 +110,8 @@ export class LocalCapabilityBroker {
     this.runtimes.set(registration.runtimeId, {
       tokenHash: digest(token),
       capabilities: new Set(registration.capabilities),
-      workspace: registration.workspace ? await realpath(registration.workspace) : undefined
+      workspace: registration.workspace ? await realpath(registration.workspace) : undefined,
+      cloudSessionToken: registration.cloudSessionToken
     })
     const origin = this.origin!
     return {
@@ -159,7 +163,7 @@ export class LocalCapabilityBroker {
     }
     const body = await this.readJson(request, response)
     if (body === undefined) return
-    if (capability === 'cloud.proxy') return this.proxyCloud(body, request, response)
+    if (capability === 'cloud.proxy') return this.proxyCloud(body, request, runtime, response)
     if (capability === 'filesystem.pick') return this.pickWorkspacePaths(runtime, response)
     if (capability === 'filesystem.reveal') return this.revealWorkspacePath(body, runtime, response)
     return this.send(response, 501, { code: 'desktop_broker_capability_not_configured' })
@@ -194,7 +198,7 @@ export class LocalCapabilityBroker {
     }
   }
 
-  private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {
     const payload = body as unknown as CloudProxyRequest
     const method = typeof payload.method === 'string' ? payload.method.toUpperCase() : 'GET'
     if (!isAllowedCloudPath(payload.path)) return this.send(response, 400, { code: 'desktop_broker_invalid_cloud_path' })
@@ -202,6 +206,7 @@ export class LocalCapabilityBroker {
       return this.send(response, 400, { code: 'desktop_broker_idempotency_key_required' })
     }
     const headers = safeHeaders(payload.headers)
+    if (runtime.cloudSessionToken) headers.set('cookie', `opc_session=${runtime.cloudSessionToken}`)
     const requestId = request.headers['x-request-id']
     const idempotencyKey = request.headers['idempotency-key']
     if (typeof requestId === 'string') headers.set('x-request-id', requestId)

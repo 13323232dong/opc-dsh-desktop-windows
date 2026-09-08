@@ -58,7 +58,7 @@ export class OwnedProcessTree {
 }
 
 function hasExited(process: OwnedProcess): boolean {
-  return process.exitCode !== null || process.signalCode !== null
+  return process.exitCode !== null || (process.signalCode !== undefined && process.signalCode !== null)
 }
 
 function onceExit(process: OwnedProcess): Promise<void> {

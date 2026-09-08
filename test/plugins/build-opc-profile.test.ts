@@ -23,7 +23,7 @@ describe('build-opc-profile script', () => {
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
     const manifest = JSON.parse(await readFile(join(output, 'opc-desktop-profile.json'), 'utf8'))
-    expect(manifest.id).toBe('opc-macos-desktop')
+    expect(manifest.id).toBe('opc-desktop')
     expect(manifest.plugins).toContainEqual(expect.objectContaining({ name: '@opc/dsh-brand' }))
   })
 
