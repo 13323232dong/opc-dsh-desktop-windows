@@ -46,7 +46,7 @@ function compare(a, b) {
 
 /**
  * Turn a list of `releases/archive/<name>` directory names into the version
- * index the desktop client reads from `dshdesktop.com/updates/versions.json`.
+ * index the Windows desktop client reads from OPC's public update channel.
  * Non-semver names are dropped; the rest sort newest first.
  */
 export function buildVersionIndex(archiveDirNames) {
@@ -56,7 +56,7 @@ export function buildVersionIndex(archiveDirNames) {
     .map((version) => ({
       version,
       tag: `v${version}`,
-      archiveUrl: `https://dshdesktop.com/updates/archive/${version}/`
+      archiveUrl: `https://opc.ohmycode.cc/updates/windows/archive/${version}/`
     }))
   return { generatedAt: new Date().toISOString(), versions }
 }

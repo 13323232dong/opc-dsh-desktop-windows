@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.3",
+  "version": "0.7.4",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -9,8 +9,8 @@
     {
       "name": "@opc/dsh-brand",
       "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-brand-0.1.0.tgz",
-      "sha256": "0b497260fd875355d08b23dcbdf47289d42edaae7f8d0da340af607f606dcd05"
+      "artifact": "plugins/opc-dsh-brand-0.1.0-opc-desktop.2.tgz",
+      "sha256": "fde853ff2276857c5021da2aed142bb070eb726fc7149d8cbe91ba3b0e1717e8"
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
@@ -20,14 +20,14 @@
     },
     {
       "name": "@opc/dsh-assets",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-assets-0.1.0.tgz",
-      "sha256": "2e850e277b9512aaaedb657aa525f685b20502641f1864eaeee5a47e6c0a4f91"
+      "version": "0.1.1",
+      "artifact": "plugins/opc-dsh-assets-0.1.1.tgz",
+      "sha256": "ce0ebfe8c8577c8d43c2b7ae07e28ae5d1d357c8341a2d8b9a1f2040ac7f9af6"
     },
     {
       "name": "@opc/dsh-assets-workbench",
       "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-assets-workbench-0.1.0.tgz",
+      "artifact": "plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz",
       "sha256": "8c476bd58350395a95e7645e448127a45009cdf9458910ba97980670f8ddb503"
     },
     {
@@ -35,6 +35,54 @@
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-file-attachments-0.1.0.tgz",
       "sha256": "b47752517ccddb06dcd4eb36226ccd0d243258c86013eb0e416c9f5df52cbe2a"
+    },
+    {
+      "name": "dsh-file-picker",
+      "version": "0.1.0",
+      "artifact": "plugins/dsh-file-picker-0.1.0.tgz",
+      "sha256": "f7d47ee733b729f9a99c5d7cf1872b37570f30780d775dcf5b308b8fe35a366f"
+    },
+    {
+      "name": "@opc/dsh-douyin-comment-ops",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz",
+      "sha256": "14f1028b5eae5f0e4b039ae5f2956ad0b09ef1ef243cf4b7bfc380b569dd2889"
+    },
+    {
+      "name": "@opc/dsh-douyin-publisher",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-douyin-publisher-0.1.0.tgz",
+      "sha256": "eef55cd3c7db1c1ccb03866512c25c5989f5e07d9cbc5945b6626411639fa7cc"
+    },
+    {
+      "name": "@opc/dsh-feishu-docs",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-feishu-docs-0.1.0.tgz",
+      "sha256": "1f8dde63807884d6cdae448814000703ebcd53e708b4d9075af0ad133b6d5b8b"
+    },
+    {
+      "name": "@opc/dsh-context-retrieval",
+      "version": "0.1.1",
+      "artifact": "plugins/opc-dsh-context-retrieval-0.1.1.tgz",
+      "sha256": "a09ea441946f73445c8da5b48b5696746c4151db93fbb8c22d593de42b8a1fb3"
+    },
+    {
+      "name": "@omdsh-dev/dsh-genui",
+      "version": "0.9.1",
+      "artifact": "plugins/omdsh-dev-dsh-genui-0.9.1.tgz",
+      "sha256": "26a2036c2669ac45ca5fea060d3bd6b0531c756301ad3704875b4a87747f0514"
+    },
+    {
+      "name": "@opc/dsh-publish-precheck",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-dsh-publish-precheck-0.1.0.tgz",
+      "sha256": "c779488e35db5e9885469d9a72c7b716d2c375d99e65a26797f6e862330236c1"
+    },
+    {
+      "name": "DSH-opc-material-matcher",
+      "version": "0.1.0",
+      "artifact": "plugins/DSH-opc-material-matcher-0.1.0.tgz",
+      "sha256": "346784d20396db3dc7f99dc67c7faf1cbf1f63f7943aa117378fd4abcb873c3c"
     },
     {
       "name": "@opc/dsh-realtime-voice",
@@ -53,12 +101,6 @@
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-viral-chase-0.1.0.tgz",
       "sha256": "512a4ef87984a95880e1b7cd8f26682ae5f313d0b15a71f32b75db68f42fdd72"
-    },
-    {
-      "name": "@opc/dsh-douyin-comment-ops",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz",
-      "sha256": "14f1028b5eae5f0e4b039ae5f2956ad0b09ef1ef243cf4b7bfc380b569dd2889"
     },
     {
       "name": "@opc/dsh-session-context",

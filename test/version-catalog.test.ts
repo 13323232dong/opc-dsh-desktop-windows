@@ -9,13 +9,13 @@ import {
 } from '../src/main/update/version-catalog'
 
 describe('version-catalog constants', () => {
-  it('points the stable feed and index at the dshdesktop domain', () => {
-    expect(STABLE_FEED_URL).toBe('https://dshdesktop.com/updates/latest/')
-    expect(VERSION_INDEX_URL).toBe('https://dshdesktop.com/updates/versions.json')
+  it('points the stable feed and index at the public OPC update channel', () => {
+    expect(STABLE_FEED_URL).toBe('https://opc.ohmycode.cc/updates/windows/')
+    expect(VERSION_INDEX_URL).toBe('https://opc.ohmycode.cc/updates/windows/versions.json')
   })
 
   it('builds a per-version archive feed url with a trailing slash', () => {
-    expect(archiveFeedUrl('1.2.3')).toBe('https://dshdesktop.com/updates/archive/1.2.3/')
+    expect(archiveFeedUrl('1.2.3')).toBe('https://opc.ohmycode.cc/updates/windows/archive/1.2.3/')
   })
 })
 

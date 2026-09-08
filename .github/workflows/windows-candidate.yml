@@ -1,0 +1,46 @@
+name: Build OPC Windows candidate
+
+on:
+  push:
+    branches:
+      - codex/opc-windows-release
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: opc-windows-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-x64:
+    name: Windows 11 x64 candidate
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run package:win
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $installer = 'dist\opc-desktop-windows-x64-setup.exe'
+          if (-not (Test-Path $installer)) { throw "Windows installer was not created: $installer" }
+          $size = (Get-Item $installer).Length
+          if ($size -lt 50MB) { throw "Windows installer is unexpectedly small: $size bytes" }
+          Get-FileHash -Algorithm SHA256 $installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opc-desktop-windows-x64-candidate
+          path: |
+            dist/opc-desktop-windows-x64-setup.exe
+            dist/opc-desktop-windows-x64-setup.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+          retention-days: 7

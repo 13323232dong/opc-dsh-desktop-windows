@@ -3,16 +3,23 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
-const OPC_DESKTOP_PLUGINS = [
-  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0.tgz'],
+export const OPC_DESKTOP_PLUGINS = [
+  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0-opc-desktop.2.tgz', 'opc-dsh-brand-0.1.0.tgz'],
   // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
   // desktop build retains Agent Teams while deferring only that optional route
   // selection bridge to the host's provider defaults.
   ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz'],
-  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.0.tgz'],
-  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.0.tgz'],
+  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.1.tgz'],
+  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
   ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
+  ['dsh-file-picker', 'dsh-file-picker-0.1.0.tgz'],
   ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],
+  ['@opc/dsh-douyin-publisher', 'opc-dsh-douyin-publisher-0.1.0.tgz'],
+  ['@opc/dsh-feishu-docs', 'opc-dsh-feishu-docs-0.1.0.tgz'],
+  ['@opc/dsh-context-retrieval', 'opc-dsh-context-retrieval-0.1.1.tgz'],
+  ['@omdsh-dev/dsh-genui', 'omdsh-dev-dsh-genui-0.9.1.tgz'],
+  ['@opc/dsh-publish-precheck', 'opc-dsh-publish-precheck-0.1.0.tgz'],
+  ['DSH-opc-material-matcher', 'DSH-opc-material-matcher-0.1.0.tgz'],
   ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.0.tgz'],
   ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
@@ -21,7 +28,7 @@ const OPC_DESKTOP_PLUGINS = [
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
 
-const OPC_DESKTOP_PATCH = `# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: ui-brand-official\n  disabled: true\n- id: opc-brand\n  config:\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcWebBaseUrl: !!js process.env.OPC_WEB_BASE_URL ?? 'https://opc.ohmycode.cc'\n- id: agent-teams\n  config:\n    stateDir: .agent-teams\n    soulDirectory: .codex-opc/agents\n    ceoSoulId: ceo-opc\n    memberProvider: spawn\n    maxConcurrentLlmRequests: 1\n    minLlmRequestIntervalMs: 22000\n    llmRateLimitCooldownMs: 60000\n`
+const OPC_DESKTOP_PATCH = `# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: ui-brand-official\n  disabled: true\n- id: opc-brand\n  config:\n    desktopMode: true\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcWebBaseUrl: !!js process.env.OPC_WEB_BASE_URL ?? 'https://opc.ohmycode.cc'\n- id: agent-teams\n  config:\n    stateDir: .agent-teams\n    soulDirectory: .codex-opc/agents\n    ceoSoulId: ceo-opc\n    memberProvider: spawn\n    maxConcurrentLlmRequests: 1\n    minLlmRequestIntervalMs: 22000\n    llmRateLimitCooldownMs: 60000\n    controlPlaneEnabled: true\n    controlPlaneApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    controlPlaneRegistryBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    harnessBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    controlPlaneIdentityHmacSecret: !!js process.env.IDENTITY_HMAC_SECRET ?? ''\n    identityHmacSecret: !!js process.env.OPC_DSH_IDENTITY_HMAC_SECRET ?? ''\n`
 
 interface ProfileManifest {
   name?: string
@@ -41,8 +48,12 @@ export interface OpcDesktopProfileResult {
  * it never copies a user's Mac-only profile or arbitrary source paths.
  */
 export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory: string): Promise<OpcDesktopProfileResult> {
-  const artifacts = OPC_DESKTOP_PLUGINS.map(([name, artifact]) => ({ name, path: join(artifactDirectory, artifact) }))
-  if (artifacts.some(({ path }) => !existsSync(path))) throw new Error('opc_desktop_plugin_artifact_missing')
+  const candidates = OPC_DESKTOP_PLUGINS.map(([name, artifact, fallback]) => ({
+    name,
+    path: join(artifactDirectory, existsSync(join(artifactDirectory, artifact)) ? artifact : (fallback ?? artifact))
+  }))
+  const artifacts = candidates.filter(({ path }) => existsSync(path))
+  if (artifacts.length !== candidates.length) throw new Error('opc_desktop_plugin_artifact_missing')
 
   const manifestPath = profilePackageJsonPath(dshHome)
   const patchPath = profileCordisPatchPath(dshHome)
