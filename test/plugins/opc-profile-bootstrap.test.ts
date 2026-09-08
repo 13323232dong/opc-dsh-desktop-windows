@@ -32,6 +32,9 @@ describe('ensureOpcDesktopProfile', () => {
       ])
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(patch).toContain('ui-brand-official')
+      expect(patch).toContain('- id: web-fetch-http')
+      expect(patch).toContain('trustedProxyHostnames:')
+      expect(patch).toContain('- github.com')
       expect(patch.trimStart().startsWith('[]')).toBe(false)
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -96,6 +99,9 @@ describe('ensureOpcDesktopProfile', () => {
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(patch).not.toMatch(/^\[\]$/mu)
       expect(patch).toContain('- id: opc-brand')
+      expect(patch).toContain('- id: web-fetch-http')
+      expect(patch).toContain('- github.com')
+      expect(patch.match(/# OPC desktop baseline\./g)).toHaveLength(1)
     } finally {
       await rm(root, { recursive: true, force: true })
     }

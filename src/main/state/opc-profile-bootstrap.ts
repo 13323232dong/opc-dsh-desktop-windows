@@ -12,8 +12,9 @@ const OPC_DESKTOP_PLUGINS = [
 ] as const
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+const OPC_DESKTOP_PATCH_MARKER = '# OPC desktop baseline.'
 
-const OPC_DESKTOP_PATCH = `# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: ui-brand-official\n  disabled: true\n- id: opc-brand\n  config:\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcWebBaseUrl: !!js process.env.OPC_WEB_BASE_URL ?? 'https://opc.ohmycode.cc'\n- id: agent-teams\n  config:\n    stateDir: .agent-teams\n    soulDirectory: .codex-opc/agents\n    ceoSoulId: ceo-opc\n    memberProvider: spawn\n    maxConcurrentLlmRequests: 1\n    minLlmRequestIntervalMs: 22000\n    llmRateLimitCooldownMs: 60000\n`
+const OPC_DESKTOP_PATCH = `# OPC desktop baseline. Community bundle patches provide the actual plugin rows.\n- id: web-fetch-http\n  config:\n    # This opt-in applies only to GitHub domains intercepted by the managed\n    # network proxy. All other non-public DNS answers remain blocked.\n    trustedProxyHostnames:\n      - github.com\n      - raw.githubusercontent.com\n      - gist.githubusercontent.com\n- id: ui-brand-official\n  disabled: true\n- id: opc-brand\n  config:\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcWebBaseUrl: !!js process.env.OPC_WEB_BASE_URL ?? 'https://opc.ohmycode.cc'\n- id: agent-teams\n  config:\n    stateDir: .agent-teams\n    soulDirectory: .codex-opc/agents\n    ceoSoulId: ceo-opc\n    memberProvider: spawn\n    maxConcurrentLlmRequests: 1\n    minLlmRequestIntervalMs: 22000\n    llmRateLimitCooldownMs: 60000\n`
 
 interface ProfileManifest {
   name?: string
@@ -68,11 +69,10 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
 
   const currentPatch = await readFile(patchPath, 'utf8').catch(() => '')
   const normalizedPatch = removeEmptyPatchSequence(currentPatch)
-  if (!normalizedPatch.includes('# OPC desktop baseline.')) {
-    await writeFile(patchPath, `${normalizedPatch}${normalizedPatch ? '\n' : ''}${OPC_DESKTOP_PATCH}`, 'utf8')
-    changed = true
-  } else if (normalizedPatch !== currentPatch.trim()) {
-    await writeFile(patchPath, `${normalizedPatch}\n`, 'utf8')
+  const withoutDesktopBaseline = removeDesktopBaseline(normalizedPatch)
+  const nextPatch = `${withoutDesktopBaseline}${withoutDesktopBaseline ? '\n' : ''}${OPC_DESKTOP_PATCH}`
+  if (nextPatch !== currentPatch.trim()) {
+    await writeFile(patchPath, `${nextPatch}\n`, 'utf8')
     changed = true
   }
   return { changed, plugins: artifacts.map(({ name }) => name) }
@@ -86,6 +86,11 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
  */
 function removeEmptyPatchSequence(value: string): string {
   return value.replace(/^\s*\[\]\s*$(?:\r?\n)?/gmu, '').trim()
+}
+
+function removeDesktopBaseline(value: string): string {
+  const index = value.indexOf(OPC_DESKTOP_PATCH_MARKER)
+  return index < 0 ? value : value.slice(0, index).trimEnd()
 }
 
 async function readManifest(path: string): Promise<ProfileManifest> {
