@@ -1,0 +1,13 @@
+{
+  "name": "@opc/dsh-desktop-profile",
+  "version": "0.1.0",
+  "description": "Immutable OPC macOS desktop DSH profile contract and compatibility gates.",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT"
+}
