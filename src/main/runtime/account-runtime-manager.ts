@@ -71,7 +71,7 @@ export class AccountRuntimeManager {
       this.phase = 'validating'
       const validated = assertPrincipalInput(input)
       const principal: DesktopPrincipal = { ...validated, accountKey: accountKeyFor(validated.tenantId, validated.userId) }
-      const credential = await this.options.credentialStore.load(principal.accountKey)
+      const credential = await this.options.credentialStore.load(principal)
       this.assertCredential(credential, principal)
       const layout = await this.storage.open(principal)
 

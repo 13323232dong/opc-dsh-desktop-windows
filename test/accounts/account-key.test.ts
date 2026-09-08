@@ -8,10 +8,11 @@ describe('accountKeyFor', () => {
     expect(first).not.toBe(accountKeyFor('tenant-a', 'user-2'))
     expect(first).not.toContain('tenant-a')
     expect(first).not.toContain('user-1')
+    expect(first).toMatch(/^[a-f0-9]{64}$/)
     expect(isAccountKey(first)).toBe(true)
   })
 
-  it.each(['', 'acct_', 'acct_bad/path', 'other_abcdef'])('rejects invalid keys: %s', (value) => {
+  it.each(['', 'acct_', 'acct_bad/path', 'a'.repeat(63), 'a'.repeat(65)])('rejects invalid keys: %s', (value) => {
     expect(isAccountKey(value)).toBe(false)
   })
 })

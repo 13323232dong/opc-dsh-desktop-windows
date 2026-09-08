@@ -77,6 +77,7 @@ import {
   rollBackMigration
 } from './state/generation-migration'
 import { runProfileStartupMaintenance } from './state/profile-startup-maintenance'
+import { ensureOpcDesktopProfile } from './state/opc-profile-bootstrap'
 import { cleanupPluginOwnedComponents } from './state/plugin-component-cleanup'
 import {
   cleanupVerifiedRemovalBackup,
@@ -493,7 +494,7 @@ function attachWindowsMenuView(window: BrowserWindow): void {
 function configureAppIdentity(): void {
   if (developmentBuild) {
     app.setName('DSH Desktop Dev')
-    app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop-dev'))
+    app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop-dev'))
     return
   }
 
@@ -502,7 +503,7 @@ function configureAppIdentity(): void {
   // branding changes. Harness stores workspaces, sessions, credentials, and
   // custom presets below userData, so deriving this path from app.getName()
   // would make an ordinary upgrade look like a fresh installation.
-  app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop'))
+  app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop'))
 }
 
 async function syncNativeTheme(window: BrowserWindow): Promise<void> {
@@ -1236,6 +1237,23 @@ function launchHarness(): Promise<void> {
     }
     maintenanceRecoveryLocked = false
     maintenanceAllowedRestoreId = undefined
+    const opcProfile = await ensureOpcDesktopProfile(
+      dshHome,
+      join(desktopResourcePath('opc-profile'), 'plugins')
+    )
+    if (opcProfile.changed) {
+      runtime.note(`[desktop] provisioning OPC profile: ${opcProfile.plugins.join(', ')}`)
+      await clearProfileInstallMarker(dshHome)
+      const provision = await installProfileDependenciesWithDsh({
+        dshHome,
+        dshEntryPath: dshEntryPath(),
+        nodeExecutablePath: bundledNodePath(),
+        pnpmEntryPath: bundledPnpmEntryPath(),
+        pnpmRunnerPath: bundledPnpmRunnerPath()
+      })
+      if (!provision.ok) throw new Error(`opc_desktop_profile_install_failed: ${provision.detail ?? 'unknown'}`)
+      await markProfileInstallComplete(dshHome)
+    }
     await refreshMigrationRecoveryLock(dshHome)
     await auditInstalledLaunchAgents(dshHome)
     desktopStorageManager?.switchProfile(join(dshHome, 'profiles', 'web'))

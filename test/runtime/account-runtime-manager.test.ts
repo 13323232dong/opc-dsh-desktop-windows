@@ -26,13 +26,12 @@ describe('AccountRuntimeManager', () => {
   it('starts a runtime only after its scoped credential and owner directory validate', async () => {
     const fixture = await createManager()
     try {
-      await fixture.credentials.save('acct_missing', credential(a))
       await fixture.credentials.saveFor(a, credential(a))
 
       const context = await fixture.manager.switchTo(a)
 
       expect(context.principal).toMatchObject(a)
-      expect(context.principal.accountKey).toMatch(/^acct_[a-f0-9]{32}$/)
+      expect(context.principal.accountKey).toMatch(/^[a-f0-9]{64}$/)
       expect(fixture.factory.start).toHaveBeenCalledOnce()
       expect(fixture.manager.snapshot().phase).toBe('active')
     } finally { await rm(fixture.root, { recursive: true, force: true }) }
