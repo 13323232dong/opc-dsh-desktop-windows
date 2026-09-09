@@ -29,7 +29,7 @@ const MARKER = '.generations-migrated'
 const DEFER_MARKER = '.generations-deferred.json'
 const SNAPSHOT_SUFFIX = '.pre-generations'
 const SNAPSHOT_STATE = '.generations-pre-migration.json'
-const MIGRATION_PROTOCOL_VERSION = 5
+const MIGRATION_PROTOCOL_VERSION = 6
 const SNAPSHOT_PROTOCOL_VERSION = 1
 const DEFER_RETRY_MS = 6 * 60 * 60 * 1000
 
@@ -491,6 +491,10 @@ async function validateGeneration(plugin: PlannedPlugin, generation: { directory
     throw new Error(`${plugin.name} generation does not match the installed package`)
   }
   const patch = manifest.dsh?.bundle?.patch
+  const isClientOnly = manifest.dsh?.bundle === undefined &&
+    typeof manifest.dsh?.client === 'object' &&
+    manifest.dsh.client !== null
+  if (isClientOnly) return
   if (typeof patch !== 'string' || !existsSync(join(packageDir, patch))) {
     throw new Error(`${plugin.name} generation has no readable bundle patch`)
   }

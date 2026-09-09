@@ -42,11 +42,20 @@ vi.mock('dsh-desktop-market-installer/generations/installer', async () => {
         runInstall: async (stagingDir: string) => {
           const pkg = join(stagingDir, 'node_modules', name)
           await mkdir(pkg, { recursive: true })
+          const sourceManifest = options.sourceDirectory
+            ? JSON.parse(await readFile(join(options.sourceDirectory, 'package.json'), 'utf8'))
+            : undefined
           await writeFile(
             join(pkg, 'package.json'),
-            JSON.stringify({ name, version, dsh: { bundle: { patch: 'cordis.patch.yml' } } })
+            JSON.stringify({
+              name,
+              version,
+              dsh: sourceManifest?.dsh ?? { bundle: { patch: 'cordis.patch.yml' } }
+            })
           )
-          await writeFile(join(pkg, 'cordis.patch.yml'), '[]\n')
+          if (sourceManifest?.dsh?.bundle !== undefined || sourceManifest?.dsh === undefined) {
+            await writeFile(join(pkg, 'cordis.patch.yml'), '[]\n')
+          }
           await writeFile(join(stagingDir, 'pnpm-lock.yaml'), `lock-${name}-${version}\n`)
           return { code: 0, output: 'Done' }
         }
@@ -195,6 +204,24 @@ describe('one-time profile migration to generations', () => {
       version: '1.0.0',
       sourceSpec: 'github:example/source-plugin#main'
     })
+  })
+
+  it('migrates a client-only plugin without requiring a bundle patch', async () => {
+    const home = await preUpgradeProfile(
+      { 'client-only-plugin': '1.0.0' },
+      { 'client-only-plugin': 'file:client-only-plugin' }
+    )
+    await writeFile(
+      join(home, 'profiles', 'web', 'node_modules', 'client-only-plugin', 'package.json'),
+      JSON.stringify({
+        name: 'client-only-plugin',
+        version: '1.0.0',
+        dsh: { client: { platform: 'web', inject: ['@deepseek-ai/dsh-client-runtime'] } }
+      })
+    )
+
+    expect(await migrateProfileToGenerations(deps(home))).toEqual({ outcome: 'migrated' })
+    expect(isProfileMigrated(home)).toBe(true)
   })
 
   it('defers an identical failed migration, preserves desired, and retries after the profile changes', async () => {
