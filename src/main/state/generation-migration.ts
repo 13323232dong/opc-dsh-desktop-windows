@@ -29,7 +29,7 @@ const MARKER = '.generations-migrated'
 const DEFER_MARKER = '.generations-deferred.json'
 const SNAPSHOT_SUFFIX = '.pre-generations'
 const SNAPSHOT_STATE = '.generations-pre-migration.json'
-const MIGRATION_PROTOCOL_VERSION = 4
+const MIGRATION_PROTOCOL_VERSION = 5
 const SNAPSHOT_PROTOCOL_VERSION = 1
 const DEFER_RETRY_MS = 6 * 60 * 60 * 1000
 
