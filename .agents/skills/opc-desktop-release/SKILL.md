@@ -48,3 +48,18 @@ gh run download <run-id> --repo 13323232dong/opc-dsh-desktop-windows -n windows-
 下载后检查安装包、`latest.yml`、blockmap、大小和 SHA-256。Artifact 需要 GitHub 登录，不能当官网公开链接。官网发布还要确认 Release 资产、下载页 URL、`latest.yml` 版本和自动更新端点。
 
 使用最终安装包验收登录/退出、账号缓存、工作区、输入发送、品牌 Logo、插件库、Agent Teams、我的 Agent、轨迹、交付物、附件和自动更新。记录 commit、tag、CI run、产物名、哈希、门禁结果、部署时间、验收和回滚点；不得记录密钥。
+
+## 发布成功后的固化
+
+只有以下条件全部满足，才能把发布标记为成功：
+
+1. 发布源码 commit 已合入 `main`，本地 `main` 与远程 `main` 一致。
+2. `preflight`、构建、测试、签名和发布 workflow 均为成功。
+3. GitHub Release 同时包含 macOS DMG、Windows 安装包及对应 `latest*.yml`、blockmap。
+4. 官网下载页实际返回新版本链接，macOS 和 Windows 下载状态码正常。
+5. 已安装旧版本能够检查到新版本；完成下载、安装、重启后，账号、会话和租户数据仍存在。
+6. 至少完成一次 macOS 和 Windows 冷启动验收；登录、插件加载、工具库、Agent Teams 和退出功能均通过。
+
+成功后立即生成发布记录，包含：版本号、tag、commit、GitHub Release URL、官网 URL、各平台文件名与 SHA-256、安装验证时间、自动更新验证结果和回滚目标。将记录写入项目既有发布记录目录；不要只写在聊天回复中。
+
+如果只有 CI artifact 成功，状态必须写为“构建成功，未公开发布”；如果 GitHub Release 成功但官网或自动更新未验证，状态必须写为“Release 已发布，线上验收未完成”。任何一项回归失败都不得标记成功，应指向上一 Release 并记录原因。
