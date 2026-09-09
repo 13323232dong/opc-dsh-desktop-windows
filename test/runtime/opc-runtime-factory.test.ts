@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { join } from 'node:path'
 import {
   createOpcRuntimeFactory,
   resolveOpcDesktopEnvironment,
@@ -31,7 +32,7 @@ describe('createOpcRuntimeFactory', () => {
 
     expect(buildHarness).toHaveBeenCalledWith(expect.objectContaining({
       dshHome: layout.dshHome,
-      logPath: '/accounts/a/logs/harness.log',
+      logPath: join(layout.logs, 'harness.log'),
       workspace: layout.workspace,
       environment: expect.objectContaining({
         OPC_LOCAL_BROKER_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a',

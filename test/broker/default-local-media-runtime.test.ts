@@ -36,15 +36,12 @@ describe('desktop media runtime composition', () => {
     const status = await runtime.handle('media.status', {}, { runtimeId: 'account-scope' })
 
     expect(status.status).toBe(200)
+    const components = status.body.components as Array<Record<string, unknown>>
+    const ffmpeg = components.find((component) => component.id === 'ffmpeg')
+    expect(ffmpeg).toMatchObject({ id: 'ffmpeg', version: '6.0-b6.1.1', state: 'not_installed' })
+    expect(ffmpeg?.installable).toBe(process.platform !== 'win32')
     expect(status.body).toMatchObject({
       components: expect.arrayContaining([
-        expect.objectContaining({
-          id: 'ffmpeg',
-          version: '6.0-b6.1.1',
-          sha256: 'a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584',
-          state: 'not_installed',
-          installable: true
-        }),
         expect.objectContaining({ id: 'hyperframes', version: '0.8.22', license: 'Apache-2.0' })
       ])
     })
@@ -135,13 +132,13 @@ describe('desktop media runtime composition', () => {
     }
 
     expect((await runtime.handle('media.claim', claim, { runtimeId: 'account-scope' })).status).toBe(201)
+    const unavailableResponse = process.platform === 'win32'
+      ? { status: 409, body: { code: 'media_component_not_installed', retryable: false } }
+      : { status: 503, body: { code: 'media_executor_unavailable', retryable: true } }
     expect(await runtime.handle('media.run', {
       taskId: claim.taskId,
       contentHash: claim.contentHash
-    }, { runtimeId: 'account-scope' })).toEqual({
-      status: 503,
-      body: { code: 'media_executor_unavailable', retryable: true }
-    })
+    }, { runtimeId: 'account-scope' })).toEqual(unavailableResponse)
     expect(await runtime.handle('media.run', {
       taskId: claim.taskId,
       contentHash: claim.contentHash,

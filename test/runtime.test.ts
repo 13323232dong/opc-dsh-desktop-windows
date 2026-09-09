@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import {
   buildHarnessArguments,
   buildHarnessSpawnOptions,
@@ -532,7 +534,8 @@ describe('offending plugin extraction', () => {
 describe('navigation trust boundary', () => {
   it('only trusts the launcher and loopback HTTP pages', () => {
     expect(isTrustedAppUrl('file:///app/index.html')).toBe(false)
-    expect(isTrustedAppUrl('file:///app/index.html', ['/app/index.html'])).toBe(true)
+    const trustedIndex = pathToFileURL(resolve('/app/index.html')).href
+    expect(isTrustedAppUrl(trustedIndex, [resolve('/app/index.html')])).toBe(true)
     expect(isTrustedAppUrl('file:///tmp/login.html', ['/app/login.html'])).toBe(false)
     expect(isTrustedAppUrl('http://127.0.0.1:43127')).toBe(true)
     expect(isTrustedAppUrl('http://localhost:43127')).toBe(true)
