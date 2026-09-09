@@ -338,7 +338,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
-          SMOKE_EXE: ${{ (startsWith(github.ref, 'refs/tags/v') || inputs.prerelease_tag != '') && 'dist\win-unpacked\DSH Desktop.exe' || 'dist-dev\win-unpacked\DSH Desktop Dev.exe' }}
+          SMOKE_EXE: ${{ (startsWith(github.ref, 'refs/tags/v') || inputs.prerelease_tag != '') && 'dist\win-unpacked\伟东 OPC.exe' || 'dist-dev\win-unpacked\伟东 OPC Dev.exe' }}
           SMOKE_USERDATA: ${{ (startsWith(github.ref, 'refs/tags/v') || inputs.prerelease_tag != '') && 'dsh-desktop' || 'dsh-desktop-dev' }}
         run: |
           $userData = Join-Path $env:APPDATA $env:SMOKE_USERDATA
@@ -922,4 +922,3 @@ jobs:
             --prerelease \
             --notes .github/release-artifacts/feishu-release-notes.md \
             --webhook "$FEISHU_RELEASE_WEBHOOK"
-
