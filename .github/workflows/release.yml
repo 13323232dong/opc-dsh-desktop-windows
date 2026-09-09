@@ -450,8 +450,8 @@ jobs:
         with:
           name: windows-x64-dev
           path: |
-            dist-dev/dsh-desktop-dev-windows-x64-setup.exe
-            dist-dev/dsh-desktop-dev-windows-x64-setup.exe.blockmap
+            dist-dev/opc-desktop-dev-windows-x64-setup.exe
+            dist-dev/opc-desktop-dev-windows-x64-setup.exe.blockmap
             dist-dev/latest.yml
           if-no-files-found: error
 
