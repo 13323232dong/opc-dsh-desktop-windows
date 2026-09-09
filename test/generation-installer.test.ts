@@ -321,6 +321,62 @@ describe('the generation installer', () => {
     expect(result.problems).toContain('@deepseek-ai/cordis does not resolve from the installation closure')
   })
 
+  it('accepts the browser runtime module supplied by the DSH client module table', async () => {
+    const home = await freshHome()
+    const directory = join(home, 'profiles', '.generations', 'live', 'client-runtime-peer')
+    const plugin = join(directory, 'node_modules', 'client-runtime-plugin')
+    await mkdir(plugin, { recursive: true })
+    await writeFile(
+      join(plugin, 'package.json'),
+      JSON.stringify({
+        name: 'client-runtime-plugin',
+        version: '1.0.0',
+        peerDependencies: { '@deepseek-ai/dsh-client-runtime': '*' }
+      })
+    )
+
+    const result = await verifyGenerationPeers(home, {
+      id: 'client-runtime-peer',
+      pluginName: 'client-runtime-plugin',
+      version: '1.0.0',
+      directory
+    })
+
+    expect(result).toEqual({ ok: true, problems: [] })
+  })
+
+  it('accepts an installed types-only dependency without a runtime entry point', async () => {
+    const home = await freshHome()
+    const directory = join(home, 'profiles', '.generations', 'live', 'types-only')
+    const modules = join(directory, 'node_modules')
+    const plugin = join(modules, 'types-consumer')
+    const types = join(modules, '@types', 'example')
+    await mkdir(plugin, { recursive: true })
+    await mkdir(types, { recursive: true })
+    await writeFile(
+      join(plugin, 'package.json'),
+      JSON.stringify({
+        name: 'types-consumer',
+        version: '1.0.0',
+        dependencies: { '@types/example': '*' }
+      })
+    )
+    await writeFile(
+      join(types, 'package.json'),
+      JSON.stringify({ name: '@types/example', version: '1.0.0', types: 'index.d.ts' })
+    )
+    await writeFile(join(types, 'index.d.ts'), 'export interface Example {}\n')
+
+    const result = await verifyGenerationPeers(home, {
+      id: 'types-only',
+      pluginName: 'types-consumer',
+      version: '1.0.0',
+      directory
+    })
+
+    expect(result).toEqual({ ok: true, problems: [] })
+  })
+
   it('fails peer validation when the root package identity does not match generation metadata', async () => {
     const home = await freshHome()
     const directory = join(home, 'profiles', '.generations', 'live', 'wrong-root')

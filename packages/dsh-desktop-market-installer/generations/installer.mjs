@@ -30,6 +30,10 @@ import { ensureRegistryDirectories, generationId, writeGenerationMeta } from './
 /** Packages the host is the sole owner of; a generation must never carry its own copy. */
 const HOST_SINGLETON_PATTERNS = [/^react$/u, /^react-dom$/u, /^@deepseek-ai\//u]
 
+// The web shell exposes this facade directly through its client module table.
+// It deliberately has no package directory in the Node installation closure.
+const HOST_VIRTUAL_MODULES = new Set(['@deepseek-ai/dsh-client-runtime'])
+
 const PACKAGE_NAME_PATTERN = /^(?:@[A-Za-z0-9-~][A-Za-z0-9._~-]*\/)?[A-Za-z0-9-~][A-Za-z0-9._~-]*$/u
 const GIT_ALLOW_BUILD_PATTERN = /^[A-Za-z0-9@/_.-]+@git\+https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/u
 const CODELOAD_ALLOW_BUILD_PATTERN = /^[A-Za-z0-9@/_.-]+@https:\/\/codeload\.github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/tar\.gz\/[0-9a-f]{40}$/u
@@ -39,6 +43,10 @@ const GENERATION_INSTALL_TIMEOUT_MS = 90 * 1000
 
 function isHostSingleton(name) {
   return HOST_SINGLETON_PATTERNS.some((pattern) => pattern.test(name))
+}
+
+function isHostVirtualModule(name) {
+  return HOST_VIRTUAL_MODULES.has(name)
 }
 
 function installationClosureDir(dshHome) {
@@ -335,6 +343,20 @@ async function pathInfo(path, missingAllowed = false) {
   }
 }
 
+async function installedPackageTarget(currentManifestPath, generationRoot, closure, dependency) {
+  const packageSegments = dependency.split('/')
+  const candidates = [
+    join(currentManifestPath, '..', 'node_modules', ...packageSegments, 'package.json'),
+    join(generationRoot, 'node_modules', ...packageSegments, 'package.json'),
+    join(closure, ...packageSegments, 'package.json')
+  ]
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue
+    return realpath(candidate).catch(() => candidate)
+  }
+  return undefined
+}
+
 /**
  * Walk package boundaries in every nested node_modules without following a
  * symlink or allowing a real directory to escape the immutable generation.
@@ -486,7 +508,12 @@ export async function verifyGenerationPeers(dshHome, generation) {
       try {
         resolved = requireFromPackage.resolve(dependency)
       } catch {
-        resolved = undefined
+        resolved = await installedPackageTarget(
+          currentManifestPath,
+          generationRoot,
+          closure,
+          dependency
+        )
       }
       const requiredDependency =
         Object.hasOwn(dependencies, dependency) && !Object.hasOwn(optionalDependencies, dependency)
@@ -495,6 +522,7 @@ export async function verifyGenerationPeers(dshHome, generation) {
         manifest.peerDependenciesMeta?.[dependency]?.optional !== true
       const optional = !requiredDependency && !requiredPeer
       if (resolved === undefined) {
+        if (isHostVirtualModule(dependency)) continue
         if (!optional) {
           problems.push(
             isHostSingleton(dependency)
