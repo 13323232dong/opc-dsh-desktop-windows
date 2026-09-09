@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   DESKTOP_PROFILE_MANIFEST,
   createDesktopProfileManifest,
@@ -13,7 +15,71 @@ describe('OPC macOS desktop profile', () => {
     expect(Object.isFrozen(profile)).toBe(true)
     expect(profile.id).toBe('opc-macos-desktop')
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@nanmicoder/dsh-agent-teams')
+    expect(profile.plugins.map((plugin) => plugin.name)).toContain('@omdsh-dev/dsh-genui')
+    expect(profile.plugins.map((plugin) => plugin.name)).toContain('@opc/dsh-task-tracker')
+    expect(profile.plugins.map((plugin) => plugin.name)).not.toContain('@opc/dsh-secure-qr')
     expect(validateDesktopProfile(profile)).toEqual([])
+  })
+
+  it('points every desktop plugin at a bundled artifact', () => {
+    for (const plugin of DESKTOP_PROFILE_MANIFEST.plugins) {
+      expect(existsSync(join('packages/opc-profile', plugin.artifact)), plugin.name).toBe(true)
+    }
+  })
+
+  it('pins the desktop brand plugin to the Evan artifact', () => {
+    const brandPlugin = DESKTOP_PROFILE_MANIFEST.plugins.find(
+      (plugin) => plugin.name === '@opc/dsh-brand'
+    )
+
+    expect(brandPlugin).toMatchObject({
+      version: '0.1.0-opc-desktop.4',
+      artifact: 'plugins/opc-dsh-brand-0.1.0-opc-desktop.4.tgz'
+    })
+  })
+
+  it('pins the asset plugin version to its immutable desktop artifact', () => {
+    const assetPlugin = DESKTOP_PROFILE_MANIFEST.plugins.find(
+      (plugin) => plugin.name === '@opc/dsh-assets'
+    )
+
+    expect(assetPlugin).toMatchObject({
+      version: '0.1.1',
+      artifact: 'plugins/opc-dsh-assets-0.1.1.tgz'
+    })
+  })
+
+  it('pins file attachments to a new artifact when its desktop bridge changes', () => {
+    const attachmentsPlugin = DESKTOP_PROFILE_MANIFEST.plugins.find(
+      (plugin) => plugin.name === '@opc/dsh-file-attachments'
+    )
+
+    expect(attachmentsPlugin).toMatchObject({
+      version: '0.1.2',
+      artifact: 'plugins/opc-dsh-file-attachments-0.1.2.tgz'
+    })
+  })
+
+  it('pins Agent Teams to the desktop retry-state build', () => {
+    const agentTeamsPlugin = DESKTOP_PROFILE_MANIFEST.plugins.find(
+      (plugin) => plugin.name === '@nanmicoder/dsh-agent-teams'
+    )
+
+    expect(agentTeamsPlugin).toMatchObject({
+      version: '0.1.8-opc-desktop.6',
+      artifact: 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'
+    })
+  })
+
+  it('pins the context retrieval plugin to its versioned desktop artifact', () => {
+    const contextPlugin = DESKTOP_PROFILE_MANIFEST.plugins.find(
+      (plugin) => plugin.name === '@opc/dsh-context-retrieval'
+    )
+
+    expect(contextPlugin).toMatchObject({
+      version: '0.1.1',
+      artifact: 'plugins/opc-dsh-context-retrieval-0.1.1.tgz'
+    })
   })
 
   it.each([

@@ -15,6 +15,12 @@ build/icon-1024.png
 !.env.example
 .coaligne/
 .coaligneignore
+.app-backups/
+artifacts/
+releases/
+packages/opc-profile/plugins/old/
+packages/opc-profile/agent-teams-desktop/source/packages/
+build/opc-keychain-helper
 
 
 # Python bytecode from release-note scripts / tests

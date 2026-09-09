@@ -43,9 +43,9 @@ describe('desktop update policy', () => {
     const prepare = main.slice(main.indexOf('prepareToInstall: async () => {'))
 
     expect(prepare.indexOf('await runtime.stop()')).toBeLessThan(
-      prepare.indexOf('await quarantineInstalledLaunchAgentsForUpdate(dshHome)')
+      prepare.indexOf('await quarantineInstalledLaunchAgentsForUpdate(activeDshHome)')
     )
-    expect(prepare.indexOf('await quarantineInstalledLaunchAgentsForUpdate(dshHome)')).toBeLessThan(
+    expect(prepare.indexOf('await quarantineInstalledLaunchAgentsForUpdate(activeDshHome)')).toBeLessThan(
       prepare.indexOf('quitting = true')
     )
   })

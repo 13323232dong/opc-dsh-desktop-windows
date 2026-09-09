@@ -51,8 +51,8 @@ export function updateHeadline(status: UpdateStatus, locale: UpdateLocale): Upda
       return {
         title: zh ? '有可用更新' : 'Update available',
         description: zh
-          ? `${version} 已发布，同意后开始下载。`
-          : `${version} is ready to download.`
+          ? `${version} 已发布，点击后自动下载并重启安装。`
+          : `${version} is ready. Click to download and restart automatically.`
       }
     case 'downloading':
       return {
@@ -63,8 +63,8 @@ export function updateHeadline(status: UpdateStatus, locale: UpdateLocale): Upda
       return {
         title: zh ? '更新已就绪' : 'Update ready',
         description: zh
-          ? `${version} 将在重启后生效。`
-          : `${version} will be applied on next launch.`
+          ? `${version} 已下载完成，将自动重启安装。`
+          : `${version} is downloaded and will restart automatically.`
       }
     case 'up-to-date':
       return {

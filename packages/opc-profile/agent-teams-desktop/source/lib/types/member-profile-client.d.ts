@@ -7,6 +7,8 @@ export interface EnsureMemberProfileConfig {
     readonly harnessBaseUrl?: string;
     readonly identityHmacSecret?: string;
     readonly timeoutMs?: number;
+    readonly brokerUrl?: string;
+    readonly brokerToken?: string;
 }
 export interface EnsureMemberProfileInput {
     readonly sessionId: string;

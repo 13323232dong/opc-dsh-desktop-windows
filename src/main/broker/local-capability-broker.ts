@@ -4,6 +4,11 @@ import type { AddressInfo } from 'node:net'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { isLocalCapability, type LocalCapability } from '../../shared/broker-contracts'
+import {
+  isMediaCapability,
+  type LocalMediaRuntime,
+  type MediaCapability
+} from './local-media-runtime'
 
 const MAX_BODY_BYTES = 64 * 1024
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
@@ -12,6 +17,7 @@ const FORGED_CLOUD_HEADERS = new Set([
   'cookie',
   'host'
 ])
+const DESKTOP_BROKER_HEADER = 'x-opc-desktop-broker'
 
 // This is intentionally a route-level, compile-time allowlist. Adding an OPC
 // API route requires changing this list and its security test; there is no
@@ -38,15 +44,24 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
   /^\/api\/v1\/agent\/tools\/trial-context$/u,
   /^\/api\/v1\/agent\/approvals\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/decision$/u,
   /^\/api\/v1\/agent\/(experiences|profiles)$/u,
+  /^\/api\/v1\/agent\/profiles\/ensure-member$/u,
+  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
   /^\/api\/v1\/agent\/experiences\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(\/disable)?$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(memory|disable)$/u,
-  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u
+  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u,
+  /^\/api\/v1\/viral\/chase-jobs(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127})?(?:\/[A-Za-z0-9][A-Za-z0-9._:/-]{0,255})?$/u,
+  /^\/api\/v1\/viral\/protagonist-anchors(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127})?(?:\/[A-Za-z0-9][A-Za-z0-9._:/-]{0,255})?$/u,
+  /^\/api\/v1\/viral\/runtime\/status$/u
 ] as const
 
 export interface BrokerRuntimeRegistration {
   runtimeId: string
-  capabilities: readonly LocalCapability[]
+  capabilities: readonly BrokerCapability[]
   workspace?: string
+  /** Stable opaque account namespace used only for durable local media tasks. */
+  mediaScopeId?: string
+  /** Opaque OPC session kept only in the main process/Broker. */
+  cloudSessionToken?: string
 }
 
 export interface RegisteredBrokerRuntime {
@@ -61,16 +76,23 @@ export interface RegisteredBrokerRuntime {
 
 export interface LocalCapabilityBrokerOptions {
   cloudBaseUrl: string
+  /** Development-only opt-in for loopback OPC API verification. */
+  allowInsecureCloudBaseUrl?: boolean
   fetchCloud?: (url: string, init: RequestInit) => Promise<Response>
   revealPath?: (path: string) => Promise<void>
   pickPaths?: () => Promise<string[]>
   requestTimeoutMs?: number
+  mediaRuntime?: Pick<LocalMediaRuntime, 'handle'>
 }
+
+export type BrokerCapability = LocalCapability | MediaCapability
 
 interface RuntimeRecord {
   tokenHash: Buffer
-  capabilities: ReadonlySet<LocalCapability>
+  capabilities: ReadonlySet<BrokerCapability>
   workspace?: string
+  mediaScopeId: string
+  cloudSessionToken?: string
 }
 
 interface CloudProxyRequest {
@@ -92,14 +114,17 @@ export class LocalCapabilityBroker {
   private readonly cloudBaseUrl: URL
 
   constructor(private readonly options: LocalCapabilityBrokerOptions) {
-    this.cloudBaseUrl = parseCloudBaseUrl(options.cloudBaseUrl)
+    this.cloudBaseUrl = parseCloudBaseUrl(options.cloudBaseUrl, options.allowInsecureCloudBaseUrl === true)
   }
 
   async registerRuntime(registration: BrokerRuntimeRegistration): Promise<RegisteredBrokerRuntime> {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(registration.runtimeId)) {
       throw new Error('desktop_broker_invalid_runtime_id')
     }
-    if (registration.capabilities.some((capability) => !isLocalCapability(capability))) {
+    if (registration.mediaScopeId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(registration.mediaScopeId)) {
+      throw new Error('desktop_broker_invalid_media_scope')
+    }
+    if (registration.capabilities.some((capability) => !isBrokerCapability(capability))) {
       throw new Error('desktop_broker_invalid_capability')
     }
     await this.start()
@@ -107,7 +132,9 @@ export class LocalCapabilityBroker {
     this.runtimes.set(registration.runtimeId, {
       tokenHash: digest(token),
       capabilities: new Set(registration.capabilities),
-      workspace: registration.workspace ? await realpath(registration.workspace) : undefined
+      workspace: registration.workspace ? await realpath(registration.workspace) : undefined,
+      mediaScopeId: registration.mediaScopeId ?? registration.runtimeId,
+      cloudSessionToken: registration.cloudSessionToken
     })
     const origin = this.origin!
     return {
@@ -149,20 +176,35 @@ export class LocalCapabilityBroker {
     const parsed = new URL(request.url ?? '/', this.origin ?? 'http://127.0.0.1')
     const match = /^\/v1\/runtimes\/([^/]+)\/capabilities\/([^/]+)$/u.exec(parsed.pathname)
     if (!match?.[1] || !match[2]) return this.send(response, 404, { code: 'desktop_broker_route_not_found' })
-    const runtime = this.runtimes.get(decodeURIComponent(match[1]))
+    const runtimeId = decodeURIComponent(match[1])
+    const runtime = this.runtimes.get(runtimeId)
     if (!runtime || !this.validToken(request.headers.authorization, runtime.tokenHash)) {
       return this.send(response, 401, { code: 'desktop_broker_unauthorized' })
     }
     const capability = decodeURIComponent(match[2])
-    if (!isLocalCapability(capability) || !runtime.capabilities.has(capability)) {
+    if (!isBrokerCapability(capability) || !runtime.capabilities.has(capability)) {
       return this.send(response, 403, { code: 'desktop_broker_capability_denied' })
     }
     const body = await this.readJson(request, response)
     if (body === undefined) return
-    if (capability === 'cloud.proxy') return this.proxyCloud(body, request, response)
+    if (capability === 'cloud.proxy') return this.proxyCloud(body, request, runtime, response)
     if (capability === 'filesystem.pick') return this.pickWorkspacePaths(runtime, response)
     if (capability === 'filesystem.reveal') return this.revealWorkspacePath(body, runtime, response)
+    if (isMediaCapability(capability)) return this.handleMedia(capability, body, runtime.mediaScopeId, response)
     return this.send(response, 501, { code: 'desktop_broker_capability_not_configured' })
+  }
+
+  private async handleMedia(
+    capability: MediaCapability,
+    body: Record<string, unknown>,
+    mediaScopeId: string,
+    response: ServerResponse
+  ): Promise<void> {
+    if (!this.options.mediaRuntime) {
+      return this.send(response, 503, { code: 'desktop_broker_media_runtime_unavailable' })
+    }
+    const result = await this.options.mediaRuntime.handle(capability, body, { runtimeId: mediaScopeId })
+    this.send(response, result.status, result.body)
   }
 
   private validToken(authorization: string | undefined, expectedHash: Buffer): boolean {
@@ -194,7 +236,7 @@ export class LocalCapabilityBroker {
     }
   }
 
-  private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {
     const payload = body as unknown as CloudProxyRequest
     const method = typeof payload.method === 'string' ? payload.method.toUpperCase() : 'GET'
     if (!isAllowedCloudPath(payload.path)) return this.send(response, 400, { code: 'desktop_broker_invalid_cloud_path' })
@@ -202,6 +244,11 @@ export class LocalCapabilityBroker {
       return this.send(response, 400, { code: 'desktop_broker_idempotency_key_required' })
     }
     const headers = safeHeaders(payload.headers)
+    // This marker is written only by the loopback Broker after it has
+    // authenticated the per-runtime capability token. It is never accepted
+    // from a DSH plugin payload.
+    headers.set(DESKTOP_BROKER_HEADER, '1')
+    if (runtime.cloudSessionToken) headers.set('cookie', `opc_session=${runtime.cloudSessionToken}`)
     const requestId = request.headers['x-request-id']
     const idempotencyKey = request.headers['idempotency-key']
     if (typeof requestId === 'string') headers.set('x-request-id', requestId)
@@ -272,9 +319,11 @@ function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-function parseCloudBaseUrl(value: string): URL {
+function parseCloudBaseUrl(value: string, allowInsecureLoopback = false): URL {
   const url = new URL(value)
-  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+  const loopback = (url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]')
+  const protocolAllowed = url.protocol === 'https:' || (allowInsecureLoopback && loopback && url.protocol === 'http:')
+  if (!protocolAllowed || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
     throw new Error('desktop_broker_invalid_cloud_base_url')
   }
   return url
@@ -292,6 +341,10 @@ function isAllowedCloudPath(value: unknown): value is string {
   } catch {
     return false
   }
+}
+
+function isBrokerCapability(value: unknown): value is BrokerCapability {
+  return isLocalCapability(value) || isMediaCapability(value)
 }
 
 function safeHeaders(value: unknown): Headers {

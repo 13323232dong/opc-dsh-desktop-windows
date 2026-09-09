@@ -10,10 +10,20 @@ function isHarnessUrl(rawUrl: string): boolean {
   }
 }
 
-export function isTrustedAppUrl(rawUrl: string): boolean {
+export function isTrustedFileUrl(rawUrl: string, trustedPath: string): boolean {
   try {
     const parsed = new URL(rawUrl)
-    if (parsed.protocol === 'file:' || parsed.protocol === 'dsh-recovery:') return true
+    return parsed.protocol === 'file:' && resolve(fileURLToPath(parsed)) === resolve(trustedPath)
+  } catch {
+    return false
+  }
+}
+
+export function isTrustedAppUrl(rawUrl: string, trustedFilePaths: readonly string[] = []): boolean {
+  try {
+    const parsed = new URL(rawUrl)
+    if (parsed.protocol === 'dsh-recovery:') return true
+    if (parsed.protocol === 'file:') return trustedFilePaths.some((path) => isTrustedFileUrl(rawUrl, path))
   } catch {
     return false
   }
@@ -25,10 +35,14 @@ export function canGrantWindowPermission(
   requestingUrl: string | undefined,
   isMainFrame: boolean
 ): boolean {
+  // Electron reports getUserMedia requests as the `media` permission. Keep
+  // this scoped to the trusted local Harness main frame; external pages must
+  // never receive microphone access from the desktop shell.
+  const isTrustedMainFrame = isMainFrame && requestingUrl !== undefined && isHarnessUrl(requestingUrl)
   return (
-    permission === 'clipboard-sanitized-write' &&
-    isMainFrame &&
-    requestingUrl !== undefined &&
-    isHarnessUrl(requestingUrl)
+    isTrustedMainFrame &&
+    (permission === 'clipboard-sanitized-write' || permission === 'media')
   )
 }
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'

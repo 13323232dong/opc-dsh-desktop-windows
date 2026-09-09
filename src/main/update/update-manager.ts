@@ -58,6 +58,7 @@ export function registerUpdateHandlers(): void {
   ipcMain.handle('updates:install', () => installDownloadedUpdate())
   ipcMain.handle('updates:skip', (_event, version: unknown) => skipUpdate(version))
   ipcMain.handle('updates:download', () => downloadAvailableUpdate())
+  ipcMain.handle('updates:download-and-install', () => downloadAndInstallUpdate())
   ipcMain.handle('updates:list-versions', () => fetchAvailableReleases(app.getVersion()))
   ipcMain.handle('updates:install-version', (_event, version: unknown) =>
     installSpecificVersion(version)
@@ -167,6 +168,14 @@ export async function downloadAvailableUpdate(): Promise<UpdateStatus> {
   return getUpdateStatus()
 }
 
+/** User-approved one-click path: download the update, then restart into it. */
+export async function downloadAndInstallUpdate(): Promise<UpdateStatus> {
+  if (status.phase !== 'available' || downloading || installing) return getUpdateStatus()
+  const next = await downloadAvailableUpdate()
+  if (next.phase === 'downloaded') await installDownloadedUpdate()
+  return getUpdateStatus()
+}
+
 /**
  * Install a specific past release, downgrades included. The feed is pointed at
  * that version's archive directory for one check + download, then restored to
@@ -234,6 +243,11 @@ export function stopUpdateManager(): void {
 }
 
 function configureUpdater(): void {
+  // Dev/portable builds disable electron-builder's publish integration, so
+  // the updater must still be pointed at the stable generic feed explicitly.
+  // Without this, startup checks have no feed URL and silently cannot discover
+  // a newer desktop release.
+  autoUpdater.setFeedURL({ provider: 'generic', url: STABLE_FEED_URL })
   // The download is ours to start: an update the user skipped should not be
   // fetched at all, and update-available is the only place that is known.
   autoUpdater.autoDownload = false

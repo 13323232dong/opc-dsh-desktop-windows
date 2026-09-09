@@ -45,6 +45,19 @@ function installationClosureDir(dshHome) {
   return join(dshHome, 'profiles', 'node_modules')
 }
 
+/**
+ * Packaged Electron builds keep DSH host singletons in the immutable app
+ * resources tree. They are intentionally outside the per-account profile
+ * closure, but are still trusted host-owned dependencies. Keep this allowlist
+ * narrow so arbitrary plugin symlinks remain rejected.
+ */
+async function hostInstallationRoots() {
+  const resourcesPath = process.resourcesPath
+  if (typeof resourcesPath !== 'string' || resourcesPath.length === 0) return []
+  const roots = [join(resourcesPath, 'app', 'node_modules')]
+  return Promise.all(roots.map((root) => realpath(root).catch(() => root)))
+}
+
 function safeBuildApprovalKey(key) {
   return PACKAGE_NAME_PATTERN.test(key) ||
     GIT_ALLOW_BUILD_PATTERN.test(key) ||
@@ -435,6 +448,7 @@ export async function verifyGenerationPeers(dshHome, generation) {
   const closure = await realpath(installationClosureDir(dshHome)).catch(
     () => installationClosureDir(dshHome)
   )
+  const hostRoots = await hostInstallationRoots()
   const packageRoot = join(generation.directory, 'node_modules', generation.pluginName)
   const manifestPath = join(packageRoot, 'package.json')
   if (!existsSync(manifestPath)) return { ok: false, problems: ['plugin package root missing'] }
@@ -492,8 +506,9 @@ export async function verifyGenerationPeers(dshHome, generation) {
       }
       const realResolved = await realpath(resolved).catch(() => resolved)
       const insideClosure = isInsideDirectory(closure, realResolved)
+      const insidePackagedHost = hostRoots.some((root) => isInsideDirectory(root, realResolved))
       if (isHostSingleton(dependency)) {
-        if (!insideClosure) {
+        if (!insideClosure && !insidePackagedHost) {
           problems.push(
             `${prefix}${dependency} resolves outside the installation closure: ${realResolved}`
           )

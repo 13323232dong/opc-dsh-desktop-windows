@@ -531,7 +531,9 @@ describe('offending plugin extraction', () => {
 
 describe('navigation trust boundary', () => {
   it('only trusts the launcher and loopback HTTP pages', () => {
-    expect(isTrustedAppUrl('file:///app/index.html')).toBe(true)
+    expect(isTrustedAppUrl('file:///app/index.html')).toBe(false)
+    expect(isTrustedAppUrl('file:///app/index.html', ['/app/index.html'])).toBe(true)
+    expect(isTrustedAppUrl('file:///tmp/login.html', ['/app/login.html'])).toBe(false)
     expect(isTrustedAppUrl('http://127.0.0.1:43127')).toBe(true)
     expect(isTrustedAppUrl('http://localhost:43127')).toBe(true)
     expect(isTrustedAppUrl('https://127.0.0.1:43127')).toBe(false)
@@ -539,7 +541,7 @@ describe('navigation trust boundary', () => {
     expect(isTrustedAppUrl('javascript:alert(1)')).toBe(false)
   })
 
-  it('only grants clipboard writes from the trusted main frame', () => {
+  it('grants clipboard writes and microphone only to the trusted main frame', () => {
     expect(
       canGrantWindowPermission(
         'clipboard-sanitized-write',
@@ -547,6 +549,12 @@ describe('navigation trust boundary', () => {
         true
       )
     ).toBe(true)
+    expect(
+      canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', true)
+    ).toBe(true)
+    expect(
+      canGrantWindowPermission('media', 'https://example.com/session', true)
+    ).toBe(false)
     expect(
       canGrantWindowPermission(
         'clipboard-sanitized-write',

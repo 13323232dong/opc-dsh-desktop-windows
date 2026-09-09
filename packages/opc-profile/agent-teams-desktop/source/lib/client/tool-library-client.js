@@ -31,7 +31,7 @@ function gatewayErrorMessage(payload) {
         ? message
         : '工具服务暂时无法完成请求';
 }
-async function request(sessionId, path, method, body) {
+async function request(sessionId, path, method, body, signal) {
     const headers = { Accept: 'application/json' };
     if (body !== undefined) {
         headers['Content-Type'] = 'application/json';
@@ -40,6 +40,7 @@ async function request(sessionId, path, method, body) {
     const response = await globalThis.fetch(toolUrl(sessionId, path), {
         method,
         headers,
+        signal,
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const payload = await response.json().catch(() => null);
@@ -50,7 +51,7 @@ async function request(sessionId, path, method, body) {
 /** Build the session-scoped browser face for the Agent Teams host gateway. */
 export function createToolLibraryClient(sessionId) {
     return {
-        listTools: () => request(sessionId, '', 'GET'),
+        listTools: (signal) => request(sessionId, '', 'GET', undefined, signal),
         getTool: (toolId, version) => request(sessionId, `/${encodeURIComponent(toolId)}${version ? `?version=${encodeURIComponent(version)}` : ''}`, 'GET'),
         getHealth: (toolId, version) => request(sessionId, `/${encodeURIComponent(toolId)}/health${version ? `?version=${encodeURIComponent(version)}` : ''}`, 'GET'),
         getTrialContext: () => request(sessionId, '/trial-context', 'POST', {}),

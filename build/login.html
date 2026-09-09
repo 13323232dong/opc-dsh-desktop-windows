@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>伟东 OPC 登录</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f5f7; color: #202124; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .panel { width: min(360px, calc(100vw - 48px)); padding: 32px; border: 1px solid #dedfe3; border-radius: 8px; background: #fff; box-shadow: 0 16px 48px rgba(0, 0, 0, .12); }
+    h1 { margin: 0 0 8px; font-size: 23px; }
+    p { margin: 0 0 24px; color: #666; font-size: 14px; }
+    label { display: grid; gap: 7px; margin: 14px 0; font-size: 13px; }
+    input { box-sizing: border-box; width: 100%; height: 40px; padding: 0 11px; border: 1px solid #c8cad0; border-radius: 5px; font: inherit; }
+    button { width: 100%; height: 42px; margin-top: 12px; border: 0; border-radius: 5px; background: #17181a; color: #fff; cursor: pointer; font: 600 14px inherit; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #notice { min-height: 20px; margin: 12px 0 0; color: #b42318; }
+    .link { border: 0; background: transparent; color: #315fd8; margin-top: 12px; height: auto; }
+    .secondary { background: #eef1f6; color: #202124; }
+    .code-row { display: grid; grid-template-columns: 1fr 112px; gap: 8px; align-items: end; }
+    .password-field { position: relative; display: block; }
+    .password-field input { padding-right: 44px; }
+    .password-toggle { position: absolute; top: 50%; right: 5px; width: 34px; height: 32px; margin: 0; padding: 0; transform: translateY(-50%); border-radius: 4px; background: transparent; color: #5f6368; }
+    .password-toggle:hover { background: #eef1f6; color: #202124; }
+    .eye-icon { position: relative; display: inline-block; width: 17px; height: 11px; transform: rotate(45deg); border: 1.7px solid currentColor; border-radius: 75% 12%; }
+    .eye-icon::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; transform: translate(-50%, -50%); border-radius: 50%; background: currentColor; }
+    .password-toggle.revealed .eye-icon::before { content: ''; position: absolute; top: 4px; left: -3px; width: 22px; height: 1.7px; background: currentColor; }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; color: #5f6368; font-size: 13px; }
+    .remember-row input { width: 15px; height: 15px; margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>伟东 OPC</h1>
+    <p>登录后将打开属于当前商户的独立工作台。</p>
+    <form id="login">
+      <label>账号<input id="username" list="account-history" autocomplete="username" required autofocus></label>
+      <datalist id="account-history"></datalist>
+      <label>密码<span class="password-field"><input id="password" type="password" autocomplete="current-password" required><button id="toggle-password" class="password-toggle" type="button" aria-label="显示密码" title="显示密码"><span class="eye-icon" aria-hidden="true"></span></button></span></label>
+      <label id="remember-row" class="remember-row"><input id="remember-password" type="checkbox">记住账号和密码</label>
+      <button id="clear-saved-password" class="link" type="button" hidden>清除当前账号已保存密码</button>
+      <button id="submit" type="submit">登录</button>
+      <button id="register" class="secondary" type="button">注册商户账号</button>
+      <p id="notice"></p>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById('login')
+    const notice = document.getElementById('notice')
+    const submit = document.getElementById('submit')
+    const username = document.getElementById('username')
+    const password = document.getElementById('password')
+    const rememberPassword = document.getElementById('remember-password')
+    const rememberRow = document.getElementById('remember-row')
+    const passwordToggle = document.getElementById('toggle-password')
+    const accountHistory = document.getElementById('account-history')
+    const clearSavedPassword = document.getElementById('clear-saved-password')
+    notice.textContent = new URLSearchParams(location.search).get('message') || ''
+    const REGISTRATION_COUNTDOWN_SECONDS = 60
+    let mode = 'login'
+    let registrationSent = false
+    let registrationCountdownTimer
+    let registrationAttempt = 0
+    let savedLogins = []
+    let passwordLoadAttempt = 0
+    let passwordEditVersion = 0
+    let loadedPasswordUsername = ''
+    const registerButton = document.getElementById('register')
+
+    passwordToggle.addEventListener('click', () => {
+      password.type = password.type === 'password' ? 'text' : 'password'
+      const revealed = password.type === 'text'
+      passwordToggle.classList.toggle('revealed', revealed)
+      passwordToggle.setAttribute('aria-label', revealed ? '隐藏密码' : '显示密码')
+      passwordToggle.title = revealed ? '隐藏密码' : '显示密码'
+      password.focus()
+    })
+
+    async function loadSavedPassword(selectedUsername) {
+      const account = selectedUsername.trim()
+      const entry = savedLogins.find(item => item.username.toLowerCase() === account.toLowerCase())
+      if (!entry?.hasPassword || mode !== 'login') return
+      const attempt = ++passwordLoadAttempt
+      const editVersion = passwordEditVersion
+      try {
+        const savedPassword = await window.dshDesktopAuth.loadSavedPassword(account)
+        if (attempt !== passwordLoadAttempt || editVersion !== passwordEditVersion || password.value || mode !== 'login' || username.value.trim().toLowerCase() !== account.toLowerCase()) return
+        password.value = savedPassword || ''
+        loadedPasswordUsername = savedPassword ? account.toLowerCase() : ''
+        rememberPassword.checked = Boolean(savedPassword)
+        clearSavedPassword.hidden = !savedPassword
+      } catch {
+        if (attempt === passwordLoadAttempt) loadedPasswordUsername = ''
+      }
+    }
+
+    async function hydrateLoginHistory() {
+      if (typeof window.dshDesktopAuth.listSavedLogins !== 'function') return
+      try {
+        savedLogins = await window.dshDesktopAuth.listSavedLogins()
+        accountHistory.replaceChildren(...savedLogins.map(item => {
+          const option = document.createElement('option')
+          option.value = item.username
+          return option
+        }))
+        if (!username.value && savedLogins[0]) username.value = savedLogins[0].username
+        if (username.value) await loadSavedPassword(username.value)
+      } catch {
+        savedLogins = []
+      }
+    }
+
+    username.addEventListener('input', () => {
+      if (loadedPasswordUsername && loadedPasswordUsername !== username.value.trim().toLowerCase()) {
+        password.value = ''
+        loadedPasswordUsername = ''
+        passwordLoadAttempt += 1
+      }
+      clearSavedPassword.hidden = !savedLogins.some(item => item.hasPassword && item.username.toLowerCase() === username.value.trim().toLowerCase())
+    })
+    username.addEventListener('change', () => void loadSavedPassword(username.value))
+    password.addEventListener('input', () => {
+      passwordEditVersion += 1
+      loadedPasswordUsername = ''
+    })
+    clearSavedPassword.addEventListener('click', async () => {
+      const account = username.value.trim()
+      if (!account || typeof window.dshDesktopAuth.clearSavedPassword !== 'function') return
+      clearSavedPassword.disabled = true
+      try {
+        await window.dshDesktopAuth.clearSavedPassword(account)
+        savedLogins = savedLogins.map(item => item.username.toLowerCase() === account.toLowerCase() ? { ...item, hasPassword: false } : item)
+        passwordLoadAttempt += 1
+        passwordEditVersion += 1
+        password.value = ''
+        loadedPasswordUsername = ''
+        rememberPassword.checked = false
+        clearSavedPassword.hidden = true
+        notice.style.color = '#176b3a'
+        notice.textContent = '已清除当前账号保存的密码。'
+      } catch {
+        notice.style.color = '#b42318'
+        notice.textContent = '清除保存密码失败，请重试。'
+      } finally {
+        clearSavedPassword.disabled = false
+      }
+    })
+    void hydrateLoginHistory()
+
+    function stopRegistrationCountdown() {
+      if (registrationCountdownTimer) {
+        window.clearInterval(registrationCountdownTimer)
+        registrationCountdownTimer = undefined
+      }
+      const button = document.getElementById('send-code')
+      if (button) {
+        button.disabled = false
+        button.textContent = '获取验证码'
+      }
+    }
+
+    function startRegistrationCountdown(button) {
+      stopRegistrationCountdown()
+      const deadline = Date.now() + REGISTRATION_COUNTDOWN_SECONDS * 1000
+      const renderCountdown = () => {
+        const remainingSeconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+        if (remainingSeconds <= 0) {
+          stopRegistrationCountdown()
+          return
+        }
+        button.disabled = true
+        button.textContent = `重新获取（${remainingSeconds}s）`
+      }
+      renderCountdown()
+      registrationCountdownTimer = window.setInterval(renderCountdown, 250)
+    }
+
+    registerButton.addEventListener('click', () => {
+      registrationAttempt += 1
+      stopRegistrationCountdown()
+      mode = mode === 'register' ? 'login' : 'register'
+      registrationSent = false
+      document.querySelector('h1').textContent = mode === 'register' ? '注册商户账号' : '伟东 OPC'
+      document.querySelector('form p').textContent = mode === 'register' ? '使用邮箱验证码创建独立商户工作台。' : '登录后将打开属于当前商户的独立工作台。'
+      document.getElementById('submit').textContent = mode === 'register' ? '提交注册' : '登录'
+      registerButton.textContent = mode === 'register' ? '返回登录' : '注册商户账号'
+      password.autocomplete = mode === 'register' ? 'new-password' : 'current-password'
+      rememberRow.hidden = mode === 'register'
+      clearSavedPassword.hidden = mode === 'register' || !savedLogins.some(item => item.hasPassword && item.username.toLowerCase() === username.value.trim().toLowerCase())
+      if (mode === 'register') username.removeAttribute('list')
+      else username.setAttribute('list', 'account-history')
+      document.getElementById('email')?.remove()
+      document.getElementById('confirmation')?.remove()
+      document.getElementById('code-row')?.remove()
+      if (mode === 'register') {
+        const passwordLabel = document.getElementById('password').closest('label')
+        const email = document.createElement('label'); email.id = 'email'; email.innerHTML = '邮箱<input id="email-value" type="email" autocomplete="email" required>'; passwordLabel.after(email)
+        const confirm = document.createElement('label'); confirm.id = 'confirmation'; confirm.innerHTML = '确认密码<input id="confirmation-value" type="password" autocomplete="new-password" required>'; email.after(confirm)
+        const row = document.createElement('div'); row.id = 'code-row'; row.className = 'code-row'; row.innerHTML = '<label>验证码<input id="code-value" inputmode="numeric" maxlength="6" required></label><button id="send-code" class="secondary" type="button">获取验证码</button>'; confirm.after(row)
+        const sendCodeButton = document.getElementById('send-code')
+        sendCodeButton.addEventListener('click', async () => {
+          notice.textContent = ''; const username = document.getElementById('username').value; const pass = document.getElementById('password').value; const emailValue = document.getElementById('email-value').value
+          if (!username || pass.length < 8 || !emailValue.includes('@')) { notice.textContent = '请填写有效账号、至少 8 位密码和邮箱。'; return }
+          const attempt = registrationAttempt
+          sendCodeButton.disabled = true
+          sendCodeButton.textContent = '发送中...'
+          try {
+            await window.dshDesktopAuth.requestRegistrationCode({ username, password: pass, email: emailValue })
+            if (attempt !== registrationAttempt || mode !== 'register' || !sendCodeButton.isConnected) return
+            registrationSent = true
+            startRegistrationCountdown(sendCodeButton)
+            notice.style.color = '#176b3a'
+            notice.textContent = '验证码已发送，请查收邮箱。'
+          } catch (error) {
+            if (attempt !== registrationAttempt || mode !== 'register' || !sendCodeButton.isConnected) return
+            sendCodeButton.disabled = false
+            sendCodeButton.textContent = '获取验证码'
+            notice.style.color = '#b42318'
+            notice.textContent = error?.message || '验证码发送失败。'
+          }
+        })
+      }
+    })
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      notice.textContent = ''
+      submit.disabled = true
+      try {
+        const usernameValue = username.value; const passwordValue = password.value
+        if (mode === 'register') {
+          const email = document.getElementById('email-value').value; const confirmation = document.getElementById('confirmation-value').value; const code = document.getElementById('code-value').value
+          if (!registrationSent) throw new Error('请先获取邮箱验证码。')
+          if (passwordValue !== confirmation) throw new Error('两次输入的密码不一致。')
+          await window.dshDesktopAuth.confirmRegistration({ username: usernameValue, password: passwordValue, email, code }); registerButton.click(); notice.style.color = '#176b3a'; notice.textContent = '注册成功，请使用新账号登录。'; return
+        }
+        await window.dshDesktopAuth.signIn({ username: usernameValue, password: passwordValue, rememberPassword: rememberPassword.checked })
+      } catch {
+        notice.style.color = '#b42318'; notice.textContent = mode === 'register' ? '注册失败，请检查信息或验证码。' : '登录失败，请检查账号、密码和网络后重试。'
+      } finally {
+        submit.disabled = false
+      }
+    })
+  </script>
+</body>
+</html>

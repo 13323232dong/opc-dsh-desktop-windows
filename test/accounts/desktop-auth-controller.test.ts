@@ -23,7 +23,7 @@ describe('DesktopAuthController', () => {
     const credentials = { save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined) }
     const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
 
-    const context = await controller.signIn()
+    const context = await controller.signIn({ username: 'merchant', password: 'correct-password' })
 
     expect(context?.principal).toMatchObject(session.principal)
     expect(credentials.save).toHaveBeenCalledWith(expect.objectContaining(session.principal), session.credential)
@@ -36,8 +36,23 @@ describe('DesktopAuthController', () => {
     const credentials = { save: vi.fn(), remove: vi.fn() }
     const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
 
-    await expect(controller.signIn()).rejects.toThrow('desktop_auth_account_changed')
+    await expect(controller.signIn({ username: 'merchant', password: 'correct-password' })).rejects.toThrow('desktop_auth_account_changed')
     expect(credentials.save).not.toHaveBeenCalled()
     expect(runtime.switchTo).not.toHaveBeenCalled()
+  })
+
+  it('clears credentials and the provider session even when runtime shutdown fails', async () => {
+    const provider: DesktopAuthProvider = { signIn: vi.fn(async () => undefined), currentSession: vi.fn(async () => undefined), signOut: vi.fn(async () => undefined) }
+    const runtime = {
+      switchTo: vi.fn(),
+      signOut: vi.fn(async () => { throw new Error('runtime_stop_failed') }),
+      snapshot: vi.fn(() => ({ context: { principal: session.principal } }))
+    }
+    const credentials = { save: vi.fn(), remove: vi.fn(async () => undefined) }
+    const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
+
+    await expect(controller.signOut()).rejects.toThrow('runtime_stop_failed')
+    expect(credentials.remove).toHaveBeenCalledWith(session.principal)
+    expect(provider.signOut).toHaveBeenCalledOnce()
   })
 })

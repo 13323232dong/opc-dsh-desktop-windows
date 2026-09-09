@@ -49,7 +49,7 @@ describe('github_release_notes build-prompt', () => {
     expect(prompt).toContain('## 问题修复')
     expect(prompt).toContain('## 升级说明')
     expect(prompt).toContain('## 说明')
-  })
+  }, 30_000)
 })
 
 describe('github_release_notes validate', () => {

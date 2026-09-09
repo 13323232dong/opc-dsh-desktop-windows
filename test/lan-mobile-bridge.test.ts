@@ -675,7 +675,7 @@ describe('LAN mobile bridge pairing surface', () => {
     // Swallow the upgrade: the mux socket stays CONNECTING on the bridge side.
     harness.on('upgrade', (request, socket) => {
       if (request.url !== '/api/remote.mux') return socket.destroy()
-      upgraded.push(socket)
+      upgraded.push(socket as unknown as import('node:net').Socket)
     })
     servers.push(harness)
     await new Promise<void>((resolve) => harness.listen(0, '127.0.0.1', resolve))

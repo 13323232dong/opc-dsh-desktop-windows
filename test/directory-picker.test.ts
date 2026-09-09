@@ -16,6 +16,27 @@ describe('desktop Electron directory picker', () => {
     expect(main).toContain("app.commandLine.appendSwitch('lang', harnessLocale() === 'zh' ? 'zh-CN' : 'en-US')")
   })
 
+  it('relays Finder drop paths through the verified main-process IPC channel', async () => {
+    const preload = await readFile('src/preload/index.ts', 'utf8')
+    const main = await readFile('src/main/index.ts', 'utf8')
+
+    expect(preload).toContain("document.addEventListener('drop', captureNativeFileDrop, true)")
+    expect(preload).toContain('webUtils.getPathForFile(file)')
+    expect(preload).toContain("ipcRenderer.send('desktop:file-drop', paths)")
+    expect(preload).toContain('item.getAsFile()')
+    expect(preload).toContain("ipcRenderer.on('desktop:file-drop'")
+    expect(preload).toContain("subscribe: (listener: (path: string) => void)")
+    expect(preload).toContain('event.stopImmediatePropagation()')
+    expect(preload).toContain("ipcRenderer.send('desktop:file-drop-diagnostic', status)")
+    expect(preload).toContain("reportNativeFolderDrop('bridge-called')")
+    expect(preload).toContain("reportNativeFolderDrop('bridge-path-ready')")
+    expect(preload).not.toContain("from 'node:fs'")
+    expect(main).toContain("ipcMain.on('desktop:file-drop-diagnostic'")
+    expect(main).toContain("ipcMain.on('desktop:file-drop'")
+    expect(main).toContain("mainWindow.webContents.send('desktop:file-drop', path)")
+    expect(main).toContain('desktop file-drop diagnostic')
+  })
+
   it('keeps native Chinese resources for both macOS and Windows locale names', async () => {
     const packageJson = JSON.parse(await readFile('package.json', 'utf8')) as {
       build?: { electronLanguages?: string[] }

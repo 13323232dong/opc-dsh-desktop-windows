@@ -42,13 +42,14 @@ export const name = 'agent-teams';
 export const inject = ['tools', 'llm', 'subagents', 'sessionTitle', 'systemPrompt', 'agents'];
 const INSPIRATION_TOOLS = [
     ['opc_inspiration_categories', 'categories', '读取 OPC TikHub 运营灵感分类。'],
+    ['opc_inspiration_tags', 'tags', '读取合并去重后的抖音热门标签。'],
     ['opc_inspiration_ranking_videos', 'rankingVideos', '读取 OPC TikHub 抖音热门视频榜单。'],
     ['opc_inspiration_ranking_topics', 'rankingTopics', '读取 OPC TikHub 抖音热门话题榜单。'],
     ['opc_inspiration_ranking_searches', 'rankingSearches', '读取 OPC TikHub 抖音热门搜索榜单。'],
     ['opc_inspiration_search_videos', 'searchVideos', '按关键词搜索 OPC TikHub 抖音运营灵感视频。'],
 ];
 const inspirationParameters = (action) => {
-    if (action === 'categories')
+    if (action === 'categories' || action === 'tags')
         return {};
     if (action === 'rankingVideos')
         return {

@@ -1,6 +1,6 @@
 import { execFileSync, type SpawnOptionsWithoutStdio } from 'node:child_process'
 import type { EventEmitter } from 'node:events'
-import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, readFileSync, type WriteStream } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
@@ -22,6 +22,22 @@ export interface HarnessRuntimeOptions {
   ): HarnessChildProcess
   startupTimeoutMs?: number
   onChanged(snapshot: RuntimeSnapshot): void
+}
+
+/** Read optional host-owned KEY=VALUE settings without bundling credentials. */
+export function readDesktopEnvironmentFile(path: string): Record<string, string> {
+  if (!existsSync(path)) return {}
+  const result: Record<string, string> = {}
+  try {
+    for (const line of readFileSync(path, 'utf8').split(/\r?\n/u)) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/u.exec(line)
+      if (!match || match[1] === undefined || match[2] === undefined || match[2].startsWith('#')) continue
+      result[match[1]] = match[2].replace(/^['"]|['"]$/gu, '')
+    }
+  } catch {
+    return {}
+  }
+  return result
 }
 
 export interface HarnessChildProcess extends EventEmitter {
@@ -393,7 +409,7 @@ export class HarnessRuntime {
     this.writeLog(`[desktop] launch directory ${launchDirectory}`)
     this.writeLog(`[desktop] profile ${profile}`)
     this.writeLog(`[desktop] endpoint ${url}`)
-    this.setState('starting', 'Starting DeepSeek Harness…')
+    this.setState('starting', '正在启动 Evan超级管家…')
 
     let child: HarnessChildProcess
     try {

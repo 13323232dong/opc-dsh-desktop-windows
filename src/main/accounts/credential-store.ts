@@ -1,5 +1,7 @@
-import { spawn } from 'node:child_process'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { accountKeyFor } from './account-key'
+import type { MacOsKeychainBackend } from './macos-keychain'
 import type { DesktopPrincipal } from '../../shared/account-contracts'
 
 export interface AccountCredential {
@@ -18,6 +20,61 @@ export interface CredentialStore {
   load(principal: DesktopPrincipal): Promise<AccountCredential | undefined>
   save(principal: DesktopPrincipal, credential: AccountCredential): Promise<void>
   remove(principal: DesktopPrincipal): Promise<void>
+}
+
+export interface SafeStorageAdapter {
+  isEncryptionAvailable(): boolean
+  encryptString(value: string): Buffer
+  decryptString(value: Buffer): string
+}
+
+export interface ElectronSafeStorageCredentialStoreOptions {
+  root: string
+  safeStorage: SafeStorageAdapter
+}
+
+/**
+ * Electron safeStorage uses the macOS Keychain as its encryption-key backend.
+ * The opaque OPC session is stored only as ciphertext and never passed to an
+ * external command, which avoids exposing it through process arguments.
+ */
+export class ElectronSafeStorageCredentialStore implements CredentialStore {
+  constructor(private readonly options: ElectronSafeStorageCredentialStoreOptions) {}
+
+  async load(principal: DesktopPrincipal): Promise<AccountCredential | undefined> {
+    this.assertAvailable()
+    try {
+      const encrypted = await readFile(this.pathFor(principal))
+      const credential = parseCredential(this.options.safeStorage.decryptString(encrypted))
+      assertCredentialIdentity(principal, credential)
+      return credential
+    } catch (error) {
+      if (isFileMissing(error)) return undefined
+      throw error
+    }
+  }
+
+  async save(principal: DesktopPrincipal, credential: AccountCredential): Promise<void> {
+    this.assertAvailable()
+    assertCredentialIdentity(principal, credential)
+    const destination = this.pathFor(principal)
+    await mkdir(dirname(destination), { recursive: true, mode: 0o700 })
+    const temporary = `${destination}.${process.pid}.tmp`
+    await writeFile(temporary, this.options.safeStorage.encryptString(JSON.stringify(credential)), { mode: 0o600 })
+    await rename(temporary, destination)
+  }
+
+  async remove(principal: DesktopPrincipal): Promise<void> {
+    try { await rm(this.pathFor(principal), { force: true }) } catch { /* Logout must still complete locally. */ }
+  }
+
+  private assertAvailable(): void {
+    if (!this.options.safeStorage.isEncryptionAvailable()) throw new Error('desktop_keychain_unavailable')
+  }
+
+  private pathFor(principal: DesktopPrincipal): string {
+    return join(this.options.root, 'credentials', 'v1', `${principal.accountKey}.bin`)
+  }
 }
 
 export class InMemoryCredentialStore implements CredentialStore {
@@ -44,16 +101,9 @@ export class InMemoryCredentialStore implements CredentialStore {
   }
 }
 
-export interface KeychainCommandResult { stdout: string }
-export type KeychainCommand = (
-  executable: string,
-  args: string[],
-  options: { stdin?: string }
-) => Promise<KeychainCommandResult>
-
 export interface MacOsKeychainCredentialStoreOptions {
   platform?: NodeJS.Platform
-  run?: KeychainCommand
+  backend?: MacOsKeychainBackend
 }
 
 /**
@@ -62,46 +112,33 @@ export interface MacOsKeychainCredentialStoreOptions {
  */
 export class MacOsKeychainCredentialStore implements CredentialStore {
   private readonly platform: NodeJS.Platform
-  private readonly run: KeychainCommand
+  private readonly backend: MacOsKeychainBackend
   private static readonly service = 'cc.ohmycode.opc.desktop'
 
   constructor(options: MacOsKeychainCredentialStoreOptions = {}) {
     this.platform = options.platform ?? process.platform
-    this.run = options.run ?? defaultKeychainCommand
+    if (!options.backend) throw new Error('desktop_keychain_backend_required')
+    this.backend = options.backend
   }
 
   async load(principal: DesktopPrincipal): Promise<AccountCredential | undefined> {
     this.requireMacOs()
-    try {
-      const result = await this.run('security', [
-        'find-generic-password', '-w', '-s', MacOsKeychainCredentialStore.service, '-a', keychainAccount(principal)
-      ], {})
-      const credential = parseCredential(result.stdout)
-      assertCredentialIdentity(principal, credential)
-      return credential
-    } catch (error) {
-      if (isKeychainItemMissing(error)) return undefined
-      throw error
-    }
+    const raw = await this.backend.get(MacOsKeychainCredentialStore.service, keychainAccount(principal))
+    if (raw === undefined) return undefined
+    const credential = parseCredential(raw)
+    assertCredentialIdentity(principal, credential)
+    return credential
   }
 
   async save(principal: DesktopPrincipal, credential: AccountCredential): Promise<void> {
     this.requireMacOs()
     assertCredentialIdentity(principal, credential)
-    await this.run('security', [
-      'add-generic-password', '-U', '-s', MacOsKeychainCredentialStore.service, '-a', keychainAccount(principal), '-w'
-    ], { stdin: JSON.stringify(credential) })
+    await this.backend.set(MacOsKeychainCredentialStore.service, keychainAccount(principal), JSON.stringify(credential))
   }
 
   async remove(principal: DesktopPrincipal): Promise<void> {
     this.requireMacOs()
-    try {
-      await this.run('security', [
-        'delete-generic-password', '-s', MacOsKeychainCredentialStore.service, '-a', keychainAccount(principal)
-      ], {})
-    } catch (error) {
-      if (!isKeychainItemMissing(error)) throw error
-    }
+    await this.backend.remove(MacOsKeychainCredentialStore.service, keychainAccount(principal))
   }
 
   private requireMacOs(): void {
@@ -129,26 +166,6 @@ function parseCredential(raw: string): AccountCredential {
   }
 }
 
-function isKeychainItemMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 44
-}
-
-async function defaultKeychainCommand(executable: string, args: string[], options: { stdin?: string }): Promise<KeychainCommandResult> {
-  return await new Promise<KeychainCommandResult>((resolve, reject) => {
-    const child = spawn(executable, args, { stdio: ['pipe', 'pipe', 'ignore'] })
-    let stdout = ''
-    child.stdout.setEncoding('utf8')
-    child.stdout.on('data', (chunk: string) => { stdout += chunk })
-    child.once('error', reject)
-    child.once('exit', (code) => {
-      if (code === 0) resolve({ stdout })
-      else {
-        const error = new Error('desktop_keychain_command_failed') as Error & { code?: number }
-        error.code = code ?? undefined
-        reject(error)
-      }
-    })
-    if (options.stdin) child.stdin.end(options.stdin)
-    else child.stdin.end()
-  })
+function isFileMissing(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'ENOENT'
 }

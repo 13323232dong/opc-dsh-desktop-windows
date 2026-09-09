@@ -41,6 +41,10 @@ const MEMBER_LABEL_PREFIX = 'agent-teams:';
 function memberSessionTitle(team, member) {
     return `${team.name} / ${member.name}`;
 }
+/** Harness may emit agent/created before a fresh session initializes events. */
+function sessionEvents(child) {
+    return Array.isArray(child.session.events) ? child.session.events : [];
+}
 /**
  * Pin the member's title only while it is platform-generated or already ours.
  * A user rename has the same durable source kind as a pin, so a distinct
@@ -57,7 +61,11 @@ function syncMemberSessionTitle(ctx, child, team, member) {
 }
 /** Synchronize a persisted member session whenever it becomes locally live. */
 function syncStoredMemberSessionTitle(ctx, child, stateDir) {
-    const suffix = child.session.events.slice(child.session.header.seedLength ?? 0);
+    // Ordinary sessions have no subagent lineage and their event list is not
+    // necessarily initialized at agent-created time.
+    if (child.session.header.parentSession === undefined)
+        return;
+    const suffix = sessionEvents(child).slice(child.session.header.seedLength ?? 0);
     const descriptor = foldSubagentDescriptor(suffix);
     if (descriptor?.mode !== 'continuable' || !descriptor.label.startsWith(MEMBER_LABEL_PREFIX))
         return;
@@ -188,16 +196,16 @@ export function installMemberSelectionRuntime(ctx, stateDir) {
     for (const agent of ctx.agents.list())
         syncStoredMemberSessionTitle(ctx, agent, stateDir);
     ctx.on('agent/created', ({ agent }) => syncStoredMemberSessionTitle(ctx, agent, stateDir));
-    // DSH 0.1.2-rc.1 does not expose the newer setup hook. The team can still
-    // create durable members with the provider-selected route; only the
-    // optional per-member model-selection bridge is unavailable on that host.
     const registerContinuableSetup = ctx.subagents.registerContinuableSetup;
-    if (typeof registerContinuableSetup === 'function')
-        registerContinuableSetup.call(ctx.subagents, (childCtx) => {
+    if (typeof registerContinuableSetup !== 'function') {
+        ctx.logger.warn('agent-teams: this DSH runtime does not support continuable setup hooks; cold-resumed members use their persisted subagent descriptor');
+        return pendingMemberSelectionRuntime(pending);
+    }
+    registerContinuableSetup.call(ctx.subagents, (childCtx) => {
         const child = childCtx.agent;
         if (child === undefined)
             return () => undefined;
-        const suffix = child.session.events.slice(child.session.header.seedLength ?? 0);
+        const suffix = sessionEvents(child).slice(child.session.header.seedLength ?? 0);
         const descriptor = foldSubagentDescriptor(suffix);
         if (descriptor?.mode !== 'continuable' || !descriptor.label.startsWith(MEMBER_LABEL_PREFIX)) {
             return () => undefined;
@@ -234,13 +242,15 @@ export function installMemberSelectionRuntime(ctx, stateDir) {
             current: modelSelection(selection),
             assembled: undefined,
         });
-        });
+    });
+    return pendingMemberSelectionRuntime(pending);
+}
+function pendingMemberSelectionRuntime(pending) {
     return {
         async withPending(parentSessionId, label, selection, operation) {
             const key = pendingSelectionKey(parentSessionId, label);
-            if (pending.has(key)) {
+            if (pending.has(key))
                 throw new Error(`member model selection is already pending for "${label}"`);
-            }
             pending.set(key, selection);
             try {
                 return await operation();

@@ -31,12 +31,11 @@ export function bundledHarnessVersion(appPath: string): string | undefined {
 
 export function aboutDetail(
   desktopVersion: string,
-  harnessVersion: string | undefined,
+  _harnessVersion: string | undefined,
   locale: 'en' | 'zh'
 ): string {
-  const harness = harnessVersion ?? (locale === 'zh' ? '未知' : 'Unknown')
   if (locale === 'zh') {
-    return `DSH Desktop 版本：${desktopVersion}\n内置 Harness 版本：${harness}\n\nHarness 随 DSH Desktop 更新。`
+    return `伟东 OPC Desktop 版本：${desktopVersion}\n统一发行版本：${desktopVersion}\n\n桌面端版本统一管理内置 Harness 与插件。`
   }
-  return `DSH Desktop version: ${desktopVersion}\nBundled Harness version: ${harness}\n\nHarness is updated with DSH Desktop.`
+  return `Weidong OPC Desktop version: ${desktopVersion}\nUnified release version: ${desktopVersion}\n\nThe Desktop release version governs the bundled Harness and plugins.`
 }

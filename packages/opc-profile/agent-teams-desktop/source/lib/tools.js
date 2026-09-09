@@ -265,7 +265,7 @@ export function registerAgentTeamsTools(ctx, config) {
     }));
     ctx.tools.register(defineTool({
         name: 'agent_teams_add_member',
-        description: 'Add a durable continuable member. By default it snapshots the captain\'s current LLM route and effort. Supply provider/model only for an explicitly requested role-specific route; a changed provider or model automatically uses the target model\'s default effort. Set reasoning_effort only to request one of the target model\'s supported ids explicitly (or "default" to force its default). The member waits for messages, works on assigned tasks, and can message the team.',
+        description: 'Add a durable continuable member, or retry an unspawned failed proposal with the same name. By default it snapshots the captain\'s current LLM route and effort. Supply provider/model only for an explicitly requested role-specific route; a changed provider or model automatically uses the target model\'s default effort. Set reasoning_effort only to request one of the target model\'s supported ids explicitly (or "default" to force its default). The member waits for messages, works on assigned tasks, and can message the team.',
         parameters: {
             name: { type: 'string', required: true, description: 'Unique member name inside the team.' },
             role: { type: 'string', description: 'Role of the member (e.g. researcher, engineer, reviewer).' },
@@ -316,15 +316,20 @@ export function registerAgentTeamsTools(ctx, config) {
                 if (memberKey === CAPTAIN_KEY) {
                     throw new Error(`member name "${args.name}" is reserved for the captain`);
                 }
-                if (fresh.members.some((candidate) => sanitizeKey(candidate.name) === memberKey)) {
+                const existingMemberIndex = fresh.members.findIndex((candidate) => sanitizeKey(candidate.name) === memberKey);
+                const failedProposal = existingMemberIndex < 0 ? undefined : fresh.members[existingMemberIndex];
+                const retryingFailedProposal = failedProposal?.status === 'failed' && failedProposal.id === '';
+                if (existingMemberIndex >= 0 && !retryingFailedProposal) {
                     throw new Error(`member name "${args.name}" has already been used in team "${fresh.name}"`);
                 }
                 if (fresh.members.filter(isActiveTeamMember).length >= config.maxMembers) {
                     throw new Error(`team "${fresh.name}" is at its member cap (${config.maxMembers})`);
                 }
-                const requestedProfileId = typeof args.agent_id === 'string' && isPersistentMemberProfileId(args.agent_id.trim())
+                const explicitProfileId = typeof args.agent_id === 'string' && isPersistentMemberProfileId(args.agent_id.trim())
                     ? args.agent_id.trim()
                     : undefined;
+                const requestedProfileId = explicitProfileId
+                    ?? (isPersistentMemberProfileId(failedProposal?.agentId) ? failedProposal.agentId : undefined);
                 const profile = requestedProfileId === undefined || config.controlPlaneEnabled !== true
                     ? undefined
                     : await (async () => {
@@ -355,14 +360,21 @@ export function registerAgentTeamsTools(ctx, config) {
                     provider: selection.provider,
                     model: selection.model,
                     reasoningEffort: selection.reasoningEffort,
-                    ...(typeof args.agent_id === 'string' && args.agent_id.trim() !== '' ? { agentId: args.agent_id.trim() } : {}),
+                    ...(requestedProfileId === undefined ? {} : { agentId: requestedProfileId }),
                     ...(typeof args.agent_version === 'number' && Number.isInteger(args.agent_version) && args.agent_version > 0
                         ? { agentVersion: args.agent_version }
-                        : profile === undefined ? {} : { agentVersion: profile.currentVersion }),
-                    ...(typeof args.soul_id === 'string' && args.soul_id.trim() !== '' ? { soulId: args.soul_id.trim() } : {}),
-                    ...(typeof args.selection_reason === 'string' && args.selection_reason.trim() !== '' ? { selectionReason: args.selection_reason.trim().slice(0, 500) } : {}),
-                    ...(typeof args.created_from_task_id === 'string' && args.created_from_task_id.trim() !== '' ? { createdFromTaskId: args.created_from_task_id.trim() } : {}),
-                    joinedAt: Date.now(),
+                        : profile !== undefined ? { agentVersion: profile.currentVersion }
+                            : failedProposal?.agentVersion === undefined ? {} : { agentVersion: failedProposal.agentVersion }),
+                    ...(typeof args.soul_id === 'string' && args.soul_id.trim() !== ''
+                        ? { soulId: args.soul_id.trim() }
+                        : failedProposal?.soulId === undefined ? {} : { soulId: failedProposal.soulId }),
+                    ...(typeof args.selection_reason === 'string' && args.selection_reason.trim() !== ''
+                        ? { selectionReason: args.selection_reason.trim().slice(0, 500) }
+                        : failedProposal?.selectionReason === undefined ? {} : { selectionReason: failedProposal.selectionReason }),
+                    ...(typeof args.created_from_task_id === 'string' && args.created_from_task_id.trim() !== ''
+                        ? { createdFromTaskId: args.created_from_task_id.trim() }
+                        : failedProposal?.createdFromTaskId === undefined ? {} : { createdFromTaskId: failedProposal.createdFromTaskId }),
+                    joinedAt: failedProposal?.joinedAt ?? Date.now(),
                     status: 'provisioning',
                 };
                 const soul = (member.soulId ?? member.agentId) === undefined
@@ -413,7 +425,9 @@ export function registerAgentTeamsTools(ctx, config) {
                     member.agentVersion = profile.currentVersion;
                     member.selectionReason = '组长首次组建时自动登记到“我的 Agent”';
                 }
-                fresh.members.push(member);
+                fresh.members = retryingFailedProposal
+                    ? fresh.members.map((candidate, index) => index === existingMemberIndex ? member : candidate)
+                    : [...fresh.members, member];
                 try {
                     // Persist the proposal before publishing the continuable child. A
                     // process crash between these phases can be reconciled from the

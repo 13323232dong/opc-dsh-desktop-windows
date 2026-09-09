@@ -16,7 +16,9 @@ export interface DesktopAuthSession {
  */
 export interface DesktopAuthProvider {
   currentSession(): Promise<DesktopAuthSession | undefined>
-  signIn(): Promise<DesktopAuthSession | undefined>
+  signIn(input: { username: string; password: string }): Promise<DesktopAuthSession | undefined>
+  requestRegistrationCode?(input: { username: string; password: string; email: string }): Promise<void>
+  confirmRegistration?(input: { username: string; password: string; email: string; code: string }): Promise<void>
   signOut(): Promise<void>
 }
 
@@ -33,15 +35,39 @@ export class DesktopAuthController {
     return await this.activate(await this.options.provider.currentSession())
   }
 
-  async signIn(): Promise<AccountRuntimeContext | undefined> {
-    return await this.activate(await this.options.provider.signIn())
+  async signIn(input: { username: string; password: string }): Promise<AccountRuntimeContext | undefined> {
+    return await this.activate(await this.options.provider.signIn(input))
+  }
+
+  async requestRegistrationCode(input: { username: string; password: string; email: string }): Promise<void> {
+    if (!this.options.provider.requestRegistrationCode) throw new Error('desktop_auth_registration_unavailable')
+    await this.options.provider.requestRegistrationCode(input)
+  }
+
+  async confirmRegistration(input: { username: string; password: string; email: string; code: string }): Promise<void> {
+    if (!this.options.provider.confirmRegistration) throw new Error('desktop_auth_registration_unavailable')
+    await this.options.provider.confirmRegistration(input)
   }
 
   async signOut(): Promise<void> {
     const context = this.options.runtime.snapshot?.()?.context
-    await this.options.runtime.signOut()
-    if (context) await this.options.credentials.remove(context.principal)
-    await this.options.provider.signOut()
+    let firstError: unknown
+    try {
+      await this.options.runtime.signOut()
+    } catch (error) {
+      firstError = error
+    }
+    try {
+      if (context) await this.options.credentials.remove(context.principal)
+    } catch (error) {
+      firstError ??= error
+    }
+    try {
+      await this.options.provider.signOut()
+    } catch (error) {
+      firstError ??= error
+    }
+    if (firstError) throw firstError
   }
 
   private async activate(session: DesktopAuthSession | undefined): Promise<AccountRuntimeContext | undefined> {

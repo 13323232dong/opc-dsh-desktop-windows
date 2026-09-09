@@ -3,13 +3,15 @@ import { Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ActivityPanel } from "./ActivityPanel.js";
 import { AgentTeamsCard } from "./AgentTeamsCard.js";
+import { agentTeamsCardDefinition } from "./agent-teams-card-definition.js";
 import { openMemberSubagent } from "./member-navigation.js";
 import { createToolLibraryClient } from "./tool-library-client.js";
 import { SessionArtifactDownloads } from "./session-artifact-downloads.js";
 /**
- * DSH 0.1.2-rc.1 exposes slots and session navigation but not the newer
- * conversation-events card registry. The activity panel remains the primary
- * desktop surface, so this host does not access that unavailable service.
+ * The activity panel only needs slots and session navigation. Newer DSH web
+ * clients additionally expose `conversationEvents`, which lets us render the
+ * in-conversation team card. Older desktop runtimes do not provide that
+ * service, so treating it as optional keeps the full Teams workbench usable.
  */
 export const inject = ['slots', 'sessions'];
 /**
@@ -28,6 +30,9 @@ export function apply(ctx) {
         root.unmount();
         host.remove();
     }, 'agent-teams: activity panel');
+    const conversationEvents = ctx.get('conversationEvents');
+    if (conversationEvents)
+        conversationEvents.register(agentTeamsCardDefinition);
     ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
         name: 'conversation.chat.node',
         key: 'agent-teams',

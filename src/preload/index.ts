@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { AvailableRelease, UpdateStatus } from '../shared/contracts'
 import { setupDesktopStoragePersistence } from './desktop-storage'
 import {
@@ -57,6 +57,22 @@ const pendingBootFailureMessages: string[] = []
 
 const BOOT_FAILURE_SETTLE_MS = 400
 const RENDERER_HEALTH_HEARTBEAT_MS = 5_000
+const DESKTOP_PRODUCT_NAME_ZH = 'Evan超级管家'
+const DESKTOP_PRODUCT_NAME_EN = 'Evan Super Butler'
+const UPSTREAM_TITLE_BRAND_RE = /DeepSeek Harness|DSH Desktop/g
+
+function desktopProductName(): string {
+  return locale === 'zh' ? DESKTOP_PRODUCT_NAME_ZH : DESKTOP_PRODUCT_NAME_EN
+}
+
+function brandedDocumentTitle(title: string): string {
+  return title.replace(UPSTREAM_TITLE_BRAND_RE, desktopProductName())
+}
+
+function applyDesktopTitleBranding(): void {
+  const branded = brandedDocumentTitle(document.title)
+  if (branded !== document.title) document.title = branded
+}
 
 function reportRendererHealthy(): void {
   if (rendererHealthReportInFlight || !sidebarRoot?.isConnected) return
@@ -132,6 +148,7 @@ function scheduleDomSync(): void {
 
 function runDomSync(): void {
   domSyncScheduled = false
+  applyDesktopTitleBranding()
   mountMobileButton()
   if (bootScanSettled) return
   // The boot screen only exists until Harness renders its own UI, and the
@@ -147,6 +164,89 @@ function runDomSync(): void {
 contextBridge.exposeInMainWorld('dshDesktopDirectoryPicker', {
   pick: (): Promise<string | null> => ipcRenderer.invoke('directory-picker:open')
 })
+
+function reportNativeFolderDrop(status: string): void {
+  ipcRenderer.send('desktop:file-drop-diagnostic', status)
+}
+
+function nativeDropPathForBridge(file: File): string | null {
+  reportNativeFolderDrop('bridge-called')
+  try {
+    const path = webUtils.getPathForFile(file)
+    if (!path) {
+      reportNativeFolderDrop('bridge-path-missing')
+      return null
+    }
+    reportNativeFolderDrop('bridge-path-ready')
+    return path
+  } catch {
+    reportNativeFolderDrop('bridge-path-error')
+    return null
+  }
+}
+
+function captureNativeFileDrop(event: DragEvent): void {
+  reportNativeFolderDrop('drop-observed')
+  const transfer = event.dataTransfer
+  const files = Array.from(transfer?.files ?? [])
+  const itemFiles = files.length === 0
+    ? Array.from(transfer?.items ?? []).map((item) => item.getAsFile()).filter((file): file is File => file !== null)
+    : []
+  const nativeFiles = files.length ? files : itemFiles
+  if (!nativeFiles.length) {
+    reportNativeFolderDrop('file-missing')
+    return
+  }
+
+  try {
+    const paths = nativeFiles.map((file) => webUtils.getPathForFile(file)).filter((path): path is string => Boolean(path?.trim())).map((path) => path.trim())
+    if (!paths.length) {
+      reportNativeFolderDrop('native-path-missing')
+      return
+    }
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    // Resolve every native Finder item while the File objects are still valid.
+    // The main process forwards the paths to the session input bridge; this
+    // keeps PDFs, video, archives, and other non-image files out of the
+    // browser's image-only upload path.
+    ipcRenderer.send('desktop:file-drop', paths)
+    reportNativeFolderDrop('directory-dispatched')
+  } catch {
+    reportNativeFolderDrop('native-path-error')
+    // Non-native drops keep their normal browser/attachment behavior.
+  }
+}
+
+document.addEventListener('drop', captureNativeFileDrop, true)
+
+const nativeDropSubscribers = new Set<(path: string) => void>()
+
+ipcRenderer.on('desktop:file-drop', (_event, path: unknown) => {
+  if (typeof path !== 'string' || !path.trim()) return
+  for (const subscriber of [...nativeDropSubscribers]) subscriber(path)
+})
+
+// Electron no longer guarantees File.path in the isolated renderer. Keep the
+// native path capability narrowly scoped to dropped File objects so desktop
+// plugins can handle Finder folder drops without exposing arbitrary filesystem
+// access to the page.
+contextBridge.exposeInMainWorld('dshDesktopFileDrop', Object.freeze({
+  getPathForFile: (file: File): string | null => {
+    return nativeDropPathForBridge(file)
+  },
+  getInfoForFile: (file: File): { path: string; isDirectory: boolean } | null => {
+    const path = nativeDropPathForBridge(file)
+    return path ? { path, isDirectory: false } : null
+  },
+  // Native Finder drops are the only source of this value. The page may
+  // subscribe but cannot manufacture a path or send arbitrary IPC traffic.
+  subscribe: (listener: (path: string) => void): (() => void) => {
+    if (typeof listener !== 'function') return () => undefined
+    nativeDropSubscribers.add(listener)
+    return () => nativeDropSubscribers.delete(listener)
+  }
+}))
 
 /**
  * `[data-dsh-*]` lookups are attribute selectors with no index behind them, so
@@ -318,6 +418,7 @@ function initializeUi(): void {
     mountWindowsTitlebarLayout({ document, ipcRenderer })
   }
   mount()
+  applyDesktopTitleBranding()
   mountAbout()
   mountMobileButton()
   checkBootFailureInDom()
@@ -356,6 +457,19 @@ contextBridge.exposeInMainWorld(
     restartHarness: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('harness:restart'),
     uninstallMarket: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('market:uninstall'),
     openInFinder: (path: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('harness:open-in-finder', path)
+  })
+)
+
+contextBridge.exposeInMainWorld(
+  'dshDesktopAuth',
+  Object.freeze({
+    signIn: (input: { username: string; password: string; rememberPassword?: boolean }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    requestRegistrationCode: (input: { username: string; password: string; email: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:registration-request-code', input),
+    confirmRegistration: (input: { username: string; password: string; email: string; code: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:registration-confirm', input),
+    listSavedLogins: (): Promise<Array<{ username: string; hasPassword: boolean }>> => ipcRenderer.invoke('desktop-auth:login-history'),
+    loadSavedPassword: (username: string): Promise<string | undefined> => ipcRenderer.invoke('desktop-auth:login-password', username),
+    clearSavedPassword: (username: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:clear-login-password', username),
+    signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out')
   })
 )
 
@@ -465,12 +579,12 @@ function render(): void {
 
   if (status.phase === 'available') {
     const actions = element('div', 'actions')
-    const accept = button(locale === 'zh' ? '同意更新' : 'Update now', 'primary')
+    const accept = button(locale === 'zh' ? '更新并重启' : 'Update and restart', 'primary')
     accept.disabled = accepting
     accept.addEventListener('click', () => {
       accepting = true
       render()
-      void ipcRenderer.invoke('updates:download').catch((error: unknown) => {
+      void ipcRenderer.invoke('updates:download-and-install').catch((error: unknown) => {
         accepting = false
         console.error('[updater] unable to download update', error)
         render()
@@ -686,15 +800,15 @@ function renderAbout(): void {
   // Body content matching user's screenshot
   const body = element('div', 'about-body')
   const line1 = element('p', 'about-line')
-  line1.textContent = `${zh ? 'DSH Desktop 版本： ' : 'DSH Desktop version: '}${info.desktopVersion}`
+  line1.textContent = `${zh ? '伟东 OPC Desktop 版本： ' : 'Weidong OPC Desktop version: '}${info.desktopVersion}`
   body.appendChild(line1)
 
   const line2 = element('p', 'about-line')
-  line2.textContent = `${zh ? '内置 Harness 版本： ' : 'Bundled Harness version: '}${info.harnessVersion}`
+  line2.textContent = `${zh ? '统一发行版本： ' : 'Unified release version: '}${info.desktopVersion}`
   body.appendChild(line2)
 
   const hint = element('p', 'about-hint')
-  hint.textContent = zh ? 'Harness 随 DSH Desktop 更新。' : 'Harness is updated with DSH Desktop.'
+  hint.textContent = zh ? '桌面端版本统一管理内置 Harness 与插件。' : 'The Desktop release version governs the bundled Harness and plugins.'
   body.appendChild(hint)
   card.appendChild(body)
 

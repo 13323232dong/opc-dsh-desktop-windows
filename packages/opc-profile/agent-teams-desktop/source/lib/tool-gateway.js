@@ -23,6 +23,14 @@ const SAFE_UPSTREAM_ERROR_MESSAGES = Object.freeze({
     tool_provider_configuration_invalid: '请填写完整的配置内容',
     tool_provider_credential_storage_not_configured: '商户工具凭证存储尚未配置',
     tool_provider_credential_invalid: '商户工具凭证不可用，请重新保存配置',
+    tool_provider_test_unavailable: '当前工具暂不支持在线连接测试，配置仍已保存',
+    minimax_h3_not_configured: 'MiniMax H3 服务尚未配置',
+    minimax_h3_auth_failed: 'MiniMax H3 服务凭证无效，请检查 API Key',
+    minimax_h3_rate_limited: 'MiniMax H3 服务繁忙，请稍后重试',
+    minimax_h3_quota_exhausted: 'MiniMax H3 服务额度不足',
+    minimax_voice_not_configured: 'MiniMax 语音服务尚未配置',
+    minimax_voice_auth_failed: 'MiniMax 语音服务凭证无效，请检查 API Key',
+    minimax_voice_rate_limited: 'MiniMax 语音服务繁忙，请稍后重试',
     TOOL_PROVIDER_NOT_CONFIGURED: '请先在工具库完成配置',
     tool_provider_credentials_invalid: '请先保存并测试有效的飞书应用凭证',
     tool_provider_oauth_unsupported: '该工具不支持 OAuth 授权',
@@ -119,6 +127,21 @@ function isHarnessTarget(path) {
     return pathname === '/api/v1/agent/profiles' || pathname.startsWith('/api/v1/agent/profiles/')
         || pathname === '/api/v1/agent/shared-memory' || pathname.startsWith('/api/v1/agent/shared-memory/');
 }
+function desktopBrokerEndpoint() {
+    const endpoint = process.env.OPC_LOCAL_BROKER_URL?.trim().replace(/\/$/, '') ?? '';
+    const token = process.env.OPC_LOCAL_BROKER_TOKEN?.trim() ?? '';
+    if (token.length < 32)
+        return undefined;
+    try {
+        const url = new URL(endpoint);
+        if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || !/^\d{1,5}$/.test(url.port))
+            return undefined;
+        return `${url.toString().replace(/\/$/, '')}/capabilities/cloud.proxy`;
+    }
+    catch {
+        return undefined;
+    }
+}
 async function requestBody(req) {
     if (req.method === 'GET' || req.method === 'HEAD')
         return undefined;
@@ -148,6 +171,37 @@ export async function handleToolGatewayRequest(req, res, config, fetcher = fetch
     if (target === undefined)
         return fail(res, 404, 'TOOL_ROUTE_NOT_FOUND', '工具库接口不存在');
     const useHarness = isHarnessTarget(target.path);
+    const brokerEndpoint = desktopBrokerEndpoint();
+    if (brokerEndpoint !== undefined) {
+        try {
+            const body = await requestBody(req);
+            const response = await fetcher(brokerEndpoint, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${process.env.OPC_LOCAL_BROKER_TOKEN}`,
+                    ...(body === undefined ? {} : { 'Idempotency-Key': `agent-teams:${randomUUID()}` }),
+                },
+                body: JSON.stringify({
+                    path: target.path,
+                    method: target.method,
+                    ...(body === undefined ? {} : { body: JSON.parse(body) }),
+                }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                const code = payload && typeof payload === 'object' && 'error' in payload
+                    ? Reflect.get(Reflect.get(payload, 'error') ?? {}, 'code') : undefined;
+                return fail(res, response.status, typeof code === 'string' ? code : 'TOOL_GATEWAY_FAILED', safeUpstreamErrorMessage(code));
+            }
+            return sendJson(res, 200, payload && typeof payload === 'object' && Reflect.get(payload, 'success') === true
+                ? payload : { success: true, data: payload });
+        }
+        catch {
+            return fail(res, 503, 'TOOL_GATEWAY_UNAVAILABLE', '工具服务暂时不可用');
+        }
+    }
     const secret = useHarness
         // Keep standalone installations backward compatible. OPC's profile
         // supplies a distinct Harness key, so production never takes this path.

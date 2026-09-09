@@ -53,15 +53,24 @@ function ProviderConfigurationModal({ metadata, client, onClose }) {
             setConfiguration(saved);
             setValues({});
             setVisibleSecrets({});
-            const tested = await client.testProviderConfiguration(metadata.providerId);
-            setConfiguration(tested);
-            if (metadata.providerId === 'feishu' && client.getFeishuConnection)
-                setFeishuConnection(await client.getFeishuConnection());
-            setMessage(tested.status === 'invalid'
-                ? '配置已保存，但连接测试未通过，请检查凭证。'
-                : tested.status === 'unavailable'
-                    ? '配置已保存，但连接测试暂不可用，请稍后重试。'
-                    : '配置已保存并完成连接测试。');
+            // Saving and testing are separate operations. A provider may be stored
+            // successfully even when its live test is unavailable, so never report
+            // a successful save as a save failure.
+            setMessage('配置已保存，正在测试连接…');
+            try {
+                const tested = await client.testProviderConfiguration(metadata.providerId);
+                setConfiguration(tested);
+                if (metadata.providerId === 'feishu' && client.getFeishuConnection)
+                    setFeishuConnection(await client.getFeishuConnection());
+                setMessage(tested.status === 'invalid'
+                    ? '配置已保存，但连接测试未通过，请检查凭证。'
+                    : tested.status === 'unavailable'
+                        ? '配置已保存，但连接测试暂不可用，请稍后重试。'
+                        : '配置已保存并完成连接测试。');
+            }
+            catch (cause) {
+                setMessage(`配置已保存，但连接测试失败：${configurationErrorMessage(cause, '服务暂时不可用，请稍后重试。')}`);
+            }
         }
         catch (cause) {
             setMessage(configurationErrorMessage(cause, '配置保存失败，请检查填写内容。'));
@@ -151,7 +160,7 @@ function ProviderConfigurationModal({ metadata, client, onClose }) {
                         const fieldState = configuration?.fields[field.key];
                         const visible = visibleSecrets[field.key] === true;
                         return _jsxs("label", { className: css.field, children: [_jsxs("span", { children: [field.label, field.required ? ' *' : ''] }), _jsxs("div", { className: css.secretField, children: [_jsx("input", { "aria-label": field.label, type: field.type === 'secret' ? (visible ? 'text' : 'password') : 'text', value: values[field.key] ?? '', placeholder: fieldState?.configured ? `${fieldState.mask ?? '已配置'}（留空则不变）` : field.placeholder, onChange: event => setValues({ ...values, [field.key]: event.target.value }), autoComplete: "off" }), field.type === 'secret' && _jsx("button", { type: "button", className: css.iconButton, "aria-label": visible ? `隐藏${field.label}` : `显示${field.label}`, onClick: () => setVisibleSecrets({ ...visibleSecrets, [field.key]: !visible }), children: visible ? _jsx(EyeOff, { size: 14 }) : _jsx(Eye, { size: 14 }) })] }), field.description && _jsx("small", { children: field.description })] }, field.key);
-                    }) }), metadata.providerId === 'feishu' && status === 'connected' && _jsxs("div", { className: css.providerDestination, children: [_jsx("input", { "aria-label": "\u9ED8\u8BA4\u98DE\u4E66\u6587\u4EF6\u5939\u94FE\u63A5", value: folderUrl, placeholder: "\u7C98\u8D34\u98DE\u4E66\u6587\u4EF6\u5939\u94FE\u63A5", onChange: event => setFolderUrl(event.target.value) }), _jsx("button", { type: "button", className: css.textButton, onClick: () => { void saveFolder(); }, disabled: busy || !folderUrl.trim(), children: "\u8BBE\u4E3A\u9ED8\u8BA4" })] }), feishuConnection?.scopes && _jsx("div", { className: css.tags, children: feishuConnection.scopes.map(scope => _jsx("span", { children: scope }, scope)) }), _jsxs("div", { className: css.providerActions, children: [_jsx("button", { type: "button", className: css.primaryButton, onClick: () => { void save(); }, disabled: busy, children: "\u4FDD\u5B58\u914D\u7F6E" }), metadata.canTest && _jsx("button", { type: "button", className: css.textButton, onClick: () => { void test(); }, disabled: busy, children: "\u6D4B\u8BD5\u8FDE\u63A5" }), needsOAuth && _jsx("button", { type: "button", className: css.textButton, onClick: () => { void connect(); }, disabled: busy || status === 'not_configured' || status === 'invalid', children: status === 'connected' ? '重新授权' : '连接账号' }), _jsx("button", { type: "button", className: css.textButton, onClick: load, disabled: busy, children: "\u5237\u65B0\u72B6\u6001" }), configuration !== null && status !== 'not_configured' && _jsx("button", { type: "button", className: css.dangerButton, onClick: () => { void remove(); }, disabled: busy, children: "\u5220\u9664\u914D\u7F6E" })] }), metadata.docsUrl && _jsxs("a", { className: css.docsLink, href: metadata.docsUrl, target: "_blank", rel: "noreferrer", children: ["\u67E5\u770B\u4F9B\u5E94\u5546\u914D\u7F6E\u6587\u6863 ", _jsx(ExternalLink, { size: 12 })] }), message && _jsx("div", { className: css.inlineStatus, role: "status", children: message })] }) });
+                    }) }), metadata.providerId === 'feishu' && status === 'connected' && _jsxs("div", { className: css.providerDestination, children: [_jsx("input", { "aria-label": "\u9ED8\u8BA4\u98DE\u4E66\u6587\u4EF6\u5939\u94FE\u63A5", value: folderUrl, placeholder: "\u7C98\u8D34\u98DE\u4E66\u6587\u4EF6\u5939\u94FE\u63A5", onChange: event => setFolderUrl(event.target.value) }), _jsx("button", { type: "button", className: css.textButton, onClick: () => { void saveFolder(); }, disabled: busy || !folderUrl.trim(), children: "\u8BBE\u4E3A\u9ED8\u8BA4" })] }), feishuConnection?.scopes && _jsx("div", { className: css.tags, children: feishuConnection.scopes.map(scope => _jsx("span", { children: scope }, scope)) }), _jsxs("div", { className: css.providerActions, children: [_jsx("button", { type: "button", className: css.primaryButton, onClick: () => { void save(); }, disabled: busy, children: "\u4FDD\u5B58\u914D\u7F6E" }), metadata.canTest && _jsx("button", { type: "button", className: css.textButton, onClick: () => { void test(); }, disabled: busy, children: "\u6D4B\u8BD5\u8FDE\u63A5" }), needsOAuth && _jsx("button", { type: "button", className: css.textButton, onClick: () => { void connect(); }, disabled: busy || status === 'not_configured' || status === 'invalid', children: status === 'connected' ? '重新授权' : '连接账号' }), _jsx("button", { type: "button", className: css.textButton, onClick: load, disabled: busy, children: "\u5237\u65B0\u72B6\u6001" }), configuration !== null && status !== 'not_configured' && _jsx("button", { type: "button", className: css.dangerButton, onClick: () => { void remove(); }, disabled: busy, children: "\u5220\u9664\u914D\u7F6E" })] }), metadata.docsUrl && _jsxs("a", { className: css.docsLink, href: metadata.docsUrl, target: "_blank", rel: "noreferrer", children: ["\u67E5\u770B\u4F9B\u5E94\u5546\u914D\u7F6E\u6587\u6863 ", _jsx(ExternalLink, { size: 12 })] }), message && _jsx("div", { className: css.inlineStatus, "data-state": message.startsWith('配置已保存') ? 'success' : 'error', role: "status", children: message })] }) });
 }
 function DouyinAccountButton({ client }) {
     const [account, setAccount] = useState(null);
@@ -359,22 +368,32 @@ export function ToolLibraryView({ sessionId, client, conversationId, runId }) {
     const [tools, setTools] = useState([]);
     const [expansion, setExpansion] = useState(() => createToolGroupExpansionState(sessionId, []));
     const [state, setState] = useState('loading');
+    const [retryNonce, setRetryNonce] = useState(0);
     useEffect(() => {
         const controller = new AbortController();
         setState('loading');
         setTools([]);
         setExpansion(createToolGroupExpansionState(sessionId, []));
-        void client.listTools(controller.signal).then(next => {
+        let retryTimer;
+        const load = (attempt) => client.listTools(controller.signal).then(next => {
             if (controller.signal.aborted)
                 return;
             const nextGroups = groupTools(next);
             setTools(next);
             setExpansion(createToolGroupExpansionState(sessionId, nextGroups.map(group => group.id)));
             setState('ready');
-        }).catch(() => { if (!controller.signal.aborted)
-            setState('error'); });
-        return () => controller.abort();
-    }, [client, sessionId]);
+        }).catch(() => {
+            if (controller.signal.aborted)
+                return;
+            if (attempt < 2)
+                retryTimer = window.setTimeout(() => { void load(attempt + 1); }, 1000 * (attempt + 1));
+            else
+                setState('error');
+        });
+        void load(0);
+        return () => { controller.abort(); if (retryTimer !== undefined)
+            window.clearTimeout(retryTimer); };
+    }, [client, sessionId, retryNonce]);
     const groups = useMemo(() => groupTools(tools), [tools]);
     useEffect(() => {
         setExpansion(current => reconcileToolGroupExpansionState(current, sessionId, groups.map(group => group.id)));
@@ -382,6 +401,6 @@ export function ToolLibraryView({ sessionId, client, conversationId, runId }) {
     if (state === 'loading')
         return _jsx("div", { className: css.loadState, children: "\u6B63\u5728\u52A0\u8F7D\u5DE5\u5177\u5E93..." });
     if (state === 'error')
-        return _jsxs("div", { className: css.loadState, role: "alert", children: [_jsx("strong", { children: "\u5DE5\u5177\u5E93\u6682\u65F6\u65E0\u6CD5\u52A0\u8F7D" }), _jsx("span", { children: "\u670D\u52A1\u7AEF\u8EAB\u4EFD\u672A\u914D\u7F6E\u6216\u7F51\u5173\u4E0D\u53EF\u7528\u3002" })] });
+        return _jsxs("div", { className: css.loadState, role: "alert", children: [_jsx("strong", { children: "\u5DE5\u5177\u5E93\u6682\u65F6\u65E0\u6CD5\u52A0\u8F7D" }), _jsx("span", { children: "\u670D\u52A1\u7AEF\u8EAB\u4EFD\u672A\u914D\u7F6E\u6216\u7F51\u5173\u4E0D\u53EF\u7528\u3002" }), _jsx("button", { type: "button", className: css.textButton, onClick: () => setRetryNonce(value => value + 1), children: "\u91CD\u8BD5" })] });
     return _jsxs("div", { className: css.root, "aria-label": "Agent \u5DE5\u5177\u5E93", children: [_jsxs("header", { className: css.libraryIntro, children: [_jsx("strong", { children: "\u80FD\u529B\u6E05\u5355" }), _jsx("span", { children: "AI \u56E2\u961F\u4F1A\u6839\u636E\u60A8\u7684\u4EFB\u52A1\u81EA\u52A8\u9009\u62E9\u5408\u9002\u80FD\u529B\uFF0C\u65E0\u9700\u60A8\u624B\u52A8\u64CD\u4F5C\u3002" })] }), _jsx(ToolList, { groups: groups, expansion: expansion, onToggle: groupId => setExpansion(current => toggleToolGroupExpansion(current, groupId)), client: client })] });
 }

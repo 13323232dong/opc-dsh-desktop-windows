@@ -36,10 +36,12 @@ describe('desktop version information', () => {
     expect(bundledHarnessVersion(root)).toBe('0.1.0-rc.8')
   })
 
-  it('explains that Harness updates arrive with Desktop', () => {
-    expect(aboutDetail('0.1.1', '0.1.0-rc.8', 'zh')).toContain('内置 Harness 版本：0.1.0-rc.8')
-    expect(aboutDetail('0.1.1', '0.1.0-rc.8', 'en')).toContain(
-      'Harness is updated with DSH Desktop.'
-    )
+  it('uses the Desktop release as the only product version shown to users', () => {
+    const zh = aboutDetail('0.1.1', '0.1.0-rc.8', 'zh')
+    const en = aboutDetail('0.1.1', '0.1.0-rc.8', 'en')
+    expect(zh).toContain('伟东 OPC Desktop 版本：0.1.1')
+    expect(zh).not.toContain('0.1.0-rc.8')
+    expect(en).toContain('Weidong OPC Desktop version: 0.1.1')
+    expect(en).not.toContain('0.1.0-rc.8')
   })
 })

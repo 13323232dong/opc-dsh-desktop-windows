@@ -74,7 +74,7 @@ describe('skipping one update', () => {
     // simply left alone — never costs a download.
     expect(manager).toContain('autoUpdater.autoDownload = false')
     expect(manager).toContain("ipcMain.handle('updates:download'")
-    expect(preload).toContain("'同意更新'")
-    expect(preload).toContain("ipcRenderer.invoke('updates:download')")
+    expect(preload).toContain("'更新并重启'")
+    expect(preload).toContain("ipcRenderer.invoke('updates:download-and-install')")
   })
 })

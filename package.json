@@ -1,6 +1,6 @@
 {
   "name": "opc-dsh-desktop",
-  "version": "0.1.1",
+  "version": "0.7.4",
   "description": "A cross-platform desktop shell for DeepSeek Harness.",
   "private": true,
   "type": "module",
@@ -25,7 +25,8 @@
   "scripts": {
     "postinstall": "patch-package && node scripts/install-brand-assets.mjs && install-electron --no",
     "dev": "electron-vite dev",
-    "build": "npm run build:market && electron-vite build",
+    "build": "npm run build:keychain-helper && npm run build:market && electron-vite build",
+    "build:keychain-helper": "node scripts/build-macos-keychain-helper.mjs",
     "build:market": "tsc -p packages/dshmarket/tsconfig.json",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "preview": "electron-vite preview",
@@ -353,12 +354,20 @@
         "to": "splash.html"
       },
       {
+        "from": "build/login.html",
+        "to": "login.html"
+      },
+      {
         "from": "build/dsh-loader.gif",
         "to": "dsh-loader.gif"
       },
       {
         "from": "build/dsh-loader-dark.gif",
         "to": "dsh-loader-dark.gif"
+      },
+      {
+        "from": "build/evan-super-employee.svg",
+        "to": "evan-super-employee.svg"
       },
       {
         "from": "build/plugin-recovery.html",
@@ -379,6 +388,12 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
+      "extraResources": [
+        {
+          "from": "build/opc-keychain-helper",
+          "to": "opc-keychain-helper"
+        }
+      ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "target": [

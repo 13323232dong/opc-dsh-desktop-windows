@@ -9,6 +9,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  safeStorage,
   shell,
   Tray,
   utilityProcess,
@@ -58,6 +59,7 @@ import {
   serializeGpuFallbackState
 } from './gpu-fallback'
 import { secureWindow } from './security'
+import { isTrustedFileUrl } from './security-policy'
 import { ensureLaunchRoot } from './state/launch-root'
 import {
   listInstalledProfilePlugins,
@@ -144,9 +146,14 @@ import {
   shouldReloadAfterMainWindowRendererLoss
 } from './main-window-recovery'
 import { DesktopAuthController } from './accounts/desktop-auth-controller'
-import { MacOsKeychainCredentialStore } from './accounts/credential-store'
+import { ElectronSafeStorageCredentialStore, MacOsKeychainCredentialStore } from './accounts/credential-store'
 import { NativeMacOsKeychainBackend } from './accounts/macos-keychain'
 import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
+import {
+  LoginHistoryStore,
+  MacOsLoginSecretStore,
+  SafeStorageLoginSecretStore
+} from './accounts/login-history-store'
 import { LocalCapabilityBroker } from './broker/local-capability-broker'
 import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
@@ -192,6 +199,7 @@ let activeHarnessLogPath: string | undefined
 let configuredDesktopEnvironment: Readonly<Record<string, string>> = {}
 let accountRuntimeManager: AccountRuntimeManager | undefined
 let desktopAuthController: DesktopAuthController | undefined
+let loginHistoryStore: LoginHistoryStore
 let quitting = false
 let failureRecoveryVisible = false
 let harnessLaunchOperation: Promise<void> | undefined
@@ -979,7 +987,12 @@ function createWindow(): BrowserWindow {
     appendRendererPluginFailureLog(details.message)
   })
   installPluginRecoveryNavigation(window)
-  secureWindow(window)
+  secureWindow(window, [
+    desktopResourcePath('splash.html'),
+    desktopResourcePath('login.html'),
+    desktopResourcePath('plugin-recovery.html'),
+    desktopResourcePath('safe-mode.html')
+  ])
   installContextMenu(window, harnessLocale)
   installMainWindowRendererRecovery(window)
   window.on('closed', () => {
@@ -1925,7 +1938,7 @@ async function waitForSafeModeAction(options: {
           webSecurity: true
         }
       })
-      secureWindow(manager)
+      secureWindow(manager, [desktopResourcePath('safe-mode.html')])
       manager.on('closed', () => {
         if (safeModeManagerWindow === manager) safeModeManagerWindow = undefined
         resolveSafeModeAction({ type: 'agent' })
@@ -2464,6 +2477,21 @@ async function showSafeModeManager(initial?: {
   }
 }
 
+async function signOutDesktopAccount(): Promise<void> {
+  if (!desktopAuthController || !activeDshHome) {
+    await showLoginPage()
+    return
+  }
+  try {
+    await desktopAuthController.signOut()
+  } finally {
+    activeDshHome = undefined
+    activeHarnessLogPath = undefined
+    desktopStorageManager = undefined
+    await showLoginPage('已退出当前账号。')
+  }
+}
+
 function installMenu(): void {
   const isChinese = harnessLocale() === 'zh'
   const checkForUpdatesLabel = isChinese
@@ -2490,17 +2518,7 @@ function installMenu(): void {
             },
             {
               label: isChinese ? '退出当前账号' : 'Sign Out',
-              click: () => {
-                if (!desktopAuthController || !activeDshHome) return
-                void desktopAuthController.signOut()
-                  .then(async () => {
-                    activeDshHome = undefined
-                    activeHarnessLogPath = undefined
-                    desktopStorageManager = undefined
-                    await showLoginPage('已退出当前账号。')
-                  })
-                  .catch(showUnexpectedError)
-              }
+              click: () => void signOutDesktopAccount().catch(showUnexpectedError)
             },
             { type: 'separator' as const },
             { role: 'hide' as const },
@@ -2533,6 +2551,11 @@ function installMenu(): void {
         {
           label: isChinese ? '查看 Harness 日志' : 'Show Harness Log',
           click: () => shell.showItemInFolder(join(app.getPath('logs'), 'harness.log'))
+        },
+        { type: 'separator' },
+        {
+          label: isChinese ? '退出账号' : 'Sign Out',
+          click: () => void signOutDesktopAccount().catch(showUnexpectedError)
         },
         ...(process.platform === 'darwin'
           ? []
@@ -2729,9 +2752,24 @@ async function bootstrap(): Promise<void> {
     },
     onConnectedChange: (connected) => broadcastMobileStatus(connected)
   })
-  const apiBaseUrl = configuredDesktopEnvironment.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'
-  const credentialStore = new MacOsKeychainCredentialStore({
-    backend: new NativeMacOsKeychainBackend({ helperPath: desktopResourcePath('opc-keychain-helper') })
+  // Development .app bundles use the Dev product name. Treat them as local
+  // even when Electron's packaged metadata cannot expose the channel field.
+  const localDevelopmentChannel = developmentBuild
+    || app.getName().endsWith('Dev')
+    || app.getPath('exe').includes('Dev.app')
+  const apiBaseUrl = configuredDesktopEnvironment.OPC_PUBLIC_API_BASE_URL
+    ?? (localDevelopmentChannel ? 'http://127.0.0.1:3001' : 'https://opc.ohmycode.cc')
+  console.warn(`[desktop] OPC API base: ${apiBaseUrl}`)
+  const allowsLoopbackApi = /^(?:https?:\/\/)?(?:127\.0\.0\.1|localhost)(?::\d+)?$/u.test(new URL(apiBaseUrl).origin)
+  const nativeMacOsKeychain = new NativeMacOsKeychainBackend({ helperPath: desktopResourcePath('opc-keychain-helper') })
+  const credentialStore = process.platform === 'darwin'
+    ? new MacOsKeychainCredentialStore({ backend: nativeMacOsKeychain })
+    : new ElectronSafeStorageCredentialStore({ root: app.getPath('userData'), safeStorage })
+  loginHistoryStore = new LoginHistoryStore({
+    root: app.getPath('userData'),
+    secrets: process.platform === 'darwin'
+      ? new MacOsLoginSecretStore(nativeMacOsKeychain)
+      : new SafeStorageLoginSecretStore({ root: app.getPath('userData'), safeStorage })
   })
   const mediaRuntime = createDesktopMediaRuntime(app.getPath('userData'))
   const broker = new LocalCapabilityBroker({
@@ -2739,7 +2777,7 @@ async function bootstrap(): Promise<void> {
     mediaRuntime,
     // A loopback API is permitted only in the development build for local UI
     // verification. Production desktop packages continue to require HTTPS.
-    allowInsecureCloudBaseUrl: /^(?:https?:\/\/)?(?:127\.0\.0\.1|localhost)(?::\d+)?$/u.test(new URL(apiBaseUrl).origin)
+    allowInsecureCloudBaseUrl: allowsLoopbackApi
   })
   accountRuntimeManager = new AccountRuntimeManager({
     root: app.getPath('userData'),
@@ -2750,7 +2788,7 @@ async function bootstrap(): Promise<void> {
   desktopAuthController = new DesktopAuthController({
     provider: new OpcDesktopAuthProvider({
       apiBaseUrl,
-      allowInsecureApiBaseUrl: developmentBuild,
+      allowInsecureApiBaseUrl: allowsLoopbackApi,
       credentials: credentialStore,
       activeAccountPath: join(app.getPath('userData'), 'active-account.json')
     }),
@@ -2814,16 +2852,17 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.removeHandler('desktop-auth:sign-in')
   ipcMain.handle('desktop-auth:sign-in', async (event, input: unknown) => {
-    if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents || !isLoginPage(mainWindow.webContents.getURL())) {
-      throw new Error('desktop_auth_login_page_required')
-    }
+    assertTrustedLoginPageEvent(event)
     if (!input || typeof input !== 'object') throw new Error('desktop_auth_credentials_required')
-    const { username, password } = input as { username?: unknown; password?: unknown }
-    if (typeof username !== 'string' || typeof password !== 'string' || username.length > 128 || password.length > 1024) {
+    const { username, password, rememberPassword } = input as { username?: unknown; password?: unknown; rememberPassword?: unknown }
+    if (typeof username !== 'string' || typeof password !== 'string' || username.length > 128 || password.length > 1024 || (rememberPassword !== undefined && typeof rememberPassword !== 'boolean')) {
       throw new Error('desktop_auth_credentials_required')
     }
     try {
       await desktopAuthController!.signIn({ username, password })
+      await loginHistoryStore.record({ username, password, rememberPassword: rememberPassword === true }).catch((error) => {
+        console.warn('[desktop-auth] unable to update protected login history', error)
+      })
     } catch (error) {
       const code = error instanceof Error ? error.message : 'desktop_auth_login_unknown'
       console.error(`[desktop-auth] sign-in failed: ${code}`)
@@ -2833,7 +2872,7 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.removeHandler('desktop-auth:registration-request-code')
   ipcMain.handle('desktop-auth:registration-request-code', async (event, input: unknown) => {
-    if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents || !isLoginPage(mainWindow.webContents.getURL())) throw new Error('desktop_auth_login_page_required')
+    assertTrustedLoginPageEvent(event)
     if (!input || typeof input !== 'object') throw new Error('desktop_auth_registration_required')
     const { username, password, email } = input as { username?: unknown; password?: unknown; email?: unknown }
     if (typeof username !== 'string' || typeof password !== 'string' || typeof email !== 'string' || username.length > 128 || password.length > 1024 || email.length > 320) throw new Error('desktop_auth_registration_required')
@@ -2842,7 +2881,7 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.removeHandler('desktop-auth:registration-confirm')
   ipcMain.handle('desktop-auth:registration-confirm', async (event, input: unknown) => {
-    if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents || !isLoginPage(mainWindow.webContents.getURL())) throw new Error('desktop_auth_login_page_required')
+    assertTrustedLoginPageEvent(event)
     if (!input || typeof input !== 'object') throw new Error('desktop_auth_registration_required')
     const { username, password, email, code } = input as { username?: unknown; password?: unknown; email?: unknown; code?: unknown }
     if (typeof username !== 'string' || typeof password !== 'string' || typeof email !== 'string' || typeof code !== 'string' || username.length > 128 || password.length > 1024 || email.length > 320 || code.length > 12) throw new Error('desktop_auth_registration_required')
@@ -2852,11 +2891,25 @@ async function bootstrap(): Promise<void> {
   ipcMain.removeHandler('desktop-auth:sign-out')
   ipcMain.handle('desktop-auth:sign-out', async (event) => {
     assertTrustedMainWindowEvent(event)
-    await desktopAuthController?.signOut()
-    activeDshHome = undefined
-    activeHarnessLogPath = undefined
-    desktopStorageManager = undefined
-    await showLoginPage('已退出当前账号。')
+    await signOutDesktopAccount()
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:login-history')
+  ipcMain.handle('desktop-auth:login-history', async (event) => {
+    assertTrustedLoginPageEvent(event)
+    return await loginHistoryStore.list()
+  })
+  ipcMain.removeHandler('desktop-auth:login-password')
+  ipcMain.handle('desktop-auth:login-password', async (event, username: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (typeof username !== 'string' || username.length > 128) throw new Error('desktop_login_history_username_invalid')
+    return await loginHistoryStore.loadPassword(username)
+  })
+  ipcMain.removeHandler('desktop-auth:clear-login-password')
+  ipcMain.handle('desktop-auth:clear-login-password', async (event, username: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (typeof username !== 'string' || username.length > 128) throw new Error('desktop_login_history_username_invalid')
+    await loginHistoryStore.clearPassword(username)
     return { ok: true }
   })
   ipcMain.handle('mobile:open-pairing', () => showMobilePairing())
@@ -3050,12 +3103,18 @@ async function bootstrap(): Promise<void> {
 }
 
 function isLoginPage(url: string): boolean {
-  try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'file:' && parsed.pathname.endsWith('/login.html')
-  } catch {
-    return false
-  }
+  return isTrustedFileUrl(url, desktopResourcePath('login.html'))
+}
+
+function assertTrustedLoginPageEvent(event: IpcMainInvokeEvent): void {
+  if (
+    !mainWindow ||
+    mainWindow.isDestroyed() ||
+    event.sender !== mainWindow.webContents ||
+    event.senderFrame !== mainWindow.webContents.mainFrame ||
+    !isLoginPage(mainWindow.webContents.getURL()) ||
+    !isLoginPage(event.senderFrame.url)
+  ) throw new Error('desktop_auth_login_page_required')
 }
 
 if (isDaemonLaunch(process.env, process.platform)) {
