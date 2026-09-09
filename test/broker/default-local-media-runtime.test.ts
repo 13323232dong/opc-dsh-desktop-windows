@@ -78,7 +78,9 @@ describe('desktop media runtime composition', () => {
 
     expect(fetcher).toHaveBeenCalledWith(artifact.url, expect.objectContaining({ redirect: 'follow' }))
     expect(await readFile(join(targetDirectory, 'ffmpeg'))).toEqual(bytes)
-    expect((await stat(join(targetDirectory, 'ffmpeg'))).mode & 0o111).not.toBe(0)
+    if (process.platform !== 'win32') {
+      expect((await stat(join(targetDirectory, 'ffmpeg'))).mode & 0o111).not.toBe(0)
+    }
   })
 
   it('removes a corrupt download and never reports a mismatched component as installed', async () => {
