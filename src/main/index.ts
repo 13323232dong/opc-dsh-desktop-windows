@@ -100,6 +100,7 @@ import {
 import {
   clearStaleHarnessAuthCookies,
   desktopHarnessUrl,
+  isAbortedNavigationCode,
   isAbortedNavigationError,
   shouldLoadHarnessUrl
 } from './window-navigation'
@@ -409,6 +410,10 @@ function installMainWindowRendererRecovery(window: BrowserWindow): void {
   })
   webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (!isMainFrame) return
+    // A superseded load reports ERR_ABORTED (-3). Calling reload here races
+    // the navigation that replaced it and can make the Windows login page
+    // fail in a loop with "ERR_ABORTED (-3) loading login.html".
+    if (isAbortedNavigationCode(errorCode)) return
     clearProfileBootConfirmation()
     // The harness web server is local; a failure to reach it is almost
     // always the renderer dropping, not a real network error. Surface the
@@ -2696,6 +2701,8 @@ function createAccountHarness(configuration: AccountHarnessConfiguration) {
 async function showLoginPage(message?: string): Promise<void> {
   const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createWindow()
   clearProfileBootConfirmation()
+  ++mainWindowNavigationVersion
+  window.webContents.stop()
   await window.loadFile(desktopResourcePath('login.html'), { query: message ? { message } : undefined })
   window.show()
   window.focus()

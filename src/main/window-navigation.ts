@@ -83,3 +83,12 @@ export function isAbortedNavigationError(error: unknown): boolean {
     /(?:^|\s)ERR_ABORTED\s*\(-3\)(?:\s|$)/.test(navigationError.message)
   )
 }
+
+/**
+ * Electron emits -3 through the did-fail-load event when a navigation is
+ * superseded by a newer navigation. This is an expected lifecycle event, not
+ * a renderer failure that should trigger another reload.
+ */
+export function isAbortedNavigationCode(errorCode: number): boolean {
+  return errorCode === -3
+}

@@ -23,6 +23,7 @@ import { buildDisclaimedUtilityProcessSpec } from '../src/main/runtime/disclaime
 import {
   clearStaleHarnessAuthCookies,
   desktopHarnessUrl,
+  isAbortedNavigationCode,
   isAbortedNavigationError,
   shouldLoadHarnessUrl
 } from '../src/main/window-navigation'
@@ -643,6 +644,8 @@ describe('Harness window activation', () => {
   })
 
   it('recognizes Electron navigation cancellation without hiding other load failures', () => {
+    expect(isAbortedNavigationCode(-3)).toBe(true)
+    expect(isAbortedNavigationCode(-6)).toBe(false)
     expect(isAbortedNavigationError({ code: 'ERR_ABORTED', errno: -3 })).toBe(true)
     expect(
       isAbortedNavigationError(
