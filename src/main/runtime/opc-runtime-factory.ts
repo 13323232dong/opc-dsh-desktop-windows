@@ -27,6 +27,40 @@ export interface OpcRuntimeFactoryOptions {
 }
 
 /**
+ * Completes the host-owned environment used by OPC desktop plugins.
+ * Development builds run beside the local Harness API, while production
+ * builds require an explicit service URL from opc-desktop.env.
+ */
+export function resolveOpcDesktopEnvironment(
+  configured: Readonly<Record<string, string>>,
+  developmentBuild: boolean
+): Readonly<Record<string, string>> {
+  const configuredApi = configured.OPC_PUBLIC_API_BASE_URL?.trim()
+  const useLocalApi = configured.OPC_DESKTOP_USE_LOCAL_API === '1'
+  const apiBaseUrl = configuredApi && (useLocalApi || !isLoopbackHttpUrl(configuredApi))
+    ? configuredApi
+    : configuredApi
+      ? 'https://opc.ohmycode.cc'
+      : undefined
+  const explicitTaskProxy = configured.OPC_TASKS_PROXY_URL?.trim()
+  const environment = apiBaseUrl === undefined
+    ? { ...configured }
+    : { ...configured, OPC_PUBLIC_API_BASE_URL: apiBaseUrl }
+  if (explicitTaskProxy) return { ...environment, OPC_TASKS_PROXY_URL: explicitTaskProxy }
+  if (!developmentBuild) return environment
+  return { ...environment, OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010' }
+}
+
+function isLoopbackHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '::1'].includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+/**
  * Bridges account switching to the DSH Host. All account paths are produced
  * by AccountStorage, while broker credentials exist only for this Runtime.
  */
@@ -37,8 +71,23 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
       const runtimeId = createRuntimeId()
       const broker = await options.broker.registerRuntime({
         runtimeId,
-        capabilities: ['cloud.proxy', 'filesystem.pick', 'filesystem.reveal', 'ego.status', 'ego.launch', 'ego.run'],
-        workspace: input.layout.workspace
+        capabilities: [
+          'cloud.proxy',
+          'filesystem.pick',
+          'filesystem.reveal',
+          'ego.status',
+          'ego.launch',
+          'ego.run',
+          'media.status',
+          'media.install',
+          'media.claim',
+          'media.run',
+          'media.progress',
+          'media.cancel'
+        ],
+        workspace: input.layout.workspace,
+        mediaScopeId: input.principal.accountKey,
+        cloudSessionToken: input.credential.accessToken
       })
       const harness = options.buildHarness({
         dshHome: input.layout.dshHome,
@@ -70,7 +119,15 @@ function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBroker
   return {
     OPC_LOCAL_BROKER_URL: broker.endpoint,
     OPC_LOCAL_BROKER_TOKEN: broker.token,
-    OPC_ACCOUNT_KEY: principal.accountKey
+    OPC_ACCOUNT_KEY: principal.accountKey,
+    OPC_TENANT_ID: principal.tenantId,
+    OPC_USER_ID: principal.userId,
+    OPC_LOGIN_SESSION_ID: principal.sessionId,
+    // Existing DSH plugins use the prefixed names. These values are account
+    // identity only; the opaque OPC session remains inside the local Broker.
+    OPC_DSH_TENANT_ID: principal.tenantId,
+    OPC_DSH_USER_ID: principal.userId,
+    OPC_DSH_LOGIN_SESSION_ID: principal.sessionId
   }
 }
 
