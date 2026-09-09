@@ -1,6 +1,6 @@
-diff -ruN /tmp/opc-settings-models-patch.jeNgOC/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
---- a/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js	2026-09-10 00:19:14
-+++ b/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js	2026-09-10 00:17:24
+diff --git a/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
+--- a/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
++++ b/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
 @@ -64,6 +64,38 @@
  			tag.textContent = css$3;
  			document.head.appendChild(tag);
@@ -771,7 +771,7 @@ diff -ruN /tmp/opc-settings-models-patch.jeNgOC/node_modules/@deepseek-ai/dsh-cl
 @@ -2709,13 +3055,17 @@
  			create: "Create provider",
  			creating: "Creating…",
-			welcomeTitle: "Evan Super Butler Internal Testing Notice",
+ 			welcomeTitle: "Evan Super Butler Internal Testing Notice",
 -			welcomeBody: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
 +			welcomeBody: "Evan Super Butler is currently in internal testing. Some capabilities are still being refined, and we welcome feedback from early users. We will continue improving the core experience, local capabilities, and business tools.\n\nWe look forward to building a practical, reliable AI work companion with you. Thank you for joining the Evan Super Butler internal test.",
  			welcomeContinue: "Continue",
@@ -819,7 +819,7 @@ diff -ruN /tmp/opc-settings-models-patch.jeNgOC/node_modules/@deepseek-ai/dsh-cl
 @@ -2811,13 +3171,17 @@
  			create: "创建提供方",
  			creating: "创建中…",
-			welcomeTitle: "Evan超级管家内测声明",
+ 			welcomeTitle: "Evan超级管家内测声明",
 -			welcomeBody: "DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。",
 +			welcomeBody: "Evan超级管家目前处于内测阶段，部分能力仍在持续完善和打磨中，欢迎早期用户反馈使用体验。我们会继续优化核心工作台、本地能力和业务工具。\n\n期待和你一起把 Evan超级管家做成实用、可靠的 AI 工作伙伴，感谢你参与本次内测。",
  			welcomeContinue: "继续",

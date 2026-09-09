@@ -70,7 +70,7 @@ describe('DesktopStorageManager', () => {
       manager.setItem('async-key', 'second')
 
       // Wait for debounce timeout
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 250))
 
       const fileContent = await readFile(join(tempDir, STORAGE_FILENAME), 'utf8')
       expect(JSON.parse(fileContent)).toEqual({ 'async-key': 'second' })

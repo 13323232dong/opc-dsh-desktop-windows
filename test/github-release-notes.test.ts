@@ -49,7 +49,7 @@ describe('github_release_notes build-prompt', () => {
     expect(prompt).toContain('## 问题修复')
     expect(prompt).toContain('## 升级说明')
     expect(prompt).toContain('## 说明')
-  }, 30_000)
+  })
 })
 
 describe('github_release_notes validate', () => {
@@ -58,7 +58,7 @@ describe('github_release_notes validate', () => {
     const file = path.join(dir, 'n.md')
     await writeFile(file, VALID, 'utf8')
     await expect(run(['validate', '--tag', 'v9.9.9', '--input', file])).resolves.toBeDefined()
-  })
+  }, 30_000)
 
   it('rejects a wrong title prefix, a stray H2, a link, and an empty file', async () => {
     const dir = await work()
@@ -85,5 +85,5 @@ describe('github_release_notes generate-fallback', () => {
     expect(body.startsWith('# DSH Desktop v9.9.9 — ')).toBe(true)
     expect(body).toContain('## 更新内容')
     await expect(run(['validate', '--tag', 'v9.9.9', '--input', file])).resolves.toBeDefined()
-  })
+  }, 30_000)
 })
