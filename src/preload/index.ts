@@ -362,7 +362,10 @@ contextBridge.exposeInMainWorld(
 contextBridge.exposeInMainWorld(
   'dshDesktopAuth',
   Object.freeze({
-    signIn: (input: { username: string; password: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    signIn: (input: { username: string; password: string; rememberPassword?: boolean }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    listSavedLogins: (): Promise<Array<{ username: string; hasPassword: boolean }>> => ipcRenderer.invoke('desktop-auth:login-history'),
+    loadSavedPassword: (username: string): Promise<string | undefined> => ipcRenderer.invoke('desktop-auth:login-password', username),
+    clearSavedPassword: (username: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:clear-login-password', username),
     signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out')
   })
 )

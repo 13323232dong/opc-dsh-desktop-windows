@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const mainEntry = resolve(import.meta.dirname, '../../src/main/index.ts')
+const preloadEntry = resolve(import.meta.dirname, '../../src/preload/index.ts')
+const loginPage = resolve(import.meta.dirname, '../../build/login.html')
 
 describe('desktop login entry', () => {
   it('does not start a shared Harness when account restoration returns no session', async () => {
@@ -20,5 +22,22 @@ describe('desktop login entry', () => {
     expect(source).toContain("ipcMain.handle('desktop-auth:sign-in'")
     expect(source).toContain("!isLoginPage(mainWindow.webContents.getURL())")
     expect(source).toContain("throw new Error('desktop_auth_login_page_required')")
+  })
+
+  it('exposes protected login history only through the local login page', async () => {
+    const [mainSource, preloadSource, html] = await Promise.all([
+      readFile(mainEntry, 'utf8'),
+      readFile(preloadEntry, 'utf8'),
+      readFile(loginPage, 'utf8')
+    ])
+
+    expect(mainSource).toContain("ipcMain.handle('desktop-auth:login-history'")
+    expect(mainSource).toContain("ipcMain.handle('desktop-auth:login-password'")
+    expect(mainSource).toContain("ipcMain.handle('desktop-auth:clear-login-password'")
+    expect(preloadSource).toContain('listSavedLogins:')
+    expect(preloadSource).toContain('loadSavedPassword:')
+    expect(preloadSource).toContain('clearSavedPassword:')
+    expect(html).toContain('id="account-history"')
+    expect(html).toContain('id="remember-password"')
   })
 })

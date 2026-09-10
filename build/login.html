@@ -11,14 +11,24 @@
     label { display: grid; gap: 7px; margin: 14px 0; font-size: 13px; } input { box-sizing: border-box; width: 100%; height: 40px; padding: 0 11px; border: 1px solid #c8cad0; border-radius: 5px; font: inherit; }
     button { width: 100%; height: 42px; margin-top: 12px; border: 0; border-radius: 5px; background: #17181a; color: #fff; cursor: pointer; font: 600 14px inherit; } button:disabled { opacity: .6; cursor: wait; }
     #notice { min-height: 20px; margin: 12px 0 0; color: #b42318; }
+    .remember { display: flex; align-items: center; gap: 8px; color: #5f6368; }
+    .remember input { width: 15px; height: 15px; margin: 0; }
+    .link { height: auto; margin-top: 6px; background: transparent; color: #315fd8; font-weight: 500; }
   </style>
 </head>
 <body>
-  <main class="panel"><h1>伟东 OPC</h1><p>登录后将打开属于当前商户的独立工作台。</p><form id="login"><label>账号<input id="username" autocomplete="username" required autofocus></label><label>密码<input id="password" type="password" autocomplete="current-password" required></label><button id="submit" type="submit">登录</button><p id="notice"></p></form></main>
+  <main class="panel"><h1>伟东 OPC</h1><p>登录后将打开属于当前商户的独立工作台。</p><form id="login"><label>账号<input id="username" list="account-history" autocomplete="username" required autofocus></label><datalist id="account-history"></datalist><label>密码<input id="password" type="password" autocomplete="current-password" required></label><label class="remember"><input id="remember-password" type="checkbox">记住账号和密码</label><button id="clear-saved-password" class="link" type="button" hidden>清除当前账号已保存密码</button><button id="submit" type="submit">登录</button><p id="notice"></p></form></main>
   <script>
-    const form = document.getElementById('login'); const notice = document.getElementById('notice'); const submit = document.getElementById('submit');
+    const form = document.getElementById('login'); const notice = document.getElementById('notice'); const submit = document.getElementById('submit'); const username = document.getElementById('username'); const password = document.getElementById('password'); const rememberPassword = document.getElementById('remember-password'); const history = document.getElementById('account-history'); const clearPassword = document.getElementById('clear-saved-password'); let savedLogins = []; let passwordLoadAttempt = 0; let passwordEditVersion = 0;
     notice.textContent = new URLSearchParams(location.search).get('message') || '';
-    form.addEventListener('submit', async (event) => { event.preventDefault(); notice.textContent = ''; submit.disabled = true; try { await window.dshDesktopAuth.signIn({ username: document.getElementById('username').value, password: document.getElementById('password').value }); } catch { notice.textContent = '登录失败，请检查账号、密码和网络后重试。'; } finally { submit.disabled = false; } });
+    async function fillPassword() { const account = username.value.trim(); const entry = savedLogins.find(item => item.username.toLowerCase() === account.toLowerCase()); clearPassword.hidden = !entry?.hasPassword; if (!entry?.hasPassword || password.value) return; const attempt = ++passwordLoadAttempt; const editVersion = passwordEditVersion; const value = await window.dshDesktopAuth.loadSavedPassword(account); if (attempt === passwordLoadAttempt && editVersion === passwordEditVersion && username.value.trim().toLowerCase() === account.toLowerCase() && !password.value) { password.value = value || ''; rememberPassword.checked = Boolean(value); } }
+    async function hydrate() { try { savedLogins = await window.dshDesktopAuth.listSavedLogins(); history.replaceChildren(...savedLogins.map(item => { const option = document.createElement('option'); option.value = item.username; return option; })); if (!username.value && savedLogins[0]) username.value = savedLogins[0].username; await fillPassword(); } catch {} }
+    username.addEventListener('input', () => { passwordLoadAttempt += 1; password.value = ''; rememberPassword.checked = false; void fillPassword(); });
+    username.addEventListener('change', () => void fillPassword());
+    password.addEventListener('input', () => { passwordEditVersion += 1; passwordLoadAttempt += 1; });
+    clearPassword.addEventListener('click', async () => { await window.dshDesktopAuth.clearSavedPassword(username.value); password.value = ''; rememberPassword.checked = false; clearPassword.hidden = true; savedLogins = savedLogins.map(item => item.username.toLowerCase() === username.value.trim().toLowerCase() ? { ...item, hasPassword: false } : item); });
+    form.addEventListener('submit', async (event) => { event.preventDefault(); notice.textContent = ''; submit.disabled = true; try { await window.dshDesktopAuth.signIn({ username: username.value, password: password.value, rememberPassword: rememberPassword.checked }); } catch { notice.textContent = '登录失败，请检查账号、密码和网络后重试。'; } finally { submit.disabled = false; } });
+    void hydrate();
   </script>
 </body>
 </html>

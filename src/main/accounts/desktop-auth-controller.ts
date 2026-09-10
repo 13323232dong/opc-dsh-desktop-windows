@@ -39,9 +39,16 @@ export class DesktopAuthController {
 
   async signOut(): Promise<void> {
     const context = this.options.runtime.snapshot?.()?.context
-    await this.options.runtime.signOut()
-    if (context) await this.options.credentials.remove(context.principal)
-    await this.options.provider.signOut()
+    let firstError: unknown
+    for (const cleanup of [
+      () => this.options.runtime.signOut(),
+      () => context ? this.options.credentials.remove(context.principal) : Promise.resolve(),
+      () => this.options.provider.signOut()
+    ]) {
+      try { await cleanup() }
+      catch (error) { firstError ??= error }
+    }
+    if (firstError) throw firstError
   }
 
   private async activate(session: DesktopAuthSession | undefined): Promise<AccountRuntimeContext | undefined> {

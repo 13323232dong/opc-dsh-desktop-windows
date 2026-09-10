@@ -40,4 +40,35 @@ describe('DesktopAuthController', () => {
     expect(credentials.save).not.toHaveBeenCalled()
     expect(runtime.switchTo).not.toHaveBeenCalled()
   })
+
+  it('continues every logout cleanup step when stopping the runtime fails', async () => {
+    const runtimeError = new Error('runtime_stop_failed')
+    const provider: DesktopAuthProvider = { signIn: vi.fn(), currentSession: vi.fn(), signOut: vi.fn(async () => undefined) }
+    const runtime = {
+      switchTo: vi.fn(),
+      snapshot: vi.fn(() => ({ context: { principal: { ...session.principal, accountKey: 'account-a' } } })),
+      signOut: vi.fn(async () => { throw runtimeError })
+    }
+    const credentials = { save: vi.fn(), remove: vi.fn(async () => undefined) }
+    const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
+
+    await expect(controller.signOut()).rejects.toBe(runtimeError)
+    expect(credentials.remove).toHaveBeenCalledOnce()
+    expect(provider.signOut).toHaveBeenCalledOnce()
+  })
+
+  it('continues remote logout when removing local credentials fails', async () => {
+    const credentialError = new Error('credential_remove_failed')
+    const provider: DesktopAuthProvider = { signIn: vi.fn(), currentSession: vi.fn(), signOut: vi.fn(async () => undefined) }
+    const runtime = {
+      switchTo: vi.fn(),
+      snapshot: vi.fn(() => ({ context: { principal: { ...session.principal, accountKey: 'account-a' } } })),
+      signOut: vi.fn(async () => undefined)
+    }
+    const credentials = { save: vi.fn(), remove: vi.fn(async () => { throw credentialError }) }
+    const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: credentials as never })
+
+    await expect(controller.signOut()).rejects.toBe(credentialError)
+    expect(provider.signOut).toHaveBeenCalledOnce()
+  })
 })
