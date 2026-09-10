@@ -233,8 +233,13 @@
           await window.dshDesktopAuth.confirmRegistration({ username: usernameValue, password: passwordValue, email, code }); registerButton.click(); notice.style.color = '#176b3a'; notice.textContent = '注册成功，请使用新账号登录。'; return
         }
         await window.dshDesktopAuth.signIn({ username: usernameValue, password: passwordValue, rememberPassword: rememberPassword.checked })
-      } catch {
-        notice.style.color = '#b42318'; notice.textContent = mode === 'register' ? '注册失败，请检查信息或验证码。' : '登录失败，请检查账号、密码和网络后重试。'
+      } catch (error) {
+        const detail = typeof error?.message === 'string' ? error.message : ''
+        const loginMessage = detail.includes('账号或密码错误') ? '账号或密码错误。'
+          : detail.includes('desktop_auth_login_failed:429') ? '登录尝试过于频繁，请稍后再试。'
+          : detail.includes('desktop_auth_login_failed:5') ? '线上登录服务暂时不可用，请稍后重试。'
+          : '无法连接线上登录服务，请检查网络后重试。'
+        notice.style.color = '#b42318'; notice.textContent = mode === 'register' ? '注册失败，请检查信息或验证码。' : loginMessage
       } finally {
         submit.disabled = false
       }

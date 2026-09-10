@@ -68,7 +68,13 @@ export class OpcDesktopAuthProvider implements DesktopAuthProvider {
       headers: { accept: 'application/json', 'content-type': 'application/json' },
       body: JSON.stringify({ username, password: input.password })
     })
-    if (!response.ok) throw new Error(`desktop_auth_login_failed:${response.status}`)
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null) as { error?: { message?: unknown } } | null
+      const message = payload?.error?.message
+      throw new Error(typeof message === 'string' && message.length > 0 && message.length <= 160
+        ? message
+        : `desktop_auth_login_failed:${response.status}`)
+    }
     const token = sessionTokenFrom(response)
     if (!token) throw new Error('desktop_auth_session_cookie_missing')
     const principal = principalFromApiResponse(await response.json())

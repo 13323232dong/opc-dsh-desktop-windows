@@ -65,6 +65,19 @@ describe('OpcDesktopAuthProvider', () => {
     } finally { await rm(root, { recursive: true, force: true }) }
   })
 
+  it('preserves a short server login error instead of reporting it as a network failure', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
+    const credentials = new InMemoryCredentialStore()
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      success: false,
+      error: { code: 'auth_login_failed', message: '账号或密码错误' }
+    }), { status: 401, headers: { 'content-type': 'application/json' } }))
+    try {
+      const provider = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: fetcher as typeof fetch })
+      await expect(provider.signIn({ username: 'missing', password: 'wrong-password' })).rejects.toThrow('账号或密码错误')
+    } finally { await rm(root, { recursive: true, force: true }) }
+  })
+
   it('fails closed when /auth/me does not match the stored account', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
     const credentials = new InMemoryCredentialStore()
