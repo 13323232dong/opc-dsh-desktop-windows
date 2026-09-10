@@ -40,4 +40,13 @@ describe('desktop login entry', () => {
     expect(html).toContain('id="account-history"')
     expect(html).toContain('id="remember-password"')
   })
+
+  it('returns to login even when one logout cleanup step fails', async () => {
+    const source = await readFile(mainEntry, 'utf8')
+    const signOut = source.slice(source.indexOf('async function signOutDesktopAccount'), source.indexOf('async function signOutDesktopAccount') + 700)
+
+    expect(signOut).toContain('finally')
+    expect(signOut).toContain('activeDshHome = undefined')
+    expect(signOut).toContain("await showLoginPage('已退出当前账号。')")
+  })
 })

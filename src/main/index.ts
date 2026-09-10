@@ -2700,6 +2700,22 @@ async function showLoginPage(message?: string): Promise<void> {
   window.focus()
 }
 
+async function signOutDesktopAccount(): Promise<void> {
+  if (!desktopAuthController || !hasActiveRuntime()) {
+    await showLoginPage()
+    return
+  }
+  try {
+    await desktopAuthController.signOut()
+  } finally {
+    activeDshHome = undefined
+    activeHarnessLogPath = undefined
+    desktopStorageManager = undefined
+    clearProfileBootConfirmation()
+    await showLoginPage('已退出当前账号。')
+  }
+}
+
 async function bootstrap(): Promise<void> {
   if (process.platform === 'darwin') app.dock?.setIcon(desktopIconPath())
   // The shared root is only used for application metadata. Every DSH home and
@@ -2797,13 +2813,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.removeHandler('desktop-auth:sign-out')
   ipcMain.handle('desktop-auth:sign-out', async (event) => {
     assertTrustedMainWindowEvent(event)
-    if (!hasActiveRuntime()) return { ok: true }
-    await desktopAuthController!.signOut()
-    activeDshHome = undefined
-    activeHarnessLogPath = undefined
-    desktopStorageManager = undefined
-    clearProfileBootConfirmation()
-    await showLoginPage()
+    await signOutDesktopAccount()
     return { ok: true }
   })
   ipcMain.handle('directory-picker:open', async (event) => {
