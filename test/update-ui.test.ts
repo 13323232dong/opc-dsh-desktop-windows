@@ -99,6 +99,17 @@ describe('accepting an update is what starts the download', () => {
     expect(updateMessage(available, 'zh')).toBe('发现新版本 0.4.4，是否更新？')
     expect(updateMessage(available, 'en')).toBe('DSH Desktop 0.4.4 is available. Update now?')
   })
+
+  it('uses one explicit action to download, prepare, and restart', async () => {
+    const [manager, preload] = await Promise.all([
+      readFile('src/main/update/update-manager.ts', 'utf8'),
+      readFile('src/preload/index.ts', 'utf8')
+    ])
+
+    expect(manager).toContain("ipcMain.handle('updates:accept'")
+    expect(manager).toContain('export async function acceptAvailableUpdate')
+    expect(preload).toContain("ipcRenderer.invoke('updates:accept')")
+  })
 })
 
 describe('about dialog and version selection wiring', () => {
@@ -116,4 +127,3 @@ describe('about dialog and version selection wiring', () => {
     expect(preload).toContain('mountAbout()')
   })
 })
-

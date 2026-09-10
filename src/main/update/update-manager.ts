@@ -55,6 +55,7 @@ export function registerUpdateHandlers(): void {
   handlersRegistered = true
   ipcMain.handle('updates:status', () => getUpdateStatus())
   ipcMain.handle('updates:check', () => checkForUpdates(true))
+  ipcMain.handle('updates:accept', () => acceptAvailableUpdate())
   ipcMain.handle('updates:install', () => installDownloadedUpdate())
   ipcMain.handle('updates:skip', (_event, version: unknown) => skipUpdate(version))
   ipcMain.handle('updates:download', () => downloadAvailableUpdate())
@@ -164,6 +165,13 @@ export async function downloadAvailableUpdate(): Promise<UpdateStatus> {
     downloading = false
   }
 
+  return getUpdateStatus()
+}
+
+/** One explicit user action owns the full update transaction. */
+export async function acceptAvailableUpdate(): Promise<UpdateStatus> {
+  const downloaded = await downloadAvailableUpdate()
+  if (downloaded.phase === 'downloaded') await installDownloadedUpdate()
   return getUpdateStatus()
 }
 

@@ -481,7 +481,7 @@ function render(): void {
     accept.addEventListener('click', () => {
       accepting = true
       render()
-      void ipcRenderer.invoke('updates:download').catch((error: unknown) => {
+      void ipcRenderer.invoke('updates:accept').catch((error: unknown) => {
         accepting = false
         console.error('[updater] unable to download update', error)
         render()
