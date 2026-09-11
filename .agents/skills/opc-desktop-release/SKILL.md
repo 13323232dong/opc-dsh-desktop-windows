@@ -14,6 +14,19 @@ node scripts/opc-release.mjs build
 node scripts/opc-release.mjs verify
 ```
 
+## macOS 本地打包
+
+“构建”和“打包”是两个独立结果：`npm run build` 只编译应用，`npm run package:mac:arm64` 或 `npm run package:mac:x64` 才会生成可安装的 `.app`、`.dmg` 和 `.zip`。用户要求“打开 Mac 应用”时，必须在打包成功后用生成目录中的真实 `.app` 启动，并确认进程或窗口已出现。
+
+macOS 本地打包步骤：
+
+1. 在干净、与远程同步的 `main` 上操作。开发工作树有未提交改动时，使用从 `main` 创建的临时 worktree，不要清理或覆盖开发工作树。
+2. 依赖安装可以先使用 `npm ci`；最终 Electron 打包不能使用 `npm ci --ignore-scripts` 后直接运行，因为它会跳过 Electron/Node 等生命周期安装，导致 `verify-target` 报 bundled Node 不存在。若已跳过脚本，先运行 `npm rebuild node`，确认 `node_modules/node/bin/node` 可执行。
+3. 运行 `npm run package:mac:arm64`（Apple Silicon）或 `npm run package:mac:x64`（Intel），记录真实产物路径和 SHA-256。
+4. 检查 `dist/mac-*/` 下的 `.app`，再执行 `open` 启动；启动成功只能说明本机验收包可运行。
+
+本机没有有效 Developer ID 证书时，electron-builder 会生成未签名包。必须明确报告“未签名本地验收包”，不能称为正式公开发布；正式发布还需要签名、Release 资产和更新 feed 验证。
+
 本地至少运行 `npm ci`、`npm test`、`npm run typecheck`、`npm run build`。不把 `.env`、密钥、运行数据、`node_modules` 或开发机绝对路径放入发布包。
 
 Windows 不在 macOS 本机构建，使用 GitHub Actions：
