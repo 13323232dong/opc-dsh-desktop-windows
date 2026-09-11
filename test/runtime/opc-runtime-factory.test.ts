@@ -82,6 +82,11 @@ describe('createOpcRuntimeFactory', () => {
 })
 
 describe('resolveOpcDesktopEnvironment', () => {
+  it('normalizes legacy /api/v1 production URLs to an origin for the local Broker', () => {
+    expect(resolveOpcDesktopEnvironment({ OPC_PUBLIC_API_BASE_URL: 'https://opc.ohmycode.cc/api/v1/' }, false)).toMatchObject({
+      OPC_PUBLIC_API_BASE_URL: 'https://opc.ohmycode.cc'
+    })
+  })
   it('uses the production OPC control plane when a development env still points at loopback', () => {
     expect(resolveOpcDesktopEnvironment({ OPC_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001' }, true)).toMatchObject({
       OPC_PUBLIC_API_BASE_URL: 'https://opc.ohmycode.cc'

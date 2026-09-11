@@ -35,7 +35,7 @@ export function resolveOpcDesktopEnvironment(
   configured: Readonly<Record<string, string>>,
   developmentBuild: boolean
 ): Readonly<Record<string, string>> {
-  const configuredApi = configured.OPC_PUBLIC_API_BASE_URL?.trim()
+  const configuredApi = normalizePublicApiOrigin(configured.OPC_PUBLIC_API_BASE_URL)
   const useLocalApi = configured.OPC_DESKTOP_USE_LOCAL_API === '1'
   const apiBaseUrl = configuredApi && (useLocalApi || !isLoopbackHttpUrl(configuredApi))
     ? configuredApi
@@ -49,6 +49,20 @@ export function resolveOpcDesktopEnvironment(
   if (explicitTaskProxy) return { ...environment, OPC_TASKS_PROXY_URL: explicitTaskProxy }
   if (!developmentBuild) return environment
   return { ...environment, OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010' }
+}
+
+/** The Broker requires an origin, while older env files stored /api/v1. */
+function normalizePublicApiOrigin(value: string | undefined): string | undefined {
+  const input = value?.trim()
+  if (!input) return undefined
+  try {
+    const url = new URL(input)
+    if (url.pathname === '/api/v1' || url.pathname === '/api/v1/') url.pathname = '/'
+    if (url.pathname !== '/' || url.search || url.hash || url.username || url.password) return input
+    return url.origin
+  } catch {
+    return input
+  }
 }
 
 function isLoopbackHttpUrl(value: string): boolean {
