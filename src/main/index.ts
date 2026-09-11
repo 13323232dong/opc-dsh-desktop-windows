@@ -2683,7 +2683,13 @@ function createAccountHarness(configuration: AccountHarnessConfiguration) {
 async function showLoginPage(message?: string): Promise<void> {
   const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createWindow()
   clearProfileBootConfirmation()
-  await window.loadFile(desktopResourcePath('login.html'), { query: message ? { message } : undefined })
+  try {
+    await window.loadFile(desktopResourcePath('login.html'), { query: message ? { message } : undefined })
+  } catch (error) {
+    // Windows can cancel an older file navigation when startup recovery and
+    // auth restoration race. The newer navigation remains authoritative.
+    if (!isAbortedNavigationError(error)) throw error
+  }
   window.show()
   window.focus()
 }
