@@ -17,6 +17,39 @@ It is not a fork of the upstream source tree, so the update must replace that
 package set after upstream build and verification. A Git merge between the
 desktop repository and `deepseek-harness` would be an invalid upgrade method.
 
+## Candidate installation gate
+
+The initial package replacement is intentionally **not installable yet**. The
+desktop baseline carries 20 `patch-package` patches against the embedded
+`0.1.2-rc.1` DSH packages. A dry-run against the `0.1.5-rc.2` dependency tree
+on 2026-09-11 found that all 20 fail to apply. This is a real compatibility
+failure, not an npm resolution problem:
+
+| Direct-patch area | Patch count | Upgrade disposition |
+| --- | ---: | --- |
+| Session persistence, JSONL backend and workspace registry | 9 changed files across 3 package patches | Must be redesigned against Session V3 handles before permanent deletion or session/workspace operations can ship. |
+| Session controller and workspace UI | 23 changed files across 2 package patches | Must be reimplemented against the new controller/remotes and `main` panel APIs. |
+| Conversation, sidebar, layout, chat, deliverables and trajectory UI | 14 package patches | Map each retained user-visible capability to current extension points; do not copy old generated UI code forward. |
+| Model selection, presets, DeepSeek/PI routing and directory picker | 6 package patches | Revalidate against the new model and preset contracts before retaining any custom behavior. |
+| Loader and core bootstrap | 2 package patches | Revalidate after every retained desktop compatibility capability is migrated. |
+
+The existing permanent-session-delete test is a useful example: it calls the
+removed persistence-level `append(id, events)`, `load(id)`, and `delete(id)`
+methods. Session V3 instead returns a `SessionHandle` from `create`/`open`,
+requires writes through that handle, and exposes no upstream deletion API.
+Changing the test only to compile would hide a lost destructive-operation
+guarantee, so it remains a blocking regression gate until the feature is
+explicitly migrated and tested with the new lifecycle.
+
+Consequences for this candidate branch:
+
+- Do not run the normal `postinstall` while the legacy patch set is active;
+  `patch-package` will fail rather than produce a runnable build.
+- Do not delete, skip, or rename legacy patches simply to make installation
+  pass; that would silently remove current desktop capabilities.
+- The embedded `0.1.5-rc.2` package set, lockfile and profile update are an
+  upgrade staging area, not a release-ready desktop runtime.
+
 ## Upstream assessment
 
 `dsh-v0.1.5-rc.2` is the latest public upstream DSH tag checked on 2026-09-11.

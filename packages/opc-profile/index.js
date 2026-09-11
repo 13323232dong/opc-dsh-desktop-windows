@@ -83,7 +83,7 @@ function clone(value) {
 const profile = {
   schemaVersion: 1,
   id: 'opc-desktop',
-  harnessVersion: '0.1.2-rc.1',
+  harnessVersion: '0.1.5-rc.2',
   plugins: PLUGINS.map(([name, client, clientInject]) => ({
     name,
     version: versionFor(name),
@@ -104,7 +104,7 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
       ? 'broker-adapter'
       : plugin.client ? 'client-and-runtime' : 'runtime-only',
     windowsDisposition: windowsDispositionFor(plugin.name),
-    harnessTarget: '0.1.2-rc.1',
+    harnessTarget: '0.1.5-rc.2',
     status: 'requires-adapter-validation'
   })),
   {
@@ -112,7 +112,7 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
     clientBundle: false,
     desktopDisposition: 'runtime-only',
     windowsDisposition: 'requires-browser-provider',
-    harnessTarget: '0.1.2-rc.1',
+    harnessTarget: '0.1.5-rc.2',
     status: 'deferred-until-windows-provider-validation'
   },
   {
@@ -120,7 +120,7 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
     clientBundle: false,
     desktopDisposition: 'broker-adapter',
     windowsDisposition: 'requires-native-adapter',
-    harnessTarget: '0.1.2-rc.1',
+    harnessTarget: '0.1.5-rc.2',
     status: 'deferred-until-windows-adapter-validation'
   },
   {
@@ -128,7 +128,7 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
     clientBundle: false,
     desktopDisposition: 'broker-adapter',
     windowsDisposition: 'requires-native-adapter',
-    harnessTarget: '0.1.2-rc.1',
+    harnessTarget: '0.1.5-rc.2',
     status: 'deferred-until-windows-adapter-validation'
   }
 ])

@@ -4,7 +4,7 @@
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
-  "harnessVersion": "0.1.2-rc.1",
+  "harnessVersion": "0.1.5-rc.2",
   "plugins": [
     {
       "name": "@opc/dsh-brand",
