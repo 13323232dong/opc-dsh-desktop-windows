@@ -48,6 +48,15 @@ describe('buildVersionIndex', () => {
     })
   })
 
+  it('builds macOS archive links when publishing the macOS catalog', () => {
+    const [entry] = buildVersionIndex(['3.4.5'], 'mac').versions
+    expect(entry).toEqual({
+      version: '3.4.5',
+      tag: 'v3.4.5',
+      archiveUrl: 'https://opc.ohmycode.cc/updates/mac/archive/3.4.5/'
+    })
+  })
+
   it('writes the index file from the CLI', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'dsh-version-index-'))
     roots.push(root)

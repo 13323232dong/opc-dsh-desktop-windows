@@ -10,4 +10,7 @@ export interface VersionIndex {
 }
 
 /** Build the rollback version index from `releases/archive/<name>` directory names. */
-export function buildVersionIndex(archiveDirNames: string[]): VersionIndex
+export function buildVersionIndex(
+  archiveDirNames: string[],
+  channel?: 'mac' | 'windows'
+): VersionIndex
