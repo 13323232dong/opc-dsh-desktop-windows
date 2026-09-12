@@ -46,29 +46,32 @@ function compare(a, b) {
 
 /**
  * Turn a list of `releases/archive/<name>` directory names into the version
- * index the Windows desktop client reads from OPC's public update channel.
+ * index the matching desktop client reads from OPC's public update channel.
  * Non-semver names are dropped; the rest sort newest first.
  */
-export function buildVersionIndex(archiveDirNames) {
+export function buildVersionIndex(archiveDirNames, channel = 'windows') {
+  if (!['mac', 'windows'].includes(channel)) {
+    throw new Error(`Unsupported update channel: ${channel}`)
+  }
   const versions = [...new Set(archiveDirNames)]
     .filter((name) => SEMVER.test(name))
     .sort((a, b) => compare(b, a))
     .map((version) => ({
       version,
       tag: `v${version}`,
-      archiveUrl: `https://opc.ohmycode.cc/updates/windows/archive/${version}/`
+      archiveUrl: `https://opc.ohmycode.cc/updates/${channel}/archive/${version}/`
     }))
   return { generatedAt: new Date().toISOString(), versions }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [namesFile, outFile] = process.argv.slice(2)
+  const [namesFile, outFile, channel] = process.argv.slice(2)
   if (!namesFile || !outFile) {
-    console.error('Usage: node scripts/build-version-index.mjs <names-json-file> <out-file>')
+    console.error('Usage: node scripts/build-version-index.mjs <names-json-file> <out-file> [mac|windows]')
     process.exit(1)
   }
   const names = JSON.parse(await readFile(namesFile, 'utf8'))
-  const index = buildVersionIndex(names)
+  const index = buildVersionIndex(names, channel)
   await writeFile(outFile, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
   console.log(`Wrote ${outFile} with ${index.versions.length} versions.`)
 }

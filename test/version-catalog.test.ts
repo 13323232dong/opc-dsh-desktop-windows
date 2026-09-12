@@ -3,19 +3,37 @@ import {
   archiveFeedUrl,
   compareVersions,
   fetchAvailableReleases,
+  stableFeedUrl,
+  versionIndexUrl,
   parseVersionIndex,
   STABLE_FEED_URL,
   VERSION_INDEX_URL
 } from '../src/main/update/version-catalog'
 
 describe('version-catalog constants', () => {
-  it('points the stable feed and index at the public OPC update channel', () => {
-    expect(STABLE_FEED_URL).toBe('https://opc.ohmycode.cc/updates/windows/')
-    expect(VERSION_INDEX_URL).toBe('https://opc.ohmycode.cc/updates/windows/versions.json')
+  it('uses the macOS channel for macOS update metadata and archives', () => {
+    expect(stableFeedUrl('darwin')).toBe('https://opc.ohmycode.cc/updates/mac/')
+    expect(versionIndexUrl('darwin')).toBe('https://opc.ohmycode.cc/updates/mac/versions.json')
+    expect(archiveFeedUrl('1.2.3', 'darwin')).toBe(
+      'https://opc.ohmycode.cc/updates/mac/archive/1.2.3/'
+    )
   })
 
-  it('builds a per-version archive feed url with a trailing slash', () => {
-    expect(archiveFeedUrl('1.2.3')).toBe('https://opc.ohmycode.cc/updates/windows/archive/1.2.3/')
+  it('keeps Windows on its own update channel', () => {
+    expect(stableFeedUrl('win32')).toBe('https://opc.ohmycode.cc/updates/windows/')
+    expect(versionIndexUrl('win32')).toBe('https://opc.ohmycode.cc/updates/windows/versions.json')
+    expect(archiveFeedUrl('1.2.3', 'win32')).toBe(
+      'https://opc.ohmycode.cc/updates/windows/archive/1.2.3/'
+    )
+  })
+
+  it('exports constants for the current platform channel', () => {
+    expect(STABLE_FEED_URL).toBe(stableFeedUrl())
+    expect(VERSION_INDEX_URL).toBe(versionIndexUrl())
+  })
+
+  it('defaults archive URLs to the current platform channel', () => {
+    expect(archiveFeedUrl('1.2.3')).toBe(`${STABLE_FEED_URL}archive/1.2.3/`)
   })
 })
 
