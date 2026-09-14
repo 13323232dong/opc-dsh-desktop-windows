@@ -11,6 +11,7 @@ import {
 } from './local-media-runtime'
 
 const MAX_BODY_BYTES = 64 * 1024
+const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
 const FORGED_CLOUD_HEADERS = new Set([
   'authorization',
@@ -166,6 +167,8 @@ export class LocalCapabilityBroker {
   private async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (request.method !== 'POST') return this.send(response, 405, { code: 'desktop_broker_method_not_allowed' })
     const parsed = new URL(request.url ?? '/', this.origin ?? 'http://127.0.0.1')
+    const modelMatch = /^\/v1\/runtimes\/([^/]+)\/model\/chat\/completions$/u.exec(parsed.pathname)
+    if (modelMatch?.[1]) return this.proxyModel(decodeURIComponent(modelMatch[1]), request, response)
     const match = /^\/v1\/runtimes\/([^/]+)\/capabilities\/([^/]+)$/u.exec(parsed.pathname)
     if (!match?.[1] || !match[2]) return this.send(response, 404, { code: 'desktop_broker_route_not_found' })
     const runtime = this.runtimes.get(decodeURIComponent(match[1]))
@@ -183,6 +186,67 @@ export class LocalCapabilityBroker {
     if (capability === 'filesystem.reveal') return this.revealWorkspacePath(body, runtime, response)
     if (isMediaCapability(capability)) return this.handleMedia(capability, body, runtime.mediaScopeId, response)
     return this.send(response, 501, { code: 'desktop_broker_capability_not_configured' })
+  }
+
+  private async proxyModel(runtimeId: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const runtime = this.runtimes.get(runtimeId)
+    if (!runtime || !this.validToken(request.headers.authorization, runtime.tokenHash)) {
+      return this.send(response, 401, { code: 'desktop_broker_unauthorized' })
+    }
+    if (!runtime.capabilities.has('model.invoke')) return this.send(response, 403, { code: 'desktop_broker_capability_denied' })
+    if (!runtime.cloudSessionToken) return this.send(response, 401, { code: 'desktop_broker_cloud_session_missing' })
+    const rawBody = await this.readRawBody(request, response, MAX_MODEL_BODY_BYTES)
+    if (rawBody === undefined) return
+    try {
+      const parsed = JSON.parse(rawBody) as unknown
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid')
+    } catch {
+      return this.send(response, 400, { code: 'desktop_broker_invalid_json' })
+    }
+    const dshSessionId = typeof request.headers['x-deepseek-harness-session-id'] === 'string'
+      ? request.headers['x-deepseek-harness-session-id'].slice(0, 160)
+      : 'session-unavailable'
+    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(rawBody).digest('hex')}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 300_000)
+    try {
+      const upstream = await (this.options.fetchCloud ?? fetch)(new URL('/api/v1/model/chat/completions', this.cloudBaseUrl).toString(), {
+        method: 'POST',
+        headers: {
+          accept: request.headers.accept ?? 'text/event-stream',
+          'content-type': 'application/json',
+          cookie: `opc_session=${runtime.cloudSessionToken}`,
+          'idempotency-key': idempotencyKey,
+          [DESKTOP_BROKER_HEADER]: '1'
+        },
+        body: rawBody,
+        signal: controller.signal
+      })
+      response.writeHead(upstream.status, {
+        'content-type': upstream.headers.get('content-type') ?? 'application/json',
+        'cache-control': 'no-store'
+      })
+      if (!upstream.body) {
+        response.end()
+        return
+      }
+      const reader = upstream.body.getReader()
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        response.write(Buffer.from(chunk.value))
+      }
+      response.end()
+    } catch (error) {
+      if (!response.headersSent) {
+        const code = error instanceof Error && error.name === 'AbortError' ? 'desktop_broker_model_timeout' : 'desktop_broker_model_unavailable'
+        this.send(response, 502, { code })
+      } else {
+        response.destroy()
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
   }
 
   private async handleMedia(
@@ -205,26 +269,32 @@ export class LocalCapabilityBroker {
   }
 
   private async readJson(request: IncomingMessage, response: ServerResponse): Promise<Record<string, unknown> | undefined> {
-    const chunks: Buffer[] = []
-    let size = 0
-    for await (const chunk of request) {
-      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-      size += buffer.length
-      if (size > MAX_BODY_BYTES) {
-        request.resume()
-        this.send(response, 413, { code: 'desktop_broker_body_too_large' })
-        return undefined
-      }
-      chunks.push(buffer)
-    }
+    const raw = await this.readRawBody(request, response, MAX_BODY_BYTES)
+    if (raw === undefined) return undefined
     try {
-      const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      const value: unknown = JSON.parse(raw)
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid')
       return value as Record<string, unknown>
     } catch {
       this.send(response, 400, { code: 'desktop_broker_invalid_json' })
       return undefined
     }
+  }
+
+  private async readRawBody(request: IncomingMessage, response: ServerResponse, maximumBytes: number): Promise<string | undefined> {
+    const chunks: Buffer[] = []
+    let size = 0
+    for await (const chunk of request) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      size += buffer.length
+      if (size > maximumBytes) {
+        request.resume()
+        this.send(response, 413, { code: 'desktop_broker_body_too_large' })
+        return undefined
+      }
+      chunks.push(buffer)
+    }
+    return Buffer.concat(chunks).toString('utf8')
   }
 
   private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {

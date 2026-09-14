@@ -41,6 +41,7 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
           'cloud.proxy',
           'filesystem.pick',
           'filesystem.reveal',
+          'model.invoke',
           'ego.status',
           'ego.launch',
           'ego.run',
@@ -85,6 +86,8 @@ function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBroker
   return {
     OPC_LOCAL_BROKER_URL: broker.endpoint,
     OPC_LOCAL_BROKER_TOKEN: broker.token,
+    DEEPSEEK_BASE_URL: `${broker.endpoint}/model`,
+    DEEPSEEK_API_KEY: broker.token,
     OPC_ACCOUNT_KEY: principal.accountKey,
     OPC_TENANT_ID: principal.tenantId,
     OPC_USER_ID: principal.userId,

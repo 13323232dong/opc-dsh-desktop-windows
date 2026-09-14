@@ -33,6 +33,8 @@ describe('ensureOpcDesktopProfile', () => {
         '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', ...desktopPlugins.map(([name]) => name)
       ])
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
+      expect(patch).toContain('- id: agent-default-model')
+      expect(patch).toContain('model: deepseek-flash')
       expect(patch).toContain('ui-brand-official')
       expect(patch).toContain('desktopMode: true')
       expect(patch).toContain('controlPlaneEnabled: true')

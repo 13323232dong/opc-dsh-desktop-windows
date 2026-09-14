@@ -30,6 +30,32 @@ async function request(
 }
 
 describe('LocalCapabilityBroker', () => {
+  it('adapts the native DeepSeek route to the authenticated platform model gateway', async () => {
+    const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response('data: {"id":"reply"}\n\ndata: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } }))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['model.invoke'], cloudSessionToken: 'account-one-token' })
+    const body = JSON.stringify({ model: 'deepseek-flash', messages: [{ role: 'user', content: '你好' }], stream: true })
+
+    const response = await fetch(`${runtime.endpoint}/model/chat/completions`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json', 'x-deepseek-harness-session-id': 'session-one' },
+      body
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('data: [DONE]')
+    expect(fetchCloud).toHaveBeenCalledWith('https://opc.example.test/api/v1/model/chat/completions', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({
+        cookie: 'opc_session=account-one-token',
+        'content-type': 'application/json',
+        'idempotency-key': expect.stringMatching(/^dsh-[a-f0-9]{64}$/)
+      }),
+      body
+    }))
+  })
+
   it('binds on a random loopback port and rejects a token issued for another runtime', async () => {
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test' })
     brokers.push(broker)

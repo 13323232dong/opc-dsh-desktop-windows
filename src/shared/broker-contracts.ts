@@ -2,6 +2,7 @@ export type LocalCapability =
   | 'cloud.proxy'
   | 'filesystem.pick'
   | 'filesystem.reveal'
+  | 'model.invoke'
   | 'ego.status'
   | 'ego.launch'
   | 'ego.run'
@@ -10,6 +11,7 @@ export const LOCAL_CAPABILITIES: readonly LocalCapability[] = [
   'cloud.proxy',
   'filesystem.pick',
   'filesystem.reveal',
+  'model.invoke',
   'ego.status',
   'ego.launch',
   'ego.run'
