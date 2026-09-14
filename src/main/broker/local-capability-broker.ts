@@ -13,6 +13,7 @@ import {
 const MAX_BODY_BYTES = 64 * 1024
 const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
+const DESKTOP_BROKER_HEADER = 'x-opc-desktop-broker'
 const FORGED_CLOUD_HEADERS = new Set([
   'authorization',
   'cookie',
