@@ -1,6 +1,6 @@
 {
   "name": "opc-dsh-desktop",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "A cross-platform desktop shell for DeepSeek Harness.",
   "private": true,
   "type": "module",
