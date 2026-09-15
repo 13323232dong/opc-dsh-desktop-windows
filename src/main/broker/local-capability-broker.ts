@@ -12,6 +12,7 @@ import {
 
 const MAX_BODY_BYTES = 64 * 1024
 const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
+const MAX_PROVIDER_OUTPUT_TOKENS = 32_768
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
 const DESKTOP_BROKER_HEADER = 'x-opc-desktop-broker'
 const FORGED_CLOUD_HEADERS = new Set([
@@ -198,16 +199,19 @@ export class LocalCapabilityBroker {
     if (!runtime.cloudSessionToken) return this.send(response, 401, { code: 'desktop_broker_cloud_session_missing' })
     const rawBody = await this.readRawBody(request, response, MAX_MODEL_BODY_BYTES)
     if (rawBody === undefined) return
+    let modelBody: Record<string, unknown>
     try {
       const parsed = JSON.parse(rawBody) as unknown
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid')
+      modelBody = normalizeModelOutputBudget(parsed as Record<string, unknown>)
     } catch {
       return this.send(response, 400, { code: 'desktop_broker_invalid_json' })
     }
+    const outboundBody = JSON.stringify(modelBody)
     const dshSessionId = typeof request.headers['x-deepseek-harness-session-id'] === 'string'
       ? request.headers['x-deepseek-harness-session-id'].slice(0, 160)
       : 'session-unavailable'
-    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(rawBody).digest('hex')}`
+    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(outboundBody).digest('hex')}`
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 300_000)
     try {
@@ -220,7 +224,7 @@ export class LocalCapabilityBroker {
           'idempotency-key': idempotencyKey,
           [DESKTOP_BROKER_HEADER]: '1'
         },
-        body: rawBody,
+        body: outboundBody,
         signal: controller.signal
       })
       response.writeHead(upstream.status, {
@@ -401,6 +405,14 @@ function isAllowedCloudPath(value: unknown): value is string {
 
 function isBrokerCapability(value: unknown): value is BrokerCapability {
   return isLocalCapability(value) || isMediaCapability(value)
+}
+
+function normalizeModelOutputBudget(body: Record<string, unknown>): Record<string, unknown> {
+  // DSH may include the OpenAI-compatible field, but the configured DeepSeek
+  // gateway accepts only max_tokens and rejects any value above 32,768.
+  const { max_completion_tokens: _compatibilityOnly, ...rest } = body
+  if (typeof rest.max_tokens !== 'number' || !Number.isFinite(rest.max_tokens)) return rest
+  return { ...rest, max_tokens: Math.max(1, Math.min(MAX_PROVIDER_OUTPUT_TOKENS, Math.floor(rest.max_tokens))) }
 }
 
 function safeHeaders(value: unknown): Headers {

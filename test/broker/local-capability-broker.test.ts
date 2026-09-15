@@ -80,6 +80,36 @@ describe('LocalCapabilityBroker', () => {
     expect(oversized.status).toBe(413)
   })
 
+  it('normalizes DSH completion budget fields before forwarding to the model gateway', async () => {
+    const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } }))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({
+      runtimeId: 'runtime-model',
+      capabilities: ['model.invoke'],
+      cloudSessionToken: 'account-one-token'
+    })
+    const response = await fetch(`${runtime.endpoint}/model/chat/completions`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${runtime.token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 99_999,
+        max_completion_tokens: 65_536
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(fetchCloud).toHaveBeenCalledTimes(1)
+    const forwarded = JSON.parse(String(fetchCloud.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
+    expect(forwarded.max_tokens).toBe(32_768)
+    expect(forwarded).not.toHaveProperty('max_completion_tokens')
+  })
+
   it('proxies only registered OPC cloud paths, strips forged credentials, and requires idempotency for writes', async () => {
     const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
