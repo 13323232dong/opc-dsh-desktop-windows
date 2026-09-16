@@ -19,7 +19,7 @@ describe('OPC desktop profile', () => {
       '@opc/dsh-douyin-comment-ops', '@opc/dsh-douyin-publisher', '@opc/dsh-feishu-docs',
       '@opc/dsh-context-retrieval', '@omdsh-dev/dsh-genui', '@opc/dsh-publish-precheck',
       'DSH-opc-material-matcher', '@opc/dsh-realtime-voice', '@opc/dsh-task-tracker',
-      '@opc/dsh-viral-chase', '@opc/dsh-session-context'
+      '@opc/dsh-viral-chase', '@opc/dsh-session-context', '@opc/dsh-dev-status-control'
     ])
     expect(profile.plugins).toContainEqual(expect.objectContaining({
       name: '@opc/dsh-brand', artifact: 'plugins/opc-dsh-brand-0.1.0-opc-desktop.2.tgz'
@@ -29,6 +29,10 @@ describe('OPC desktop profile', () => {
     }))
     expect(profile.plugins).toContainEqual(expect.objectContaining({
       name: '@opc/dsh-viral-chase', version: '0.1.5', artifact: 'plugins/opc-dsh-viral-chase-0.1.5.tgz'
+    }))
+    expect(profile.plugins).toContainEqual(expect.objectContaining({
+      name: '@opc/dsh-dev-status-control', version: '0.2.0',
+      artifact: 'plugins/opc-dsh-dev-status-control-0.2.0.tgz', client: true
     }))
     expect(validateDesktopProfile(profile)).toEqual([])
   })
