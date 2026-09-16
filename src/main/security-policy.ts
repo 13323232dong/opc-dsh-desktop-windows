@@ -20,15 +20,25 @@ export function isTrustedAppUrl(rawUrl: string): boolean {
   return isHarnessUrl(rawUrl)
 }
 
+type MediaPermissionDetails = {
+  readonly mediaType?: 'audio' | 'video' | 'unknown'
+  readonly mediaTypes?: readonly ('audio' | 'video')[]
+}
+
+function isAudioOnlyMediaRequest(details: unknown): boolean {
+  if (!details || typeof details !== 'object') return false
+  const request = details as MediaPermissionDetails
+  if (request.mediaType !== undefined) return request.mediaType === 'audio'
+  return request.mediaTypes?.length === 1 && request.mediaTypes[0] === 'audio'
+}
+
 export function canGrantWindowPermission(
   permission: string,
   requestingUrl: string | undefined,
-  isMainFrame: boolean
+  isMainFrame: boolean,
+  mediaDetails?: unknown
 ): boolean {
-  return (
-    permission === 'clipboard-sanitized-write' &&
-    isMainFrame &&
-    requestingUrl !== undefined &&
-    isHarnessUrl(requestingUrl)
-  )
+  if (!isMainFrame || requestingUrl === undefined || !isHarnessUrl(requestingUrl)) return false
+  if (permission === 'clipboard-sanitized-write') return true
+  return permission === 'media' && isAudioOnlyMediaRequest(mediaDetails)
 }

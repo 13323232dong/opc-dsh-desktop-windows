@@ -20,13 +20,14 @@ export function secureWindow(window: Pick<BrowserWindow, 'webContents'>): void {
       canGrantWindowPermission(
         permission,
         details.requestingUrl ?? requestingOrigin,
-        details.isMainFrame
+        details.isMainFrame,
+        details
       )
   )
   window.webContents.session.setPermissionRequestHandler(
     (_webContents, permission, callback, details) => {
       callback(
-        canGrantWindowPermission(permission, details.requestingUrl, details.isMainFrame)
+        canGrantWindowPermission(permission, details.requestingUrl, details.isMainFrame, details)
       )
     }
   )
