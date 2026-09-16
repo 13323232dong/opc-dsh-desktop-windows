@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ensureOpcDesktopProfile, OPC_DESKTOP_PLUGINS } from '../../src/main/state/opc-profile-bootstrap'
+import {
+  ensureOpcDesktopProfile,
+  OPC_DESKTOP_PLUGINS,
+  reconcileOpcDesktopGenerations
+} from '../../src/main/state/opc-profile-bootstrap'
+import {
+  generationId,
+  registryLayout,
+  writeDesired,
+  writeGenerationMeta
+} from 'dsh-desktop-market-installer/generations/registry'
 
 const desktopPlugins = OPC_DESKTOP_PLUGINS
 
@@ -102,6 +112,70 @@ describe('ensureOpcDesktopProfile', () => {
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(patch).not.toMatch(/^\[\]$/mu)
       expect(patch).toContain('- id: opc-brand')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('replaces stale OPC generations without touching a user-managed generation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
+    const profile = join(root, 'profiles', 'web')
+    const plugins = join(root, 'bundled-plugins')
+    await mkdir(profile, { recursive: true })
+    await mkdir(plugins)
+    await Promise.all([
+      materializePluginArtifacts(plugins),
+      writeFile(join(profile, 'package.json'), JSON.stringify({
+        name: 'dsh-profile-web',
+        private: true,
+        dependencies: {
+          '@opc/dsh-viral-chase': '0.1.3',
+          '@opc/dsh-inspiration': '0.1.0',
+          'community-plugin': '1.2.3'
+        },
+        dsh: {
+          profile: {
+            bundles: [
+              '@deepseek-ai/dsh-base',
+              '@deepseek-ai/dsh-web-app',
+              '@opc/dsh-viral-chase',
+              '@opc/dsh-inspiration',
+              'community-plugin'
+            ]
+          }
+        }
+      }))
+    ])
+    const layout = registryLayout(root)
+    const staleId = generationId('@opc/dsh-viral-chase', '0.1.3', 'stale')
+    const retiredId = generationId('@opc/dsh-inspiration', '0.1.0', 'retired')
+    const communityId = generationId('community-plugin', '1.2.3', 'community')
+    for (const [id, pluginName, version] of [
+      [staleId, '@opc/dsh-viral-chase', '0.1.3'],
+      [retiredId, '@opc/dsh-inspiration', '0.1.0'],
+      [communityId, 'community-plugin', '1.2.3']
+    ] as const) {
+      const directory = join(layout.generations, id)
+      await mkdir(join(directory, 'node_modules', pluginName), { recursive: true })
+      await writeGenerationMeta(directory, { pluginName, version })
+    }
+    await writeDesired(root, [staleId, retiredId, communityId])
+
+    try {
+      await expect(reconcileOpcDesktopGenerations(root)).resolves.toEqual([
+        '@opc/dsh-viral-chase',
+        '@opc/dsh-inspiration'
+      ])
+      await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
+      const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+      expect(manifest.dependencies['@opc/dsh-viral-chase']).toBe(
+        `file:${join(plugins, 'opc-dsh-viral-chase-0.1.5.tgz')}`
+      )
+      expect(manifest.dependencies['@opc/dsh-inspiration']).toBeUndefined()
+      expect(manifest.dependencies['community-plugin']).toBe('1.2.3')
+      expect(manifest.dsh.profile.bundles).not.toContain('@opc/dsh-inspiration')
+      expect(manifest.dsh.profile.bundles).toContain('community-plugin')
+      await expect((await import('dsh-desktop-market-installer/generations/registry')).readDesired(root)).resolves.toEqual([communityId])
     } finally {
       await rm(root, { recursive: true, force: true })
     }

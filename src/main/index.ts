@@ -78,7 +78,10 @@ import {
   rollBackMigration
 } from './state/generation-migration'
 import { runProfileStartupMaintenance } from './state/profile-startup-maintenance'
-import { ensureOpcDesktopProfile } from './state/opc-profile-bootstrap'
+import {
+  ensureOpcDesktopProfile,
+  reconcileOpcDesktopGenerations
+} from './state/opc-profile-bootstrap'
 import { cleanupPluginOwnedComponents } from './state/plugin-component-cleanup'
 import {
   cleanupVerifiedRemovalBackup,
@@ -1282,7 +1285,14 @@ function launchHarness(): Promise<void> {
       dshHome,
       join(desktopResourcePath('opc-profile'), 'plugins')
     )
-    if (opcProfile.changed) {
+    const reconciledGenerations = await reconcileOpcDesktopGenerations(dshHome)
+    if (reconciledGenerations.length > 0) {
+      runtime.note(
+        `[desktop] replaced stale bundled plugin generation(s): ${reconciledGenerations.join(', ')}`
+      )
+      await prepareGenerationsForLaunch(dshHome, (line) => runtime.note(line))
+    }
+    if (opcProfile.changed || reconciledGenerations.length > 0) {
       runtime.note(`[desktop] provisioning OPC profile: ${opcProfile.plugins.join(', ')}`)
       await clearProfileInstallMarker(dshHome)
       const provision = await installProfileDependenciesWithDsh({
