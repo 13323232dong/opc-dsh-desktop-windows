@@ -18,6 +18,7 @@ describe('desktop login entry', () => {
     const source = await readFile(mainEntry, 'utf8')
 
     expect(source).toContain("ipcMain.handle('desktop-auth:sign-in'")
+    expect(source).toContain("ipcMain.handle('desktop-auth:current-account'")
     expect(source).toContain("!isLoginPage(mainWindow.webContents.getURL())")
     expect(source).toContain("throw new Error('desktop_auth_login_page_required')")
   })

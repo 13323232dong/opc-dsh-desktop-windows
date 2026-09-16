@@ -363,7 +363,8 @@ contextBridge.exposeInMainWorld(
   'dshDesktopAuth',
   Object.freeze({
     signIn: (input: { username: string; password: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
-    signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out')
+    signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out'),
+    current: (): Promise<{ authenticated: boolean; tenantName?: string; accountName?: string; userId?: string }> => ipcRenderer.invoke('desktop-auth:current-account')
   })
 )
 

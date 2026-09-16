@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertPrincipalInput, isSafeIdentifier } from '../../src/shared/account-contracts'
+import { assertPrincipalInput, desktopAccountProjection, isSafeIdentifier } from '../../src/shared/account-contracts'
 import { failure, isLocalCapability } from '../../src/shared/broker-contracts'
 import { isLoopbackOrigin } from '../../src/shared/runtime-contracts'
 
@@ -18,6 +18,17 @@ describe('desktop shared contracts', () => {
 
   it('rejects invalid principal boundaries by field', () => {
     expect(() => assertPrincipalInput({ tenantId: 'ok', userId: '../user', sessionId: 'session' })).toThrow('desktop_invalid_user_id')
+  })
+
+  it('projects only safe account display fields for the desktop renderer', () => {
+    const projection = desktopAccountProjection({
+      tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session-a', accountKey: 'key-a',
+      tenantName: '示例商户', accountName: '潘伟东'
+    })
+
+    expect(projection).toEqual({ authenticated: true, tenantName: '示例商户', accountName: '潘伟东', userId: 'user-a' })
+    expect(projection).not.toHaveProperty('sessionId')
+    expect(projection).not.toHaveProperty('accountKey')
   })
 
   it('allows only declared local capabilities', () => {
