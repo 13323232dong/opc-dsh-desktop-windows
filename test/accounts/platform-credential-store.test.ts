@@ -13,7 +13,21 @@ describe('createPlatformCredentialStore', () => {
       }
     })
 
-    expect(store.constructor.name).toBe('WindowsDpapiCredentialStore')
+    expect(store.constructor.name).toBe('ElectronSafeStorageCredentialStore')
+  })
+
+  it('uses Electron safeStorage on macOS so credentials remain protected by Keychain', () => {
+    const store = createPlatformCredentialStore({
+      platform: 'darwin',
+      root: '/Users/test/Library/Application Support/opc',
+      safeStorage: {
+        isEncryptionAvailable: () => true,
+        encryptStringAsync: async (value) => Buffer.from(value),
+        decryptStringAsync: async (value) => ({ result: value.toString('utf8'), shouldReEncrypt: false })
+      }
+    })
+
+    expect(store.constructor.name).toBe('ElectronSafeStorageCredentialStore')
   })
 
   it('fails closed rather than storing Windows credentials without DPAPI', () => {
