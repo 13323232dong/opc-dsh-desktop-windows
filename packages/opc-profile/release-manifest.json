@@ -40,7 +40,7 @@
       "name": "dsh-file-picker",
       "version": "0.1.0",
       "artifact": "plugins/dsh-file-picker-0.1.0.tgz",
-      "sha256": "f7d47ee733b729f9a99c5d7cf1872b37570f30780d775dcf5b308b8fe35a366f"
+      "sha256": "1c7dc3309e941ff171b36d87e66c5b9213218fe08fd8791887db25069dbfe70c"
     },
     {
       "name": "@opc/dsh-douyin-comment-ops",
