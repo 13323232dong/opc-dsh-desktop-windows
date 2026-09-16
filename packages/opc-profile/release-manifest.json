@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.4",
+  "version": "0.7.7",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -88,7 +88,7 @@
       "name": "@opc/dsh-realtime-voice",
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-realtime-voice-0.1.0.tgz",
-      "sha256": "44547b111fc26c7f62493655a18727c6478fe7ae1ba57920fe9e0233c0913505"
+      "sha256": "f157c4d718e717481ea40c5d50a2a857855d5ea48a3b90b7ae21bbc757836283"
     },
     {
       "name": "@opc/dsh-task-tracker",
@@ -98,15 +98,21 @@
     },
     {
       "name": "@opc/dsh-viral-chase",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-viral-chase-0.1.0.tgz",
-      "sha256": "512a4ef87984a95880e1b7cd8f26682ae5f313d0b15a71f32b75db68f42fdd72"
+      "version": "0.1.5",
+      "artifact": "plugins/opc-dsh-viral-chase-0.1.5.tgz",
+      "sha256": "3127f6b13372ec91931498ecdff4e8fdb0ebd9d571bc692e912d13a595692972"
     },
     {
       "name": "@opc/dsh-session-context",
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-session-context-0.1.0.tgz",
       "sha256": "2ec488a1aa94bfe0ddf8a3bfa7f8748342972bf6b53da5db7cf7a00c77f84cf0"
+    },
+    {
+      "name": "@opc/dsh-dev-status-control",
+      "version": "0.2.0",
+      "artifact": "plugins/opc-dsh-dev-status-control-0.2.0.tgz",
+      "sha256": "d6166c74f66eed6a4ad554400574269cff1993c20e7e442d4f386168f539780d"
     }
   ]
 }
