@@ -539,7 +539,7 @@ describe('navigation trust boundary', () => {
     expect(isTrustedAppUrl('javascript:alert(1)')).toBe(false)
   })
 
-  it('only grants clipboard writes from the trusted main frame', () => {
+  it('only grants clipboard writes and microphone access from the trusted main frame', () => {
     expect(
       canGrantWindowPermission(
         'clipboard-sanitized-write',
@@ -555,6 +555,16 @@ describe('navigation trust boundary', () => {
       )
     ).toBe(true)
     expect(
+      canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', true, {
+        mediaType: 'audio'
+      })
+    ).toBe(true)
+    expect(
+      canGrantWindowPermission('media', 'http://localhost:43127/session', true, {
+        mediaTypes: ['audio']
+      })
+    ).toBe(true)
+    expect(
       canGrantWindowPermission('clipboard-read', 'http://127.0.0.1:43127/session', true)
     ).toBe(false)
     expect(
@@ -565,12 +575,23 @@ describe('navigation trust boundary', () => {
       )
     ).toBe(false)
     expect(
+      canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', false, {
+        mediaType: 'audio'
+      })
+    ).toBe(false)
+    expect(
       canGrantWindowPermission(
         'clipboard-sanitized-write',
         'https://example.com/session',
         true
       )
     ).toBe(false)
+    expect(canGrantWindowPermission('media', 'https://example.com/session', true, { mediaType: 'audio' })).toBe(false)
+    expect(canGrantWindowPermission('media', 'file:///tmp/app.html', true, { mediaType: 'audio' })).toBe(false)
+    expect(canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', true, { mediaType: 'video' })).toBe(false)
+    expect(canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', true, { mediaTypes: ['audio', 'video'] })).toBe(false)
+    expect(canGrantWindowPermission('media', 'http://127.0.0.1:43127/session', true)).toBe(false)
+    expect(canGrantWindowPermission('camera', 'http://127.0.0.1:43127/session', true)).toBe(false)
     expect(
       canGrantWindowPermission('clipboard-sanitized-write', 'file:///tmp/app.html', true)
     ).toBe(false)
