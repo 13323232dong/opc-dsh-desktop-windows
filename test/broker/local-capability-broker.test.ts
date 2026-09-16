@@ -173,6 +173,27 @@ describe('LocalCapabilityBroker', () => {
     expect(outboundHeaders.has('x-forwarded-for')).toBe(false)
   })
 
+  it('proxies the constrained viral API surface with the broker-owned identity marker', async () => {
+    const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-issued-session' })
+
+    const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/viral/protagonist-anchors',
+      method: 'GET',
+      headers: { 'x-session-id': 'dsh-session-1', 'x-tenant-id': 'forged-tenant' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(fetchCloud.mock.calls[0]?.[0]).toBe('https://opc.example.test/api/v1/viral/protagonist-anchors')
+    const outboundHeaders = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
+    expect(outboundHeaders.get('x-opc-desktop-broker')).toBe('1')
+    expect(outboundHeaders.get('cookie')).toBe('opc_session=server-issued-session')
+    expect(outboundHeaders.get('x-session-id')).toBe('dsh-session-1')
+    expect(outboundHeaders.has('x-tenant-id')).toBe(false)
+  })
+
   it('only reveals paths whose real location remains inside the runtime workspace', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'opc-broker-workspace-'))
     const inside = join(workspace, 'deliverable.md')
