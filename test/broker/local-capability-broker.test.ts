@@ -56,6 +56,26 @@ describe('LocalCapabilityBroker', () => {
     }))
   })
 
+  it('removes unsupported completion fields and caps platform model output tokens', async () => {
+    const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response('data: [DONE]\n\n', { status: 200 }))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['model.invoke'], cloudSessionToken: 'account-one-token' })
+
+    const response = await fetch(`${runtime.endpoint}/model/chat/completions`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'deepseek-flash', messages: [{ role: 'user', content: '你好' }],
+        max_tokens: 65_536, max_completion_tokens: 65_536
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(JSON.parse(String(fetchCloud.mock.calls[0]?.[1]?.body))).toMatchObject({ max_tokens: 32_768 })
+    expect(JSON.parse(String(fetchCloud.mock.calls[0]?.[1]?.body))).not.toHaveProperty('max_completion_tokens')
+  })
+
   it('binds on a random loopback port and rejects a token issued for another runtime', async () => {
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test' })
     brokers.push(broker)

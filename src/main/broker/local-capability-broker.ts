@@ -198,16 +198,18 @@ export class LocalCapabilityBroker {
     if (!runtime.cloudSessionToken) return this.send(response, 401, { code: 'desktop_broker_cloud_session_missing' })
     const rawBody = await this.readRawBody(request, response, MAX_MODEL_BODY_BYTES)
     if (rawBody === undefined) return
+    let normalizedBody: string
     try {
       const parsed = JSON.parse(rawBody) as unknown
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid')
+      normalizedBody = JSON.stringify(normalizeModelRequest(parsed as Record<string, unknown>))
     } catch {
       return this.send(response, 400, { code: 'desktop_broker_invalid_json' })
     }
     const dshSessionId = typeof request.headers['x-deepseek-harness-session-id'] === 'string'
       ? request.headers['x-deepseek-harness-session-id'].slice(0, 160)
       : 'session-unavailable'
-    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(rawBody).digest('hex')}`
+    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(normalizedBody).digest('hex')}`
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 300_000)
     try {
@@ -220,7 +222,7 @@ export class LocalCapabilityBroker {
           'idempotency-key': idempotencyKey,
           [DESKTOP_BROKER_HEADER]: '1'
         },
-        body: rawBody,
+        body: normalizedBody,
         signal: controller.signal
       })
       response.writeHead(upstream.status, {
@@ -375,6 +377,16 @@ export async function resolveContainedPath(workspace: string, candidate: string)
 
 function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
+}
+
+function normalizeModelRequest(body: Record<string, unknown>): Record<string, unknown> {
+  const { max_completion_tokens: _unsupportedCompletionLimit, max_tokens: rawMaxTokens, ...rest } = body
+  return {
+    ...rest,
+    ...(typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens)
+      ? { max_tokens: Math.min(Math.floor(rawMaxTokens), 32_768) }
+      : rawMaxTokens === undefined ? {} : { max_tokens: rawMaxTokens })
+  }
 }
 
 function parseCloudBaseUrl(value: string): URL {
