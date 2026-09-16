@@ -5,9 +5,9 @@ import type { AccountCredential, CredentialStore } from './credential-store'
 import type { DesktopPrincipal } from '../../shared/account-contracts'
 
 /**
- * The Electron main process supplies this adapter with `safeStorage` on
- * Windows. Keeping Electron out of this module makes the persistence and
- * principal-boundary rules testable on every platform.
+ * The Electron main process supplies this adapter with `safeStorage`.
+ * It uses Keychain on macOS and DPAPI on Windows, while keeping Electron out
+ * of this module so persistence and principal-boundary rules stay testable.
  */
 export interface WindowsCredentialCodec {
   encryptString(value: string): Promise<Buffer>
@@ -21,9 +21,10 @@ export interface WindowsDpapiCredentialStoreOptions {
 
 /**
  * Persists only an opaque desktop session. Electron safeStorage delegates to
- * Windows DPAPI, so another Windows user cannot decrypt this account file.
+ * Keychain on macOS and Windows DPAPI on Windows, so another OS user cannot
+ * decrypt this account file.
  */
-export class WindowsDpapiCredentialStore implements CredentialStore {
+export class ElectronSafeStorageCredentialStore implements CredentialStore {
   constructor(private readonly options: WindowsDpapiCredentialStoreOptions) {}
 
   async load(principal: DesktopPrincipal): Promise<AccountCredential | undefined> {
@@ -72,6 +73,9 @@ export class WindowsDpapiCredentialStore implements CredentialStore {
     return join(this.options.root, 'credentials', 'v1', `${principal.accountKey}.bin`)
   }
 }
+
+/** @deprecated Use ElectronSafeStorageCredentialStore for new platform wiring. */
+export class WindowsDpapiCredentialStore extends ElectronSafeStorageCredentialStore {}
 
 function assertCredentialIdentity(principal: DesktopPrincipal, credential: AccountCredential): void {
   if (
