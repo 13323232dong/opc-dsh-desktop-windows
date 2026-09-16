@@ -18,7 +18,13 @@ const DESKTOP_BROKER_HEADER = 'x-opc-desktop-broker'
 const FORGED_CLOUD_HEADERS = new Set([
   'authorization',
   'cookie',
-  'host'
+  'host',
+  'x-tenant-id',
+  'x-user-id',
+  'x-agent-id',
+  'x-opc-tenant-id',
+  'x-opc-user-id',
+  'x-opc-agent-id'
 ])
 
 // This is intentionally a route-level, compile-time allowlist. Adding an OPC
@@ -48,7 +54,12 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
   /^\/api\/v1\/agent\/(experiences|profiles)$/u,
   /^\/api\/v1\/agent\/experiences\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(\/disable)?$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(memory|disable)$/u,
-  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u
+  /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u,
+  // The viral workbench and its agent tools use a constrained service family.
+  // Route authorization, ownership and charge approvals stay enforced by the
+  // production API; the desktop Broker only contributes its opaque login session.
+  /^\/api\/v1\/viral\/(?:chase-jobs|protagonist-anchors)(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}){0,4})?$/u,
+  /^\/api\/v1\/viral\/runtime\/status$/u
 ] as const
 
 export interface BrokerRuntimeRegistration {
@@ -311,6 +322,10 @@ export class LocalCapabilityBroker {
     }
     const headers = safeHeaders(payload.headers)
     if (runtime.cloudSessionToken) headers.set('cookie', `opc_session=${runtime.cloudSessionToken}`)
+    // This value is written only by the loopback Broker after capability-token
+    // verification. It lets the production API derive tenant identity from the
+    // opaque desktop login cookie instead of trusting plugin-supplied identity.
+    headers.set(DESKTOP_BROKER_HEADER, '1')
     const requestId = request.headers['x-request-id']
     const idempotencyKey = request.headers['idempotency-key']
     if (typeof requestId === 'string') headers.set('x-request-id', requestId)
