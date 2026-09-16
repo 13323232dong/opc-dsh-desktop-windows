@@ -110,9 +110,9 @@
     },
     {
       "name": "@opc/dsh-dev-status-control",
-      "version": "0.2.2",
-      "artifact": "plugins/opc-dsh-dev-status-control-0.2.2.tgz",
-      "sha256": "1f6a1ee0f8e55dcd4fb0adb1406845b7c04b5eb4ed7619f6e4addc86f78879f1"
+      "version": "0.2.3",
+      "artifact": "plugins/opc-dsh-dev-status-control-0.2.3.tgz",
+      "sha256": "c3d486128b343c2dee36a5d3a8d1cda98a2fae4dad79f60099410ac035bca0ed"
     }
   ]
 }
