@@ -94,7 +94,9 @@ function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBroker
     OPC_LOGIN_SESSION_ID: principal.sessionId,
     OPC_DSH_TENANT_ID: principal.tenantId,
     OPC_DSH_USER_ID: principal.userId,
-    OPC_DSH_LOGIN_SESSION_ID: principal.sessionId
+    OPC_DSH_LOGIN_SESSION_ID: principal.sessionId,
+    ...(principal.tenantName ? { OPC_DSH_TENANT_NAME: principal.tenantName } : {}),
+    ...(principal.accountName ? { OPC_DSH_ACCOUNT_NAME: principal.accountName } : {})
   }
 }
 

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { createOpcRuntimeFactory, type AccountHarness } from '../../src/main/runtime/opc-runtime-factory'
 
 const principal = {
-  tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session-a', accountKey: 'a'.repeat(64)
+  tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session-a', accountKey: 'a'.repeat(64), tenantName: '示例商户', accountName: '潘伟东'
 }
 const layout = {
   root: '/accounts/a', dshHome: '/accounts/a/dsh-home', workspace: '/accounts/a/workspace', logs: '/accounts/a/logs', ownerPath: '/accounts/a/owner.json'
@@ -37,7 +37,9 @@ describe('createOpcRuntimeFactory', () => {
         DEEPSEEK_API_KEY: 'broker-secret',
         OPC_ACCOUNT_KEY: principal.accountKey,
         OPC_TENANT_ID: principal.tenantId,
-        OPC_USER_ID: principal.userId
+        OPC_USER_ID: principal.userId,
+        OPC_DSH_TENANT_NAME: '示例商户',
+        OPC_DSH_ACCOUNT_NAME: '潘伟东'
       })
     }))
     expect(broker.registerRuntime).toHaveBeenCalledWith(expect.objectContaining({
