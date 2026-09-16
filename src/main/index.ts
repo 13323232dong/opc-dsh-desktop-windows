@@ -78,7 +78,10 @@ import {
   rollBackMigration
 } from './state/generation-migration'
 import { runProfileStartupMaintenance } from './state/profile-startup-maintenance'
-import { ensureOpcDesktopProfile } from './state/opc-profile-bootstrap'
+import {
+  ensureOpcDesktopProfile,
+  reconcileOpcDesktopGenerations
+} from './state/opc-profile-bootstrap'
 import { cleanupPluginOwnedComponents } from './state/plugin-component-cleanup'
 import {
   cleanupVerifiedRemovalBackup,
@@ -1278,11 +1281,22 @@ function launchHarness(): Promise<void> {
     }
     maintenanceRecoveryLocked = false
     maintenanceAllowedRestoreId = undefined
+    const reconciledGenerations = await reconcileOpcDesktopGenerations(dshHome)
+    if (reconciledGenerations.length > 0) {
+      runtime.note(
+        `[desktop] replaced stale bundled plugin generation(s): ${reconciledGenerations.join(', ')}`
+      )
+      await prepareGenerationsForLaunch(dshHome, (line) => runtime.note(line))
+    }
+    // Projection owns the fields belonging to the old generation set. Clear
+    // that derived state before materializing this release's file-backed
+    // baseline, otherwise projection can mistake new declarations for stale
+    // generated fields and remove them.
     const opcProfile = await ensureOpcDesktopProfile(
       dshHome,
       join(desktopResourcePath('opc-profile'), 'plugins')
     )
-    if (opcProfile.changed) {
+    if (opcProfile.changed || reconciledGenerations.length > 0) {
       runtime.note(`[desktop] provisioning OPC profile: ${opcProfile.plugins.join(', ')}`)
       await clearProfileInstallMarker(dshHome)
       const provision = await installProfileDependenciesWithDsh({

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { disableGeneration } from 'dsh-desktop-market-installer/generations/registry'
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
 export const OPC_DESKTOP_PLUGINS = [
@@ -28,6 +29,19 @@ export const OPC_DESKTOP_PLUGINS = [
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
 
+const RETIRED_OPC_DESKTOP_PLUGINS = [
+  '@opc/dsh-dev-status-control',
+  '@opc/DSH-dong-computer-use',
+  '@opc/dsh-desktop-orb',
+  '@opc/dsh-dong-mobile-control',
+  '@opc/dsh-inspiration'
+]
+
+const OPC_DESKTOP_MANAGED_PLUGIN_NAMES = new Set<string>([
+  ...OPC_DESKTOP_PLUGINS.map(([name]) => name),
+  ...RETIRED_OPC_DESKTOP_PLUGINS
+])
+
 const OPC_DESKTOP_PATCH_MARKER = '# OPC desktop baseline.'
 const OPC_DESKTOP_PATCH = `${OPC_DESKTOP_PATCH_MARKER} Community bundle patches provide the actual plugin rows.\n- id: ui-brand-official\n  disabled: true\n- id: opc-brand\n  config:\n    desktopMode: true\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcWebBaseUrl: !!js process.env.OPC_WEB_BASE_URL ?? 'https://opc.ohmycode.cc'\n- id: agent-teams\n  config:\n    stateDir: .agent-teams\n    soulDirectory: .codex-opc/agents\n    ceoSoulId: ceo-opc\n    memberProvider: spawn\n    maxConcurrentLlmRequests: 1\n    minLlmRequestIntervalMs: 22000\n    llmRateLimitCooldownMs: 60000\n    controlPlaneEnabled: true\n    controlPlaneApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    controlPlaneRegistryBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    opcApiBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    harnessBaseUrl: !!js process.env.OPC_PUBLIC_API_BASE_URL ?? 'https://opc.ohmycode.cc'\n    controlPlaneIdentityHmacSecret: !!js process.env.IDENTITY_HMAC_SECRET ?? ''\n    identityHmacSecret: !!js process.env.OPC_DSH_IDENTITY_HMAC_SECRET ?? ''\n- id: agent-default-model\n  config:\n    provider: deepseek-official\n    model: deepseek-flash\n`
 
@@ -41,6 +55,20 @@ interface ProfileManifest {
 export interface OpcDesktopProfileResult {
   changed: boolean
   plugins: string[]
+}
+
+/**
+ * Generation pointers are derived from prior desktop releases. A bundled
+ * plugin must never keep resolving through an older generation after the
+ * desktop package upgrades it. This only disables names owned by this
+ * baseline; third-party and user-installed generations stay untouched.
+ */
+export async function reconcileOpcDesktopGenerations(dshHome: string): Promise<string[]> {
+  const removed: string[] = []
+  for (const name of OPC_DESKTOP_MANAGED_PLUGIN_NAMES) {
+    if (await disableGeneration(dshHome, name)) removed.push(name)
+  }
+  return removed
 }
 
 /**
@@ -62,7 +90,7 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
   const manifest = await readManifest(manifestPath)
   const dependencies = { ...(manifest.dependencies ?? {}) }
   const bundles = [...new Set([...(manifest.dsh?.profile?.bundles ?? CORE_BUNDLES), ...CORE_BUNDLES])]
-  let changed = false
+  let changed = removeRetiredOpcDesktopEntries(dependencies, bundles)
   for (const { name, path } of artifacts) {
     const spec = `file:${path}`
     if (dependencies[name] !== spec) {
@@ -96,6 +124,25 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
     changed = true
   }
   return { changed, plugins: artifacts.map(({ name }) => name) }
+}
+
+function removeRetiredOpcDesktopEntries(
+  dependencies: Record<string, string>,
+  bundles: string[]
+): boolean {
+  let changed = false
+  for (const name of RETIRED_OPC_DESKTOP_PLUGINS) {
+    if (dependencies[name] !== undefined) {
+      delete dependencies[name]
+      changed = true
+    }
+    const index = bundles.indexOf(name)
+    if (index !== -1) {
+      bundles.splice(index, 1)
+      changed = true
+    }
+  }
+  return changed
 }
 
 /**
