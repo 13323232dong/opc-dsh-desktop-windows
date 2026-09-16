@@ -1281,10 +1281,6 @@ function launchHarness(): Promise<void> {
     }
     maintenanceRecoveryLocked = false
     maintenanceAllowedRestoreId = undefined
-    const opcProfile = await ensureOpcDesktopProfile(
-      dshHome,
-      join(desktopResourcePath('opc-profile'), 'plugins')
-    )
     const reconciledGenerations = await reconcileOpcDesktopGenerations(dshHome)
     if (reconciledGenerations.length > 0) {
       runtime.note(
@@ -1292,6 +1288,25 @@ function launchHarness(): Promise<void> {
       )
       await prepareGenerationsForLaunch(dshHome, (line) => runtime.note(line))
     }
+    // Projection owns the fields belonging to the old generation set. Clear
+    // that derived state before materializing this release's file-backed
+    // baseline, otherwise projection can mistake new declarations for stale
+    // generated fields and remove them.
+    const reconciledGenerations = await reconcileOpcDesktopGenerations(dshHome)
+    if (reconciledGenerations.length > 0) {
+      runtime.note(
+        `[desktop] replaced stale bundled plugin generation(s): ${reconciledGenerations.join(', ')}`
+      )
+      await prepareGenerationsForLaunch(dshHome, (line) => runtime.note(line))
+    }
+    // Projection owns the fields belonging to the old generation set. Clear
+    // that derived state before materializing this release's file-backed
+    // baseline, otherwise projection can mistake new declarations for stale
+    // generated fields and remove them.
+    const opcProfile = await ensureOpcDesktopProfile(
+      dshHome,
+      join(desktopResourcePath('opc-profile'), 'plugins')
+    )
     if (opcProfile.changed || reconciledGenerations.length > 0) {
       runtime.note(`[desktop] provisioning OPC profile: ${opcProfile.plugins.join(', ')}`)
       await clearProfileInstallMarker(dshHome)
