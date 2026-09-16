@@ -234,6 +234,10 @@ export function stopUpdateManager(): void {
 }
 
 function configureUpdater(): void {
+  // electron-builder may leave a provider config from the upstream desktop
+  // project in app-update.yml. Always override it at runtime so OPC never
+  // checks or downloads from a non-OPC update source.
+  autoUpdater.setFeedURL({ provider: 'generic', url: STABLE_FEED_URL })
   // The download is ours to start: an update the user skipped should not be
   // fetched at all, and update-available is the only place that is known.
   autoUpdater.autoDownload = false

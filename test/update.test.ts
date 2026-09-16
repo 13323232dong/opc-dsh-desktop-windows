@@ -106,6 +106,19 @@ describe('installing a specific version', () => {
     expect(manager).toContain('autoUpdater.allowDowngrade = false')
     expect(manager).toContain('downloadAvailableUpdate()')
   })
+
+  it('pins the updater to the OPC feed before the first check', async () => {
+    const manager = await readFile(
+      path.join(projectRoot, 'src/main/update/update-manager.ts'),
+      'utf8'
+    )
+    expect(manager.indexOf("setFeedURL({ provider: 'generic', url: STABLE_FEED_URL })"))
+      .toBeGreaterThanOrEqual(0)
+    const configureStart = manager.indexOf('function configureUpdater()')
+    const feedPin = manager.indexOf("setFeedURL({ provider: 'generic', url: STABLE_FEED_URL })", configureStart)
+    expect(feedPin).toBeGreaterThan(configureStart)
+    expect(feedPin).toBeLessThan(manager.indexOf('autoUpdater.autoDownload', configureStart))
+  })
 })
 
 function metadata(architecture: 'arm64' | 'x64', releaseDate: string) {
