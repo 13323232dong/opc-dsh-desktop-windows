@@ -150,6 +150,7 @@ import {
 } from './main-window-recovery'
 import { DesktopAuthController } from './accounts/desktop-auth-controller'
 import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
+import { desktopAccountProjection } from '../shared/account-contracts'
 import { createPlatformCredentialStore } from './accounts/platform-credential-store'
 import { LocalCapabilityBroker } from './broker/local-capability-broker'
 import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
@@ -2779,6 +2780,12 @@ async function bootstrap(): Promise<void> {
     return { ok: true }
   })
   ipcMain.removeHandler('desktop-auth:sign-out')
+  ipcMain.removeHandler('desktop-auth:current-account')
+  ipcMain.handle('desktop-auth:current-account', (event) => {
+    assertTrustedMainWindowEvent(event)
+    const principal = accountRuntimeManager?.snapshot().context?.principal
+    return principal ? desktopAccountProjection(principal) : { authenticated: false }
+  })
   ipcMain.handle('desktop-auth:sign-out', async (event) => {
     assertTrustedMainWindowEvent(event)
     if (!hasActiveRuntime()) return { ok: true }
