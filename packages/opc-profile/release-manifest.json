@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.7",
-  "platform": "win32",
-  "arch": "x64",
+  "version": "0.7.8",
+  "platform": "darwin",
+  "arch": "arm64",
   "profileId": "opc-desktop",
   "harnessVersion": "0.1.2-rc.1",
   "plugins": [
@@ -112,7 +112,7 @@
       "name": "@opc/dsh-dev-status-control",
       "version": "0.2.0",
       "artifact": "plugins/opc-dsh-dev-status-control-0.2.0.tgz",
-      "sha256": "d6166c74f66eed6a4ad554400574269cff1993c20e7e442d4f386168f539780d"
+      "sha256": "a6a5a5486d8a9545569653c18a11c3a0c40ac108d97095fbc8ead9339a12dd21"
     }
   ]
 }
