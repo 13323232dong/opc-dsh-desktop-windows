@@ -5,7 +5,7 @@ import { disableGeneration } from 'dsh-desktop-market-installer/generations/regi
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
 export const OPC_DESKTOP_PLUGINS = [
-  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.1.tgz', undefined],
+  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.2.tgz', undefined],
   // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
   // desktop build retains Agent Teams while deferring only that optional route
   // selection bridge to the host's provider defaults.
