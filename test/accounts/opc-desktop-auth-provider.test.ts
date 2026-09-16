@@ -38,6 +38,19 @@ describe('OpcDesktopAuthProvider', () => {
     } finally { await rm(root, { recursive: true, force: true }) }
   })
 
+  it('retains the server-asserted display names for the desktop DSH projection', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
+    const credentials = new InMemoryCredentialStore()
+    const identity = { ...principal, tenantName: '示例商户', accountName: '潘伟东' }
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ success: true, data: identity }), { headers: { 'set-cookie': 'opc_session=opaque-token; HttpOnly' } }))
+    try {
+      const provider = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: fetcher as typeof fetch })
+      const signedIn = await provider.signIn({ username: 'merchant', password: 'correct-password' })
+
+      expect(signedIn?.principal).toMatchObject({ tenantName: '示例商户', accountName: '潘伟东' })
+    } finally { await rm(root, { recursive: true, force: true }) }
+  })
+
   it('keeps an encrypted local session on a transient verification failure', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
     const credentials = new InMemoryCredentialStore()

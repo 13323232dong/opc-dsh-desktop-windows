@@ -142,7 +142,13 @@ function principalFrom(value: unknown): PrincipalInput {
   if (!value || typeof value !== 'object') throw new Error('desktop_auth_principal_invalid')
   const input = value as Partial<PrincipalInput>
   if (typeof input.tenantId !== 'string' || typeof input.userId !== 'string' || typeof input.sessionId !== 'string') throw new Error('desktop_auth_tenant_required')
-  return { tenantId: input.tenantId, userId: input.userId, sessionId: input.sessionId }
+  return {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sessionId: input.sessionId,
+    ...(typeof input.tenantName === 'string' ? { tenantName: input.tenantName } : {}),
+    ...(typeof input.accountName === 'string' ? { accountName: input.accountName } : {})
+  }
 }
 
 function principalFromApiResponse(value: unknown): PrincipalInput {

@@ -5,6 +5,9 @@ export interface DesktopPrincipal {
   userId: string
   sessionId: string
   accountKey: string
+  /** Server-asserted labels used only for local DSH account display. */
+  tenantName?: string
+  accountName?: string
 }
 
 export interface AccountOwnerMetadata {
@@ -34,5 +37,16 @@ export function assertPrincipalInput(input: PrincipalInput): PrincipalInput {
   if (!isSafeIdentifier(input.tenantId)) throw new Error('desktop_invalid_tenant_id')
   if (!isSafeIdentifier(input.userId)) throw new Error('desktop_invalid_user_id')
   if (!isSafeIdentifier(input.sessionId)) throw new Error('desktop_invalid_session_id')
-  return { ...input }
+  return {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sessionId: input.sessionId,
+    ...(safeDisplayName(input.tenantName) ? { tenantName: safeDisplayName(input.tenantName) } : {}),
+    ...(safeDisplayName(input.accountName) ? { accountName: safeDisplayName(input.accountName) } : {})
+  }
+}
+
+function safeDisplayName(value: unknown): string | undefined {
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  return normalized && normalized.length <= 200 && !/[\u0000-\u001f\u007f]/u.test(normalized) ? normalized : undefined
 }
