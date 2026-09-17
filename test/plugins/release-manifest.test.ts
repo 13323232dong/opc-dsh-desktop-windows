@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -40,5 +41,24 @@ describe('OPC desktop release manifest', () => {
 
   it('ships an artifact for every Windows desktop plugin declared by the profile', async () => {
     await expect(verifyReleaseArtifacts(DESKTOP_PROFILE_MANIFEST, join(process.cwd(), 'packages', 'opc-profile'))).resolves.toEqual([])
+  })
+
+  it('ships every profile plugin as a valid DSH bundle', () => {
+    const profileRoot = join(process.cwd(), 'packages', 'opc-profile')
+
+    for (const plugin of DESKTOP_PROFILE_MANIFEST.plugins) {
+      const artifact = join(profileRoot, plugin.artifact)
+      const manifest = JSON.parse(execFileSync(
+        'tar',
+        ['-xOf', artifact, 'package/package.json'],
+        { encoding: 'utf8' }
+      )) as { name?: string; dsh?: { bundle?: { patch?: string } } }
+
+      expect(manifest.name).toBe(plugin.name)
+      expect(manifest.dsh?.bundle?.patch).toMatch(/^\.\/[^/]+\.ya?ml$/)
+      expect(execFileSync('tar', ['-tf', artifact], { encoding: 'utf8' })).toContain(
+        `package/${manifest.dsh?.bundle?.patch?.slice(2)}`
+      )
+    }
   })
 })

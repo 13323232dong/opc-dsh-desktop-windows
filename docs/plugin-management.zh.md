@@ -18,6 +18,19 @@ DSH 中“插件”至少包含五个不同层级：
 
 因此，插件“已安装”“已加入 Bundle”“Entry 已激活”“前端模块已加载”“UI 已显示”是五个不同状态，不能互相替代。
 
+### 发布前的 Bundle 完整性门禁
+
+2026-09-17 曾出现一个客户端工作台插件可完成 TypeScript 构建、却因发布包的 `package.json` 缺少 `dsh.bundle` 而使 Harness 在登录后整体退出的故障。其典型日志为 `profile bundle "<plugin>" declares no dsh.bundle in its package.json`。这是 Profile 组合错误，不是商户账号、会话、模型或线上登录服务故障。
+
+自该故障起，所有列入 `packages/opc-profile/index.js` 的桌面 Profile 插件都必须满足以下发布不变量：
+
+1. tarball 内 `package/package.json` 的 `name` 必须与 Profile 声明一致。
+2. 必须声明 `dsh.bundle.patch`，并且 tarball 必须包含该 patch 文件；纯客户端插件也必须提供无副作用的 Bundle 入口。
+3. 不能只检查插件源码或 `packages/opc-profile/plugins/` 目录；必须检查 Electron 安装包内嵌的同一 tarball。
+4. 任一不变量失败时，停止安装和发布，先修复插件包，再重新执行全量测试和桌面冷启动验收。
+
+`test/plugins/release-manifest.test.ts` 会遍历当前 Profile 的全部插件执行第 1、2 项检查，避免同类缺失再次进入安装包。
+
 0.7.0 前，所有社区插件和它们的依赖都安装在 `profiles/web` 的同一个 pnpm 工程和同一棵 `node_modules` 中。一个插件的安装、更新或失败可能改写共享 lockfile、共享依赖和兄弟插件目录。
 
 0.7.0 引入 **immutable generation**：通过插件市场安装的 npm 插件各自在独立目录中完成安装，再以一次 rename 提升为不可变 generation；`desired.json` 保存想启用的 generation 集合，投影器把它们链接回 Harness 仍然认识的 `profiles/web/node_modules`、`dependencies` 和 `dsh.profile.bundles` 形态。它解决的是“共享树原地更新”，尤其是 Windows 上目录被占用时 pnpm rename 卡死的问题，并不隔离插件运行权限或 Cordis/UI 语义冲突。
