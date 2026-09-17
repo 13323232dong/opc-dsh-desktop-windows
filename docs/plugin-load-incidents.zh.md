@@ -60,6 +60,21 @@
 | 关联提交 | 桌面集成 `5ae1b44` |
 | 遗留风险 | 已有 Profile 的过期标记由新启动流清理；不手工删除用户 Profile、插件数据或凭据。Windows 路径仍由精确传入的当前资源目录约束，但本次真实验收范围仅为 macOS。 |
 
+## 2026-09-18：访谈入口仍加载旧的实时语音插件
+
+| 项目 | 记录 |
+| --- | --- |
+| 状态 | 已修复并完成已登录账户的安装后验证 |
+| 受影响范围 | 从旧桌面版本升级、且 Profile 曾引用本地开发链接或旧实时语音 artifact 的账户。 |
+| 用户症状 | 点击“开始访谈”后短暂禁用再恢复，没有语音 Overlay 或可理解的错误提示。 |
+| 稳定复现证据 | 发布包包含 `@opc/dsh-realtime-voice` `0.1.2`，但桌面启动器的 artifact map 仍指向 `0.1.1`。运行中 Profile 因而继续解析旧版本，返回的访谈失败被旧客户端静默处理。 |
+| 已验证根因 | Profile release manifest 与 `OPC_DESKTOP_PLUGINS` 启动器 artifact map 版本漂移。包内有新 tgz 并不保证既有账户运行时会替换旧依赖。 |
+| 修复 | 启动器 artifact map 改为 `opc-dsh-realtime-voice-0.1.2.tgz`；新增测试模拟旧 `link:` 依赖，要求启动时精确替换为当前包内 artifact。 |
+| 预防门禁 | `test/plugins/release-manifest.test.ts` 校验 release manifest 与 bootstrap artifact map 完全一致；`test/plugins/opc-profile-bootstrap.test.ts` 校验旧开发链接会被正式 artifact 覆盖。 |
+| 验证 | 定向 13 项测试、类型检查和 macOS arm64 打包通过。正式 App 的账户隔离 Profile 已加载 `0.1.2`；点击入口会显示“登录状态已失效，请重新登录后继续访谈”，不再无反馈。 |
+| 关联提交 | `d0964f8 fix: align desktop voice bootstrap artifact`；合并 `62524b5`。 |
+| 遗留风险 | 当前本机测试账户的桌面登录会话已失效，无法在不重新登录的情况下完成真实语音 Overlay 验收；新注册自动建立桌面会话的路径仍需使用可登录的新商户账户复测。 |
+
 ## 复盘模板
 
 ```markdown
