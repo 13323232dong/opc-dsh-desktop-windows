@@ -11,7 +11,7 @@ export const OPC_DESKTOP_PLUGINS = [
   // selection bridge to the host's provider defaults.
   ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz'],
   ['@opc/dsh-assets', 'opc-dsh-assets-0.1.1.tgz'],
-  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
+  ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.1.tgz'],
   ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
   ['dsh-file-picker', 'dsh-file-picker-0.1.0.tgz'],
   ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],

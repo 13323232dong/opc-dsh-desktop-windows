@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReleaseManifest, verifyReleaseArtifacts } from '../../packages/opc-profile/release-manifest.js'
 import { DESKTOP_PROFILE_MANIFEST } from '../../packages/opc-profile/index.js'
+import { OPC_DESKTOP_PLUGINS } from '../../src/main/state/opc-profile-bootstrap'
 
 const profile = {
   schemaVersion: 1,
@@ -52,13 +53,20 @@ describe('OPC desktop release manifest', () => {
         'tar',
         ['-xOf', artifact, 'package/package.json'],
         { encoding: 'utf8' }
-      )) as { name?: string; dsh?: { bundle?: { patch?: string } } }
+      )) as { name?: string; version?: string; dsh?: { bundle?: { patch?: string } } }
 
       expect(manifest.name).toBe(plugin.name)
+      expect(manifest.version).toBe(plugin.version)
       expect(manifest.dsh?.bundle?.patch).toMatch(/^\.\/[^/]+\.ya?ml$/)
       expect(execFileSync('tar', ['-tf', artifact], { encoding: 'utf8' })).toContain(
         `package/${manifest.dsh?.bundle?.patch?.slice(2)}`
       )
     }
+  })
+
+  it('keeps the runtime bootstrap artifact map identical to the packaged profile', () => {
+    expect(new Map(OPC_DESKTOP_PLUGINS.map(([name, artifact]) => [name, `plugins/${artifact}`]))).toEqual(
+      new Map(DESKTOP_PROFILE_MANIFEST.plugins.map((plugin) => [plugin.name, plugin.artifact]))
+    )
   })
 })

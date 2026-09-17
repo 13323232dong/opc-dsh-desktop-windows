@@ -7,7 +7,7 @@ const bundle = join(
   'packages',
   'opc-profile',
   'plugins',
-  'opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'
+  'opc-dsh-assets-workbench-0.1.1.tgz'
 )
 
 function packageManifest(): Record<string, unknown> {

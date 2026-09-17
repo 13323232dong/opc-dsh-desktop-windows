@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.9",
-  "platform": "darwin",
-  "arch": "arm64",
+  "version": "0.7.13",
+  "platform": "win32",
+  "arch": "x64",
   "profileId": "opc-desktop",
   "harnessVersion": "0.1.2-rc.1",
   "plugins": [
     {
       "name": "@opc/dsh-brand",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-brand-0.1.0-opc-desktop.2.tgz",
-      "sha256": "fde853ff2276857c5021da2aed142bb070eb726fc7149d8cbe91ba3b0e1717e8"
+      "version": "0.1.4",
+      "artifact": "plugins/opc-dsh-brand-0.1.4.tgz",
+      "sha256": "cfbe7eb102e4839e07e64ec145b9bc870cfad7dd8e2b9c22045f7ff2e7da5257"
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
@@ -26,9 +26,9 @@
     },
     {
       "name": "@opc/dsh-assets-workbench",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz",
-      "sha256": "8c476bd58350395a95e7645e448127a45009cdf9458910ba97980670f8ddb503"
+      "version": "0.1.1",
+      "artifact": "plugins/opc-dsh-assets-workbench-0.1.1.tgz",
+      "sha256": "c7c46fae6cf6cc3a2adac9714f266edd2d0cc7ff6db6106f7fe1d241150fcbd7"
     },
     {
       "name": "@opc/dsh-file-attachments",
@@ -88,7 +88,7 @@
       "name": "@opc/dsh-realtime-voice",
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-realtime-voice-0.1.0.tgz",
-      "sha256": "f157c4d718e717481ea40c5d50a2a857855d5ea48a3b90b7ae21bbc757836283"
+      "sha256": "eda5a495dc671b5f0decdc328cf0a130adeee1ebab8f040f277e3fd12ada16d5"
     },
     {
       "name": "@opc/dsh-task-tracker",

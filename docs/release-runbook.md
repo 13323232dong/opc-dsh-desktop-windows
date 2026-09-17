@@ -19,6 +19,13 @@ the new artifact and that its installed `node_modules/<plugin>/package.json`
 reports the new version. This forces a safe dependency refresh without removing
 the account's sessions, workspace, or credentials.
 
+Do not replace a bundled `.tgz` in place while keeping the package version and
+artifact filename. The per-account Profile intentionally retains the old
+installed package, so the source tree and newly built App may be correct while
+an existing merchant continues to run the broken package. The release gate must
+therefore verify a changed plugin has a new semantic version, a new artifact
+filename, and matching entries in the Profile artifact map and bootstrap list.
+
 ## Local Windows UKey signing runner
 
 Windows packaging and signing run as separate jobs. The GitHub-hosted Windows runner builds an unsigned NSIS installer and uploads a short-lived workflow artifact. A local macOS ARM64 runner downloads it, signs the installer with Jsign and the SafeNet UKey, regenerates the blockmap and `latest.yml`, and uploads the signed release set. The GitHub Release job cannot start unless signing succeeds.
