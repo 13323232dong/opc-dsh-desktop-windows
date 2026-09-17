@@ -55,6 +55,10 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
   /^\/api\/v1\/agent\/experiences\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(\/disable)?$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(memory|disable)$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u,
+  // First-run interview calls are forwarded only with the account session the
+  // main process owns. The DSH plugin cannot select a tenant or sign for one.
+  /^\/api\/v1\/agent\/onboarding\/status$/u,
+  /^\/api\/v1\/agent\/onboarding\/interview\/(start|answers|skip)$/u,
   // The viral workbench and its agent tools use a constrained service family.
   // Route authorization, ownership and charge approvals stay enforced by the
   // production API; the desktop Broker only contributes its opaque login session.
