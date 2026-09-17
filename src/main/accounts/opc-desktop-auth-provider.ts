@@ -82,6 +82,14 @@ export class OpcDesktopAuthProvider implements DesktopAuthProvider {
     return session
   }
 
+  async requestRegistrationCode(input: { username: string; password: string; email: string }): Promise<void> {
+    await this.postAuth('/api/v1/auth/registration/request-code', input)
+  }
+
+  async confirmRegistration(input: { username: string; password: string; email: string; code: string }): Promise<void> {
+    await this.postAuth('/api/v1/auth/registration/confirm', input)
+  }
+
   async signOut(): Promise<void> {
     const active = this.active
     this.active = undefined
@@ -103,6 +111,21 @@ export class OpcDesktopAuthProvider implements DesktopAuthProvider {
   }
 
   private url(path: string): string { return new URL(path, this.baseUrl).toString() }
+
+  private async postAuth(path: string, body: unknown): Promise<void> {
+    const response = await this.fetcher(this.url(path), {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      redirect: 'error'
+    })
+    if (response.ok) return
+    const payload = await response.json().catch(() => undefined) as { error?: { message?: unknown } } | undefined
+    const message = payload?.error?.message
+    throw new Error(typeof message === 'string' && message.length <= 160
+      ? message
+      : `desktop_auth_registration_failed:${response.status}`)
+  }
 
   private async readActiveAccount(): Promise<ActiveAccountRecord | undefined> {
     try {
