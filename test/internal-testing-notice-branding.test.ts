@@ -51,6 +51,9 @@ describe('internal testing notice branding', () => {
     expect(settingsModelsPatch).toContain('__opcInternalTestingNoticeAcknowledged')
     expect(bundledVoiceClient()).toContain('OnboardingRuntime')
     expect(bundledVoiceClient()).toContain('打开访谈引导')
+    expect(bundledVoiceClient()).toContain('开始访谈')
+    expect(bundledVoiceClient()).toContain('继续访谈')
+    expect(bundledVoiceClient()).toContain('正在检查访谈')
   })
 
   it('uses Evan Super Butler wording while launching the local runtime', () => {
