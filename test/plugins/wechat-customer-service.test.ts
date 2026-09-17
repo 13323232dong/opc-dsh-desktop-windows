@@ -3,6 +3,7 @@ import { DESKTOP_PROFILE_MANIFEST, OPC_PLUGIN_COMPATIBILITY_MATRIX } from '../..
 import { OPC_DESKTOP_PLUGINS } from '../../src/main/state/opc-profile-bootstrap'
 import { readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 
 describe('desktop WeChat customer service', () => {
@@ -14,7 +15,7 @@ describe('desktop WeChat customer service', () => {
     const plugins = DESKTOP_PROFILE_MANIFEST.plugins.filter(p => p.name === '@opc/DSH-ai-customer-service')
     expect(plugins).toHaveLength(1)
     if (!plugins[0]) throw new Error('customer service profile missing')
-    expect(plugins[0]).toMatchObject({ version: '0.1.0', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.0.tgz' })
+    expect(plugins[0]).toMatchObject({ version: '0.1.1', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.1.tgz' })
     expect(OPC_PLUGIN_COMPATIBILITY_MATRIX.find(p => p.name === '@opc/DSH-ai-customer-service')).toMatchObject({ windowsDisposition: 'requires-native-adapter' })
     const plugin = plugins[0]
     expect(OPC_DESKTOP_PLUGINS.find(p => p[0] === plugin.name)?.[1]).toBe(plugin.artifact.replace('plugins/', ''))
@@ -30,5 +31,25 @@ describe('desktop WeChat customer service', () => {
       const digest = createHash('sha256').update(await readFile(resolve(root, release.artifact))).digest('hex')
       expect(release.sha256).toBe(digest)
     }
+  })
+  it('ships the permission tool and a callable AI customer-service tab label', () => {
+    const artifact = resolve(
+      'packages/opc-profile/plugins/opc-DSH-ai-customer-service-0.1.1.tgz'
+    )
+    const runtime = execFileSync(
+      'tar',
+      ['-xOf', artifact, 'package/src/index.mjs'],
+      { encoding: 'utf8' }
+    )
+    const client = execFileSync(
+      'tar',
+      ['-xOf', artifact, 'package/src/client.jsx'],
+      { encoding: 'utf8' }
+    )
+
+    expect(runtime).toContain("['request_accessibility'")
+    expect(runtime).toContain('wechat_customer_service_request_accessibility')
+    expect(client).toContain("label:()=>'AI 客服'")
+    expect(client).toContain("act('request-accessibility',{})")
   })
 })

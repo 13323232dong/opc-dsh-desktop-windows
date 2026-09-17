@@ -80,6 +80,7 @@ import {
 import { runProfileStartupMaintenance } from './state/profile-startup-maintenance'
 import {
   ensureOpcDesktopProfile,
+  OPC_DESKTOP_PLUGINS,
   reconcileOpcDesktopGenerations
 } from './state/opc-profile-bootstrap'
 import { cleanupPluginOwnedComponents } from './state/plugin-component-cleanup'
@@ -1267,6 +1268,8 @@ function launchHarness(): Promise<void> {
       migrateProfileToGenerations: () =>
         migrateProfileToGenerations({
           dshHome,
+          bundledPluginArtifactDirectory: join(desktopResourcePath('opc-profile'), 'plugins'),
+          bundledPluginNames: OPC_DESKTOP_PLUGINS.map(([name]) => name),
           nodeExecutablePath: bundledNodePath(),
           pnpmEntryPath: bundledPnpmEntryPath(),
           dshEntryPath: dshEntryPath(),

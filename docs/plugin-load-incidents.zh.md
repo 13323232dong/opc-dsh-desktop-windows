@@ -30,6 +30,36 @@
 | 关联提交 | `0f73385 fix: validate desktop profile plugin bundles`；`f15cac8 fix: refresh bundled workbench plugin versions` |
 | 遗留风险 | Bundle 门禁证明包可被 Profile 解析，不替代真实冷启动、Client Module 图和 UI Slot 验收。每次桌面插件变更仍需在安装后的正式 App 真实操作验证。 |
 
+## 2026-09-18：AI 客服客户端标签未出现
+
+| 项目 | 记录 |
+| --- | --- |
+| 状态 | 代码与插件包已修复；安装后正式 App 界面验收待执行 |
+| 受影响范围 | `@opc/DSH-ai-customer-service` `0.1.0` 的 Client Module；桌面 DSH 对话页顶层标签 |
+| 用户症状 | 工具已注册且 Agent 可调用状态检查，但对话同级位置没有“AI 客服”标签。 |
+| 稳定复现证据 | 正式 DSH 真实对话中可看到工具轨迹，但顶层只显示其他已有标签；解包 `0.1.0` 可见 `conversation.view` 的 `label` 是字符串。 |
+| 已验证根因 | 当前 DSH Slot 契约要求 `label` 为可调用函数；插件传入字符串，导致 Client Module 不能正常注册该标签。 |
+| 修复 | 插件 `0.1.1` 改为 `label: () => 'AI 客服'`，同时增加 macOS 辅助功能授权工具和看板入口；桌面 Profile、bootstrap 与 release manifest 统一锁定 `0.1.1`。 |
+| 预防门禁 | `test/plugins/wechat-customer-service.test.ts` 直接解包正式 tgz，检查函数式标签、授权工具和看板操作；另校验包哈希与 release manifest 一致。 |
+| 验证 | 插件 36 项测试通过；桌面相关 23 项测试与 TypeScript 类型检查通过。正式 App 冷启动界面验收在本次发布后补记。 |
+| 关联提交 | 插件 `25fb44ae09b9eaf7f826ab1783784c97d6df0614`；桌面集成 `5ae1b44` |
+| 遗留风险 | 静态包检查不能替代安装后 Slot 渲染和 macOS 权限交互；未完成真实 UI 验收前不得标记发布成功。 |
+
+## 2026-09-18：桌面内置插件被误当社区插件迁移
+
+| 项目 | 记录 |
+| --- | --- |
+| 状态 | 代码已修复；正式 App Profile 冷启动验收待执行 |
+| 受影响范围 | 已有账户且 Profile 依赖指向 App 内 `Resources/opc-profile/plugins/*.tgz` 的 macOS 桌面端 |
+| 用户症状 | 启动时先长时间停留，写入 `.generations-deferred.json` 后回退使用旧 Profile；等待后虽可进入 DSH，但发布门禁视为失败。 |
+| 稳定复现证据 | 实机延迟标记记录 `@opc/dsh-brand failed peer validation`，且多个 peer 的真实路径落在 `/Applications/Evan-AI管家.app/Contents/Resources/...`；单元测试可复现迁移器尝试安装 `@opc/dsh-brand`。 |
+| 已验证根因 | 迁移器把除 DSH 核心包外的所有 Profile dependency/bundle 都当作社区插件，没有区分桌面 Profile 管理的内置 tgz。生成器随后按社区插件闭包校验 peer，正确地拒绝了位于 App 资源树的依赖，但该路径本不应进入社区插件迁移。 |
+| 修复 | 启动器将当前 App 的绝对插件目录和审核过的桌面插件名单同时传给迁移器；只有名称在名单中且 `file:` 源的直接父目录精确等于当前 App 资源目录时才留在共享树。其他外部路径仍走原有安全校验。无社区插件时清理过期延迟标记。 |
+| 预防门禁 | `test/generation-migration.test.ts` 验证内置插件不进入 generation、真实社区插件仍迁移、内置 dependency 和 bundle 保留，以及无迁移项时清除过期延迟标记。 |
+| 验证 | 相关 23 项测试与 TypeScript 类型检查通过；未放宽 `verifyGenerationPeers`。安装后正式 App 尚需确认不再产生新的延迟标记。 |
+| 关联提交 | 桌面集成 `5ae1b44` |
+| 遗留风险 | 已有 Profile 的过期标记由新启动流清理；不手工删除用户 Profile、插件数据或凭据。Windows 路径仍由精确传入的当前资源目录约束，但本次真实验收范围仅为 macOS。 |
+
 ## 复盘模板
 
 ```markdown

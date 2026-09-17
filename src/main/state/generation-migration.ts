@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import {
   installGeneration,
   verifyGenerationPeers
@@ -81,6 +81,8 @@ interface MigrationDeps {
   /** Rebuild the shared tree from the rewritten manifest (dshmarket only). */
   reinstallSharedTree: () => Promise<{ ok: boolean; detail?: string }>
   note: Note
+  bundledPluginArtifactDirectory?: string
+  bundledPluginNames?: readonly string[]
 }
 
 function profileDir(dshHome: string): string {
@@ -103,13 +105,49 @@ async function profileManifest(dshHome: string): Promise<{
   return JSON.parse(await readFile(join(profileDir(dshHome), 'package.json'), 'utf8'))
 }
 
-async function communityPlugins(dshHome: string): Promise<string[]> {
+interface ProfilePluginSets {
+  community: string[]
+  bundled: Set<string>
+}
+
+function isBundledDesktopPlugin(
+  name: string,
+  spec: string | undefined,
+  deps: Pick<MigrationDeps, 'bundledPluginArtifactDirectory' | 'bundledPluginNames'>
+): boolean {
+  if (
+    spec === undefined ||
+    !spec.startsWith('file:') ||
+    deps.bundledPluginArtifactDirectory === undefined ||
+    !deps.bundledPluginNames?.includes(name)
+  ) {
+    return false
+  }
+  const sourcePath = spec.slice('file:'.length)
+  return isAbsolute(sourcePath) &&
+    dirname(resolve(sourcePath)) === resolve(deps.bundledPluginArtifactDirectory)
+}
+
+async function profilePluginSets(
+  dshHome: string,
+  deps: Pick<MigrationDeps, 'bundledPluginArtifactDirectory' | 'bundledPluginNames'>
+): Promise<ProfilePluginSets> {
   const manifest = await profileManifest(dshHome)
   const names = new Set([
     ...Object.keys(manifest.dependencies ?? {}),
     ...(manifest.dsh?.profile?.bundles ?? [])
   ])
-  return [...names].filter((name) => !KEEP_IN_SHARED_TREE.has(name))
+  const bundled = new Set(
+    [...names].filter((name) =>
+      isBundledDesktopPlugin(name, manifest.dependencies?.[name], deps)
+    )
+  )
+  return {
+    community: [...names].filter((name) =>
+      !KEEP_IN_SHARED_TREE.has(name) && !bundled.has(name)
+    ),
+    bundled
+  }
 }
 
 interface PlannedPlugin {
@@ -502,19 +540,19 @@ async function validateGeneration(plugin: PlannedPlugin, generation: { directory
  * names. The lockfile is dropped so the rebuild resolves the smaller tree
  * cleanly.
  */
-async function rewriteManifest(dshHome: string): Promise<void> {
+async function rewriteManifest(dshHome: string, bundledPlugins: ReadonlySet<string>): Promise<void> {
   const dir = profileDir(dshHome)
   const snapshot = JSON.parse(await readFile(join(dir, `package.json${SNAPSHOT_SUFFIX}`), 'utf8'))
   const keptDeps: Record<string, string> = {}
   for (const [name, spec] of Object.entries(snapshot.dependencies ?? {})) {
-    if (KEEP_IN_SHARED_TREE.has(name)) keptDeps[name] = spec as string
+    if (KEEP_IN_SHARED_TREE.has(name) || bundledPlugins.has(name)) keptDeps[name] = spec as string
   }
   if (keptDeps.dshmarket === undefined) keptDeps.dshmarket = '^1.40.0'
 
   // Bundles are left to projection, which runs next and knows the generations.
   // Here we only trim to the shared-tree packages and keep in-box bundles.
   const keptBundles = (snapshot.dsh?.profile?.bundles ?? []).filter((name: string) =>
-    KEEP_IN_SHARED_TREE.has(name)
+    KEEP_IN_SHARED_TREE.has(name) || bundledPlugins.has(name)
   )
   const next = {
     ...snapshot,
@@ -529,6 +567,31 @@ async function rewriteManifest(dshHome: string): Promise<void> {
   }
   await writeFile(join(dir, 'package.json'), `${JSON.stringify(next, undefined, 2)}\n`, 'utf8')
   await mkdir(join(dir, 'node_modules'), { recursive: true })
+}
+
+async function restoreBundledBundleDeclarations(
+  dshHome: string,
+  bundledPlugins: ReadonlySet<string>
+): Promise<void> {
+  if (bundledPlugins.size === 0) return
+  const dir = profileDir(dshHome)
+  const manifestPath = join(dir, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const bundles = [...new Set([
+    ...(manifest.dsh?.profile?.bundles ?? []),
+    ...bundledPlugins
+  ])]
+  const next = {
+    ...manifest,
+    dsh: {
+      ...manifest.dsh,
+      profile: {
+        ...(manifest.dsh?.profile ?? {}),
+        bundles
+      }
+    }
+  }
+  await writeFile(manifestPath, `${JSON.stringify(next, undefined, 2)}\n`, 'utf8')
 }
 
 /**
@@ -599,8 +662,11 @@ export async function migrateProfileToGenerations(deps: MigrationDeps): Promise<
   }
 
   let plugins: string[]
+  let bundledPlugins: Set<string>
   try {
-    plugins = await communityPlugins(dshHome)
+    const sets = await profilePluginSets(dshHome, deps)
+    plugins = sets.community
+    bundledPlugins = sets.bundled
   } catch (error) {
     const reason = `profile manifest is unreadable: ${error instanceof Error ? error.message : error}`
     const fingerprint = await migrationInputFingerprint(dshHome)
@@ -619,6 +685,7 @@ export async function migrateProfileToGenerations(deps: MigrationDeps): Promise<
       `${new Date().toISOString()}\n`,
       'utf8'
     )
+    await rm(join(profileDir(dshHome), DEFER_MARKER), { force: true }).catch(() => undefined)
     return noop()
   }
 
@@ -685,13 +752,14 @@ export async function migrateProfileToGenerations(deps: MigrationDeps): Promise<
     // pnpm overrides, bundles, and symlinks. The Desktop pnpm runner hides the
     // generation-owned fields during the shared-tree rebuild, then restores
     // them so `.install-complete` sees the final market-facing manifest.
-    await rewriteManifest(dshHome)
+    await rewriteManifest(dshHome, bundledPlugins)
     const existingDesired = await readDesired(dshHome)
     await writeDesired(dshHome, [...new Set([...existingDesired, ...generationIds])])
     await projectGenerations(dshHome)
 
     const rebuild = await deps.reinstallSharedTree()
     if (!rebuild.ok) throw new Error(`shared-tree rebuild failed: ${rebuild.detail ?? 'unknown'}`)
+    await restoreBundledBundleDeclarations(dshHome, bundledPlugins)
 
     await writeFile(
       join(profileDir(dshHome), MARKER),
@@ -964,7 +1032,7 @@ export async function rollBackMigration(
       await rm(join(dir, MARKER), { force: true })
       if (existsSync(join(dir, MARKER))) throw new Error('migration marker is still present')
       if (!state.fingerprint) {
-        const plugins = await communityPlugins(dshHome)
+        const plugins = (await profilePluginSets(dshHome, {})).community
         state.fingerprint = await migrationInputFingerprint(dshHome, plugins)
       }
       await writeDeferred(dshHome, state.fingerprint, failureReason)
