@@ -770,7 +770,8 @@ index dd1dc8d..493bfc1 100644
  			removeModel: "Delete model",
  			modelsEmpty: "No models will be shown in the selector. Unlisted IDs can still be sent directly.",
 @@ -2712,10 +3051,14 @@ window.__ModuleLoader__.load({
- 			welcomeBody: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
+-			welcomeBody: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
++			welcomeBody: "Evan Super Butler is currently in beta. Some capabilities are still being refined, and we welcome your feedback about the experience and any problems you encounter. Future versions will continue improving model connectivity, agent collaboration, and local computer tools.\n\nEvan Super Butler is built to become your dependable AI assistant and second brain, helping you coordinate information, tasks, and digital services while keeping you in control.",
  			welcomeContinue: "Continue",
  			welcomeError: "The acknowledgement could not be saved. Please try again.",
 -			onboardingTitle: "Add an API key to get started",
@@ -814,7 +815,8 @@ index dd1dc8d..493bfc1 100644
  			removeModel: "删除模型",
  			modelsEmpty: "模型选择器中将不显示任何模型；目录外 ID 仍可直接发送。",
 @@ -2814,10 +3167,14 @@ window.__ModuleLoader__.load({
- 			welcomeBody: "DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。",
+-			welcomeBody: "DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。",
++			welcomeBody: "Evan超级管家目前处于内测阶段，部分能力仍在持续完善，欢迎你反馈使用体验和遇到的问题。后续版本会持续优化模型接入、智能体协作和本地电脑工具能力。\n\nEvan超级管家致力于成为可靠的 AI 管家和第二大脑，帮助你管理信息、任务与数字服务，同时始终由你掌控。",
  			welcomeContinue: "继续",
  			welcomeError: "暂时无法保存确认状态，请重试。",
 -			onboardingTitle: "添加一个 API Key 开始使用",
