@@ -362,7 +362,12 @@ contextBridge.exposeInMainWorld(
 contextBridge.exposeInMainWorld(
   'dshDesktopAuth',
   Object.freeze({
-    signIn: (input: { username: string; password: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    signIn: (input: { username: string; password: string; rememberPassword?: boolean }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-in', input),
+    requestRegistrationCode: (input: { username: string; password: string; email: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:registration-request-code', input),
+    confirmRegistration: (input: { username: string; password: string; email: string; code: string }): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:registration-confirm', input),
+    listSavedLogins: (): Promise<Array<{ username: string; hasPassword: boolean }>> => ipcRenderer.invoke('desktop-auth:login-history'),
+    loadSavedPassword: (username: string): Promise<string | undefined> => ipcRenderer.invoke('desktop-auth:login-password', username),
+    clearSavedPassword: (username: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:clear-login-password', username),
     signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out'),
     current: (): Promise<{ authenticated: boolean; tenantName?: string; accountName?: string; userId?: string }> => ipcRenderer.invoke('desktop-auth:current-account')
   })
