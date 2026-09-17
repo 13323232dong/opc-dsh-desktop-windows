@@ -39,10 +39,10 @@
 | 用户症状 | 工具已注册且 Agent 可调用状态检查，但对话同级位置没有“AI 客服”标签。 |
 | 稳定复现证据 | 正式 DSH 真实对话中可看到工具轨迹，但顶层只显示其他已有标签；解包 `0.1.0` 可见 `conversation.view` 的 `label` 是字符串。 |
 | 已验证根因 | 当前 DSH Slot 契约要求 `label` 为可调用函数；插件传入字符串，导致 Client Module 不能正常注册该标签。 |
-| 修复 | 插件 `0.1.1` 改为 `label: () => 'AI 客服'`，同时增加 macOS 辅助功能授权工具和看板入口；桌面 Profile、bootstrap 与 release manifest 统一锁定 `0.1.1`。 |
-| 预防门禁 | `test/plugins/wechat-customer-service.test.ts` 直接解包正式 tgz，检查函数式标签、授权工具和看板操作；另校验包哈希与 release manifest 一致。 |
-| 验证 | 插件 36 项测试通过；桌面相关 23 项测试与 TypeScript 类型检查通过。正式 App 冷启动界面验收在本次发布后补记。 |
-| 关联提交 | 插件 `25fb44ae09b9eaf7f826ab1783784c97d6df0614`；桌面集成 `5ae1b44` |
+| 修复 | `0.1.1` 先将标签改为 `label: () => 'AI 客服'` 并增加 macOS 辅助功能授权入口；安装后续验发现其 `lib/client.cjs` 仍是普通 CommonJS，未按 DSH 协议调用 `window.__ModuleLoader__.load`。`0.1.2` 改为带精确包 ID 的 `factory(require)` 模块产物，桌面 Profile、bootstrap 与 release manifest 统一锁定 `0.1.2`。 |
+| 预防门禁 | 插件测试和 `test/plugins/wechat-customer-service.test.ts` 都直接检查构建/正式 tgz 内 `lib/client.cjs` 的模块加载器包装，同时检查函数式标签、授权工具、看板操作和 release manifest 哈希。 |
+| 验证 | 插件 37 项测试、类型检查、原生 helper 和客户端构建通过，插件审计为 0 漏洞。正式 App 冷启动界面验收在本次发布后补记。 |
+| 关联提交 | 插件权限入口 `25fb44ae09b9eaf7f826ab1783784c97d6df0614`；插件客户端模块修复 `dbdde59`；桌面首次集成 `5ae1b44` |
 | 遗留风险 | 静态包检查不能替代安装后 Slot 渲染和 macOS 权限交互；未完成真实 UI 验收前不得标记发布成功。 |
 
 ## 2026-09-18：桌面内置插件被误当社区插件迁移
