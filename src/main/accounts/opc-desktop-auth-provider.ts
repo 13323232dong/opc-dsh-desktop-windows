@@ -66,7 +66,9 @@ export class OpcDesktopAuthProvider implements DesktopAuthProvider {
     const response = await this.fetcher(this.url('/api/v1/auth/login'), {
       method: 'POST',
       headers: { accept: 'application/json', 'content-type': 'application/json' },
-      body: JSON.stringify({ username, password: input.password })
+      // The desktop is a merchant workbench. Do not create a platform-admin
+      // session that could later be projected into a merchant browser route.
+      body: JSON.stringify({ username, password: input.password, surface: 'merchant' })
     })
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { error?: { message?: unknown } } | null

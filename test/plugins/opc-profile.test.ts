@@ -33,8 +33,8 @@ describe('OPC macOS desktop profile', () => {
     )
 
     expect(brandPlugin).toMatchObject({
-      version: '0.1.0-opc-desktop.4',
-      artifact: 'plugins/opc-dsh-brand-0.1.0-opc-desktop.4.tgz'
+      version: '0.1.0-opc-desktop.5',
+      artifact: 'plugins/opc-dsh-brand-0.1.0-opc-desktop.5.tgz'
     })
   })
 

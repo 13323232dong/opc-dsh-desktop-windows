@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
 export const OPC_DESKTOP_PLUGINS = [
-  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0-opc-desktop.4.tgz', 'opc-dsh-brand-0.1.0.tgz'],
+  ['@opc/dsh-brand', 'opc-dsh-brand-0.1.0-opc-desktop.5.tgz', 'opc-dsh-brand-0.1.0.tgz'],
   // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
   // desktop build retains Agent Teams while deferring only that optional route
   // selection bridge to the host's provider defaults.

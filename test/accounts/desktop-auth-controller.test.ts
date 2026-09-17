@@ -17,6 +17,15 @@ describe('DesktopAuthController', () => {
     expect(runtime.switchTo).not.toHaveBeenCalled()
   })
 
+  it('returns the provider session for privileged main-process operations without exposing it to the renderer', async () => {
+    const provider: DesktopAuthProvider = { signIn: vi.fn(async () => undefined), currentSession: vi.fn(async () => session), signOut: vi.fn(async () => undefined) }
+    const runtime = { switchTo: vi.fn(), signOut: vi.fn(async () => undefined) }
+    const controller = new DesktopAuthController({ provider, runtime: runtime as never, credentials: { save: vi.fn(), remove: vi.fn() } as never })
+
+    await expect(controller.currentSession()).resolves.toEqual(session)
+    expect(runtime.switchTo).not.toHaveBeenCalled()
+  })
+
   it('persists the verified session before starting the matching account runtime', async () => {
     const provider: DesktopAuthProvider = { signIn: vi.fn(async () => session), currentSession: vi.fn(async () => undefined), signOut: vi.fn(async () => undefined) }
     const runtime = { switchTo: vi.fn(async (principal) => ({ principal })), signOut: vi.fn(async () => undefined) }

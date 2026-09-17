@@ -469,6 +469,7 @@ contextBridge.exposeInMainWorld(
     listSavedLogins: (): Promise<Array<{ username: string; hasPassword: boolean }>> => ipcRenderer.invoke('desktop-auth:login-history'),
     loadSavedPassword: (username: string): Promise<string | undefined> => ipcRenderer.invoke('desktop-auth:login-password', username),
     clearSavedPassword: (username: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:clear-login-password', username),
+    openMerchantConsole: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:open-merchant-console'),
     signOut: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('desktop-auth:sign-out')
   })
 )

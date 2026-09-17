@@ -43,7 +43,7 @@ const PLUGINS = [
 ]
 
 const ARTIFACTS = new Map([
-  ['@opc/dsh-brand', 'plugins/opc-dsh-brand-0.1.0-opc-desktop.4.tgz'],
+  ['@opc/dsh-brand', 'plugins/opc-dsh-brand-0.1.0-opc-desktop.5.tgz'],
   ['@nanmicoder/dsh-agent-teams', 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'],
   ['@opc/dsh-assets', 'plugins/opc-dsh-assets-0.1.1.tgz'],
   ['@opc/dsh-assets-workbench', 'plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
@@ -73,7 +73,7 @@ function artifactFor(name) {
 function versionFor(name) {
   if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.6'
   if (name === '@opc/dsh-assets') return '0.1.1'
-  if (name === '@opc/dsh-brand') return '0.1.0-opc-desktop.4'
+  if (name === '@opc/dsh-brand') return '0.1.0-opc-desktop.5'
   if (name === '@opc/dsh-assets-workbench') return '0.1.0-opc-desktop.2'
   if (name === '@opc/dsh-file-attachments') return '0.1.2'
   if (name === '@opc/dsh-context-retrieval') return '0.1.1'

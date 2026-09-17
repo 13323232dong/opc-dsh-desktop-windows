@@ -16,10 +16,10 @@ describe('ensureOpcDesktopProfile', () => {
     ])
   })
 
-  it('installs the fourth desktop brand artifact so existing profiles upgrade', () => {
+  it('installs the fifth desktop brand artifact so existing profiles upgrade', () => {
     expect(OPC_DESKTOP_PLUGINS).toContainEqual([
       '@opc/dsh-brand',
-      'opc-dsh-brand-0.1.0-opc-desktop.4.tgz',
+      'opc-dsh-brand-0.1.0-opc-desktop.5.tgz',
       'opc-dsh-brand-0.1.0.tgz'
     ])
   })
@@ -138,7 +138,7 @@ describe('ensureOpcDesktopProfile', () => {
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dependencies: Record<string, string> }
       const patch = await readFile(join(profile, 'cordis.patch.yml'), 'utf8')
       expect(manifest.dependencies['@opc/dsh-brand']).toBe(
-        `file:${join(plugins, 'opc-dsh-brand-0.1.0-opc-desktop.4.tgz')}`
+        `file:${join(plugins, 'opc-dsh-brand-0.1.0-opc-desktop.5.tgz')}`
       )
       expect(patch).not.toMatch(/^\[\]$/mu)
       expect(patch).toContain('- id: opc-brand')

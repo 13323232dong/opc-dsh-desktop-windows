@@ -149,6 +149,7 @@ import { DesktopAuthController } from './accounts/desktop-auth-controller'
 import { ElectronSafeStorageCredentialStore, MacOsKeychainCredentialStore } from './accounts/credential-store'
 import { NativeMacOsKeychainBackend } from './accounts/macos-keychain'
 import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
+import { createMerchantConsoleHandoff } from './accounts/merchant-console-handoff'
 import {
   LoginHistoryStore,
   MacOsLoginSecretStore,
@@ -2892,6 +2893,19 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('desktop-auth:sign-out', async (event) => {
     assertTrustedMainWindowEvent(event)
     await signOutDesktopAccount()
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:open-merchant-console')
+  ipcMain.handle('desktop-auth:open-merchant-console', async (event) => {
+    assertTrustedMainWindowEvent(event)
+    const session = await desktopAuthController!.currentSession()
+    if (!session?.credential.accessToken) throw new Error('desktop_auth_required')
+    const exchangeUrl = await createMerchantConsoleHandoff({
+      apiBaseUrl,
+      accessToken: session.credential.accessToken,
+      allowInsecureLoopback: allowsLoopbackApi
+    })
+    await shell.openExternal(exchangeUrl)
     return { ok: true }
   })
   ipcMain.removeHandler('desktop-auth:login-history')

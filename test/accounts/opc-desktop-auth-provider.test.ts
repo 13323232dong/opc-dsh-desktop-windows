@@ -43,6 +43,7 @@ describe('OpcDesktopAuthProvider', () => {
       const provider = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: fetcher as typeof fetch })
       const signedIn = await provider.signIn({ username: 'merchant', password: 'correct-password' })
       expect(signedIn).toMatchObject({ principal, credential: { accessToken: 'opaque-token' } })
+      expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('/api/v1/auth/login'), expect.objectContaining({ body: JSON.stringify({ username: 'merchant', password: 'correct-password', surface: 'merchant' }) }))
       await credentials.save({ ...principal, accountKey: '1'.repeat(64) }, signedIn!.credential)
       // The controller normally saves by the deterministic account key; this verifies a fresh provider reads and validates it.
       await credentials.saveFor(principal, signedIn!.credential)

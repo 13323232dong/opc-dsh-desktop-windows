@@ -39,6 +39,11 @@ export class DesktopAuthController {
     return await this.activate(await this.options.provider.signIn(input))
   }
 
+  /** Main-process-only access for browser handoff and other privileged calls. */
+  async currentSession(): Promise<DesktopAuthSession | undefined> {
+    return await this.options.provider.currentSession()
+  }
+
   async requestRegistrationCode(input: { username: string; password: string; email: string }): Promise<void> {
     if (!this.options.provider.requestRegistrationCode) throw new Error('desktop_auth_registration_unavailable')
     await this.options.provider.requestRegistrationCode(input)
