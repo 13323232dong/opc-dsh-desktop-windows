@@ -9,6 +9,7 @@
  * @module dsh-agent-teams/tools
  */
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { customerServiceTools } from './customer-service-tools.js';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { join } from 'node:path';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
@@ -393,7 +394,7 @@ export function registerAgentTeamsTools(ctx, config) {
                     const preferredTools = member.name === '截流专家' || memberRole.includes('截流')
                         ? ['competitor_chase_create', 'competitor_chase_status', 'competitor_chase_analyze', 'competitor_chase_prepare_outreach', 'competitor_chase_authorize_outreach', 'competitor_chase_send', 'competitor_intercept_rule_create', 'competitor_intercept_rule_list', 'competitor_intercept_rule_run']
                         : member.name === 'AI 客服' || memberRole.includes('客服')
-                            ? ['wechat_contact_status', 'wechat_message_draft', 'wechat_message_send']
+                            ? customerServiceTools()
                             : [];
                     const profile = await ensureMemberProfile({
                         harnessBaseUrl: config.controlPlaneRegistryBaseUrl,

@@ -38,6 +38,21 @@ All first-batch OPC plugins are currently marked `requires-adapter-validation`
 against Harness `0.1.2-rc.1`. The manifest is a packaging and safety boundary,
 not a claim that legacy `0.1.0-rc.6/.8` client code is already compatible.
 
+## Mac 微信 AI 客服 integration (2026-09-17)
+
+The desktop profile and bootstrap register `@opc/DSH-ai-customer-service@0.1.0`
+as a client/runtime bundle. Its independent repository owns the automation,
+persistence and UI; the desktop owns the pinned tarball and release SHA-256.
+Windows advertises `requires-native-adapter` rather than claiming Mac controls
+work there. Agent Teams `0.1.8-opc-desktop.6` routes Mac AI 客服 members to the
+seven `wechat_customer_service_*` tools, retaining the legacy mobile route on
+other systems. A recipient-and-message instruction or an enabled contact watch
+is the authorization boundary; generic lead acquisition still grants drafts only.
+
+Evidence: profile/bootstrap and platform-routing tests in `test/plugins/`.
+These tests establish integration, not actual WeChat delivery. Real desktop
+DSH send/readback acceptance remains a separate gate recorded with the plugin.
+
 ## Build gate
 
 Run:

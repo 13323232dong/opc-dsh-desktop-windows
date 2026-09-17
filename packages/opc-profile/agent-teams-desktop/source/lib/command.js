@@ -94,7 +94,7 @@ export function buildLeadFollowupExecutionDirective(goal) {
         '截流专家先创建并执行 competitor_intercept_rule_create / competitor_intercept_rule_run：搜索词只找同行视频，评论匹配词只做初筛。必须阅读每条候选评论后调用 competitor_chase_analyze 回写 assessments（commentId、keep、intentLevel、confidence、reason）；只保留模型判断为意向客户的真实评论用户。只使用工具返回的昵称、头像、用户 ID，不生成匿名占位。若采集中断，必须先调用 competitor_chase_status；没有完成记录时才以相同参数安全重试。不得将中断视为私信已发送，且不得调用 competitor_chase_send。',
         '成员二：命名“AI 客服”，role=AI 客服，soul_id=ai-customer-service。',
         'AI 客服接收截流专家的真实线索，生成逐条跟进话术；若没有手动绑定微信联系人，标记“微信联系人未绑定”，话术和跟进记录仍照常生成，不得阻塞任务。',
-        '微信绑定后只能调用 wechat_read_current_chat、wechat_visual_prepare_reply 或 wechat_prepare_reply 进行预检和草稿；实际发送必须等待用户明确说“确认回复私信”，不得自动发送。',
+        'Mac 桌面微信使用 wechat_customer_service_status/find_contact/read_chat/send/watch/pause/tasks 工具。当前获客方案仅授权草稿；用户明确指定联系人和发送内容后可直接调用 send，无需再次确认；用户已开启该联系人的托管自动回复时，可在授权范围内自动回复。其他系统保留手机微信工具。',
         '抖音私信同样必须等待用户明确说“确认私信意向客户”；先展示收件人、评论摘要、话术和发送提案。',
         '队长必须创建采集、意向分析、话术准备和微信绑定检查任务，使用 agent_teams_send_message 交接结果，并向用户汇报每一步状态。',
         '截流专家只能使用任务指定的 competitor_intercept_* 和 competitor_chase_* 工具；禁止使用 computer_* 、bash 或文件搜索代替采集插件。必需工具失败时，立即将当前任务标记为 failed，向队长报告稳定错误并结束本轮，不得无限重试或改走通用控制工具。',
