@@ -15,7 +15,7 @@ describe('desktop WeChat customer service', () => {
     const plugins = DESKTOP_PROFILE_MANIFEST.plugins.filter(p => p.name === '@opc/DSH-ai-customer-service')
     expect(plugins).toHaveLength(1)
     if (!plugins[0]) throw new Error('customer service profile missing')
-    expect(plugins[0]).toMatchObject({ version: '0.1.3', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.3.tgz' })
+    expect(plugins[0]).toMatchObject({ version: '0.1.4', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.4.tgz' })
     expect(OPC_PLUGIN_COMPATIBILITY_MATRIX.find(p => p.name === '@opc/DSH-ai-customer-service')).toMatchObject({ windowsDisposition: 'requires-native-adapter' })
     const plugin = plugins[0]
     expect(OPC_DESKTOP_PLUGINS.find(p => p[0] === plugin.name)?.[1]).toBe(plugin.artifact.replace('plugins/', ''))
