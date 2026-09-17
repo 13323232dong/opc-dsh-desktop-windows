@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.13",
+  "version": "0.7.14",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -86,9 +86,9 @@
     },
     {
       "name": "@opc/dsh-realtime-voice",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-realtime-voice-0.1.0.tgz",
-      "sha256": "eda5a495dc671b5f0decdc328cf0a130adeee1ebab8f040f277e3fd12ada16d5"
+      "version": "0.1.1",
+      "artifact": "plugins/opc-dsh-realtime-voice-0.1.1.tgz",
+      "sha256": "5acd8b9e6d0c528cb9247e304e694957dc2463f3122010a1eda75093a29b06c5"
     },
     {
       "name": "@opc/dsh-task-tracker",
