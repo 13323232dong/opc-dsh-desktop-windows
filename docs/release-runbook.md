@@ -26,6 +26,13 @@ an existing merchant continues to run the broken package. The release gate must
 therefore verify a changed plugin has a new semantic version, a new artifact
 filename, and matching entries in the Profile artifact map and bootstrap list.
 
+## 插件加载故障门禁
+
+对打包插件执行新增、删除、升级、启用、停用或其他变更前，必须阅读
+`docs/plugin-load-incidents.zh.md`。本次变更如果造成或修复 Profile、Bundle、Cordis
+Entry、Client Module 或 UI Slot 加载故障，交付前必须补充故障记录。记录应尽可能关联
+自动化发布检查，并明确仍需真实 UI 验收的边界；不得写入商户数据或凭据。
+
 ## Local Windows UKey signing runner
 
 Windows packaging and signing run as separate jobs. The GitHub-hosted Windows runner builds an unsigned NSIS installer and uploads a short-lived workflow artifact. A local macOS ARM64 runner downloads it, signs the installer with Jsign and the SafeNet UKey, regenerates the blockmap and `latest.yml`, and uploads the signed release set. The GitHub Release job cannot start unless signing succeeds.

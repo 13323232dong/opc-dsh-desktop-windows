@@ -31,6 +31,8 @@ DSH 中“插件”至少包含五个不同层级：
 
 `test/plugins/release-manifest.test.ts` 会遍历当前 Profile 的全部插件执行第 1、2 项检查，避免同类缺失再次进入安装包。
 
+所有插件加载相关的真实故障、根因、修复和发布门禁都登记在 [plugin-load-incidents.zh.md](./plugin-load-incidents.zh.md)。该台账不是替代测试的说明文档：每次记录必须对应可执行的验证或明确登记尚未覆盖的风险。
+
 0.7.0 前，所有社区插件和它们的依赖都安装在 `profiles/web` 的同一个 pnpm 工程和同一棵 `node_modules` 中。一个插件的安装、更新或失败可能改写共享 lockfile、共享依赖和兄弟插件目录。
 
 0.7.0 引入 **immutable generation**：通过插件市场安装的 npm 插件各自在独立目录中完成安装，再以一次 rename 提升为不可变 generation；`desired.json` 保存想启用的 generation 集合，投影器把它们链接回 Harness 仍然认识的 `profiles/web/node_modules`、`dependencies` 和 `dsh.profile.bundles` 形态。它解决的是“共享树原地更新”，尤其是 Windows 上目录被占用时 pnpm rename 卡死的问题，并不隔离插件运行权限或 Cordis/UI 语义冲突。
