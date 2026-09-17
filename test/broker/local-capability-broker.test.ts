@@ -194,6 +194,30 @@ describe('LocalCapabilityBroker', () => {
     expect(outboundHeaders.has('x-tenant-id')).toBe(false)
   })
 
+  it('proxies only the first-run interview route family with the broker-owned session', async () => {
+    const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-one', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-issued-session' })
+
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/onboarding/status', method: 'GET', headers: { 'x-tenant-id': 'forged-tenant' },
+    })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/onboarding/interview/start', method: 'POST', body: {},
+    }, { 'idempotency-key': 'onboarding-start-1' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/onboarding/interview/not-allowed', method: 'POST', body: {},
+    }, { 'idempotency-key': 'onboarding-invalid-1' })).status).toBe(400)
+
+    const outboundHeaders = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
+    expect(fetchCloud.mock.calls[0]?.[0]).toBe('https://opc.example.test/api/v1/agent/onboarding/status')
+    expect(fetchCloud.mock.calls[1]?.[0]).toBe('https://opc.example.test/api/v1/agent/onboarding/interview/start')
+    expect(outboundHeaders.get('cookie')).toBe('opc_session=server-issued-session')
+    expect(outboundHeaders.get('x-opc-desktop-broker')).toBe('1')
+    expect(outboundHeaders.has('x-tenant-id')).toBe(false)
+  })
+
   it('only reveals paths whose real location remains inside the runtime workspace', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'opc-broker-workspace-'))
     const inside = join(workspace, 'deliverable.md')
