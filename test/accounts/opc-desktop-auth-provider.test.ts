@@ -73,4 +73,21 @@ describe('OpcDesktopAuthProvider', () => {
       await expect(credentials.load({ ...principal, accountKey: accountKeyFor(principal.tenantId, principal.userId) })).resolves.toMatchObject({ accessToken: 'opaque-token' })
     } finally { await rm(root, { recursive: true, force: true }) }
   })
+
+  it('uses the restricted registration endpoints without exposing a desktop session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-desktop-auth-'))
+    const credentials = new InMemoryCredentialStore()
+    const fetcher = vi.fn(async (_url: string) => new Response('{}'))
+    try {
+      const provider = new OpcDesktopAuthProvider({ apiBaseUrl: 'https://opc.example.test', credentials, activeAccountPath: join(root, 'active.json'), fetch: fetcher as typeof fetch })
+
+      await provider.requestRegistrationCode({ username: 'merchant', password: 'password-123', email: 'merchant@example.test' })
+      await provider.confirmRegistration({ username: 'merchant', password: 'password-123', email: 'merchant@example.test', code: '123456' })
+
+      expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+        'https://opc.example.test/api/v1/auth/registration/request-code',
+        'https://opc.example.test/api/v1/auth/registration/confirm'
+      ])
+    } finally { await rm(root, { recursive: true, force: true }) }
+  })
 })

@@ -17,6 +17,8 @@ export interface DesktopAuthSession {
 export interface DesktopAuthProvider {
   currentSession(): Promise<DesktopAuthSession | undefined>
   signIn(input: { username: string; password: string }): Promise<DesktopAuthSession | undefined>
+  requestRegistrationCode?(input: { username: string; password: string; email: string }): Promise<void>
+  confirmRegistration?(input: { username: string; password: string; email: string; code: string }): Promise<void>
   signOut(): Promise<void>
 }
 
@@ -35,6 +37,16 @@ export class DesktopAuthController {
 
   async signIn(input: { username: string; password: string }): Promise<AccountRuntimeContext | undefined> {
     return await this.activate(await this.options.provider.signIn(input))
+  }
+
+  async requestRegistrationCode(input: { username: string; password: string; email: string }): Promise<void> {
+    if (!this.options.provider.requestRegistrationCode) throw new Error('desktop_auth_registration_unavailable')
+    await this.options.provider.requestRegistrationCode(input)
+  }
+
+  async confirmRegistration(input: { username: string; password: string; email: string; code: string }): Promise<void> {
+    if (!this.options.provider.confirmRegistration) throw new Error('desktop_auth_registration_unavailable')
+    await this.options.provider.confirmRegistration(input)
   }
 
   async signOut(): Promise<void> {

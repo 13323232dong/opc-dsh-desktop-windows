@@ -152,6 +152,7 @@ import { DesktopAuthController } from './accounts/desktop-auth-controller'
 import { OpcDesktopAuthProvider } from './accounts/opc-desktop-auth-provider'
 import { desktopAccountProjection } from '../shared/account-contracts'
 import { createPlatformCredentialStore } from './accounts/platform-credential-store'
+import { LoginHistoryStore } from './accounts/login-history-store'
 import { LocalCapabilityBroker } from './broker/local-capability-broker'
 import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
@@ -192,6 +193,7 @@ let activeDshHome: string | undefined
 let activeHarnessLogPath: string | undefined
 let accountRuntimeManager: AccountRuntimeManager | undefined
 let desktopAuthController: DesktopAuthController | undefined
+let loginHistoryStore: LoginHistoryStore
 let quitting = false
 let failureRecoveryVisible = false
 let harnessLaunchOperation: Promise<void> | undefined
@@ -879,6 +881,18 @@ function isLoginPage(url: string): boolean {
     return parsed.protocol === 'file:' && parsed.pathname.endsWith('/login.html')
   } catch {
     return false
+  }
+}
+
+function assertTrustedLoginPageEvent(event: IpcMainInvokeEvent): void {
+  if (
+    !mainWindow ||
+    mainWindow.isDestroyed() ||
+    event.sender !== mainWindow.webContents ||
+    event.senderFrame !== mainWindow.webContents.mainFrame ||
+    !isLoginPage(mainWindow.webContents.getURL())
+  ) {
+    throw new Error('desktop_auth_login_page_required')
   }
 }
 
@@ -2736,6 +2750,13 @@ async function bootstrap(): Promise<void> {
     root: app.getPath('userData'),
     safeStorage
   })
+  loginHistoryStore = new LoginHistoryStore({
+    root: app.getPath('userData'),
+    cipher: {
+      encrypt: async (value) => await safeStorage.encryptStringAsync(value),
+      decrypt: async (value) => (await safeStorage.decryptStringAsync(value)).result
+    }
+  })
   const mediaRuntime = createDesktopMediaRuntime(app.getPath('userData'))
   const broker = new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl, mediaRuntime })
   accountRuntimeManager = new AccountRuntimeManager({
@@ -2766,17 +2787,61 @@ async function bootstrap(): Promise<void> {
       throw new Error('desktop_auth_login_page_required')
     }
     if (!input || typeof input !== 'object') throw new Error('desktop_auth_credentials_required')
-    const { username, password } = input as { username?: unknown; password?: unknown }
+    const { username, password, rememberPassword } = input as { username?: unknown; password?: unknown; rememberPassword?: unknown }
     if (
       typeof username !== 'string' ||
       typeof password !== 'string' ||
       username.trim().length === 0 ||
       username.length > 128 ||
       password.length === 0 ||
-      password.length > 1024
+      password.length > 1024 ||
+      (rememberPassword !== undefined && typeof rememberPassword !== 'boolean')
     ) throw new Error('desktop_auth_credentials_required')
     const context = await desktopAuthController!.signIn({ username, password })
     if (!context) throw new Error('desktop_auth_login_failed')
+    await loginHistoryStore.record({ username, password, rememberPassword: rememberPassword === true }).catch((error) => {
+      console.warn('[desktop-auth] unable to update protected login history', error)
+    })
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:registration-request-code')
+  ipcMain.handle('desktop-auth:registration-request-code', async (event, input: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (!input || typeof input !== 'object') throw new Error('desktop_auth_registration_required')
+    const { username, password, email } = input as { username?: unknown; password?: unknown; email?: unknown }
+    if (typeof username !== 'string' || typeof password !== 'string' || typeof email !== 'string' || username.trim().length === 0 || password.length === 0 || email.trim().length === 0 || username.length > 128 || password.length > 1024 || email.length > 320) {
+      throw new Error('desktop_auth_registration_required')
+    }
+    await desktopAuthController!.requestRegistrationCode({ username, password, email })
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:registration-confirm')
+  ipcMain.handle('desktop-auth:registration-confirm', async (event, input: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (!input || typeof input !== 'object') throw new Error('desktop_auth_registration_required')
+    const { username, password, email, code } = input as { username?: unknown; password?: unknown; email?: unknown; code?: unknown }
+    if (typeof username !== 'string' || typeof password !== 'string' || typeof email !== 'string' || typeof code !== 'string' || username.trim().length === 0 || password.length === 0 || email.trim().length === 0 || code.trim().length === 0 || username.length > 128 || password.length > 1024 || email.length > 320 || code.length > 12) {
+      throw new Error('desktop_auth_registration_required')
+    }
+    await desktopAuthController!.confirmRegistration({ username, password, email, code })
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop-auth:login-history')
+  ipcMain.handle('desktop-auth:login-history', async (event) => {
+    assertTrustedLoginPageEvent(event)
+    return await loginHistoryStore.list()
+  })
+  ipcMain.removeHandler('desktop-auth:login-password')
+  ipcMain.handle('desktop-auth:login-password', async (event, username: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (typeof username !== 'string' || username.length > 128) throw new Error('desktop_login_history_username_invalid')
+    return await loginHistoryStore.loadPassword(username)
+  })
+  ipcMain.removeHandler('desktop-auth:clear-login-password')
+  ipcMain.handle('desktop-auth:clear-login-password', async (event, username: unknown) => {
+    assertTrustedLoginPageEvent(event)
+    if (typeof username !== 'string' || username.length > 128) throw new Error('desktop_login_history_username_invalid')
+    await loginHistoryStore.clearPassword(username)
     return { ok: true }
   })
   ipcMain.removeHandler('desktop-auth:sign-out')
