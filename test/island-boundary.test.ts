@@ -18,11 +18,11 @@ describe('OPC desktop island boundary', () => {
     expect(packageJson.name).toBe('opc-dsh-desktop')
     expect(packageJson.build).toMatchObject({
       appId: 'cc.ohmycode.opc.desktop',
-      productName: '伟东 OPC',
+      productName: 'Evan-AI管家',
       artifactName: 'opc-desktop-${os}-${arch}.${ext}'
     })
     expect(developmentRaw).toContain("appId: 'cc.ohmycode.opc.desktop.dev'")
-    expect(developmentRaw).toContain("productName: '伟东 OPC Dev'")
+    expect(developmentRaw).toContain("productName: 'Evan-AI管家 Dev'")
     expect(developmentRaw).toContain("output: 'dist-dev'")
   })
 
