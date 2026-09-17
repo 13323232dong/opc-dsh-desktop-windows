@@ -57,6 +57,32 @@ describe('ensureOpcDesktopProfile', () => {
     }
   })
 
+  it('replaces a development-linked realtime voice plugin with this release artifact', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
+    const profile = join(root, 'profiles', 'web')
+    const plugins = join(root, 'bundled-plugins')
+    await mkdir(profile, { recursive: true })
+    await mkdir(plugins)
+    await Promise.all([
+      materializePluginArtifacts(plugins),
+      writeFile(join(profile, 'package.json'), JSON.stringify({
+        name: 'dsh-profile-web',
+        private: true,
+        dependencies: { '@opc/dsh-realtime-voice': 'link:/development/opc-realtime-voice' },
+        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@opc/dsh-realtime-voice'] } }
+      }))
+    ])
+    try {
+      await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
+      const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+      expect(manifest.dependencies['@opc/dsh-realtime-voice']).toBe(
+        `file:${join(plugins, 'opc-dsh-realtime-voice-0.1.2.tgz')}`
+      )
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('fails before modifying a profile when a bundled plugin artifact is absent', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
     const profile = join(root, 'profiles', 'web')
