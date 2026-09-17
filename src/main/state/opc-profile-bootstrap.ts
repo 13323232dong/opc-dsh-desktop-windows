@@ -5,11 +5,12 @@ import { disableGeneration } from 'dsh-desktop-market-installer/generations/regi
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
 export const OPC_DESKTOP_PLUGINS = [
+  ['@opc/dsh-second-brain', 'opc-dsh-second-brain-0.1.3.tgz'],
   ['@opc/dsh-brand', 'opc-dsh-brand-0.1.4.tgz', undefined],
   // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
   // desktop build retains Agent Teams while deferring only that optional route
   // selection bridge to the host's provider defaults.
-  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz'],
+  ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'],
   ['@opc/dsh-assets', 'opc-dsh-assets-0.1.1.tgz'],
   ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.1.tgz'],
   ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
@@ -25,7 +26,8 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
   ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.6.tgz'],
-  ['@opc/dsh-dev-status-control', 'opc-dsh-dev-status-control-0.2.4.tgz']
+  ['@opc/dsh-dev-status-control', 'opc-dsh-dev-status-control-0.2.4.tgz'],
+  ['@opc/DSH-ai-customer-service', 'opc-DSH-ai-customer-service-0.1.0.tgz']
 ] as const
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']

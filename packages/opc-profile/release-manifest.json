@@ -14,9 +14,9 @@
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
-      "version": "0.1.8-opc-desktop.5",
-      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz",
-      "sha256": "df7d6013a8cdc6ad9c4b274bfde4cce713fb35429e197f3144ce2899d74e2e29"
+      "version": "0.1.8-opc-desktop.6",
+      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz",
+      "sha256": "843a845959415d8d942b05610746ec5b94492467c3e1188b9a85cb4f2ddc229a"
     },
     {
       "name": "@opc/dsh-assets",
@@ -113,6 +113,18 @@
       "version": "0.2.4",
       "artifact": "plugins/opc-dsh-dev-status-control-0.2.4.tgz",
       "sha256": "cff2ada63d15bc885fa8c036ce1c2ce6827dee0eee5cf9556169a6203222d03c"
+    },
+    {
+      "name": "@opc/DSH-ai-customer-service",
+      "version": "0.1.0",
+      "artifact": "plugins/opc-DSH-ai-customer-service-0.1.0.tgz",
+      "sha256": "d1a34e7b332a538ca5e6111c6a0df34c3560b867a479dfbff4928f74697b8ecc"
+    },
+    {
+      "name": "@opc/dsh-second-brain",
+      "version": "0.1.3",
+      "artifact": "plugins/opc-dsh-second-brain-0.1.3.tgz",
+      "sha256": "44402ed954de19616e0f61b893c689cf7e72d729e77d8e986020590c0e68c25e"
     }
   ]
 }

@@ -57,6 +57,8 @@ function syncMemberSessionTitle(ctx, child, team, member) {
 }
 /** Synchronize a persisted member session whenever it becomes locally live. */
 function syncStoredMemberSessionTitle(ctx, child, stateDir) {
+    if (child.session.header.parentSession === undefined)
+        return;
     const suffix = child.session.events.slice(child.session.header.seedLength ?? 0);
     const descriptor = foldSubagentDescriptor(suffix);
     if (descriptor?.mode !== 'continuable' || !descriptor.label.startsWith(MEMBER_LABEL_PREFIX))

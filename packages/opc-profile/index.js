@@ -36,13 +36,17 @@ const PLUGINS = [
   ['@opc/dsh-task-tracker', true, ['@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-slots']],
   ['@opc/dsh-viral-chase', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
   ['@opc/dsh-session-context', true, ['@deepseek-ai/dsh-client-runtime']],
-  ['@opc/dsh-dev-status-control', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots']]
+  ['@opc/dsh-dev-status-control', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots']],
+  ['@opc/DSH-ai-customer-service', true, ['@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots']],
+  ['@opc/dsh-second-brain', false, []]
 ]
 
 function artifactFor(name) {
   const artifacts = {
+    '@opc/dsh-second-brain': 'opc-dsh-second-brain-0.1.3.tgz',
+    '@opc/DSH-ai-customer-service': 'opc-DSH-ai-customer-service-0.1.0.tgz',
     '@opc/dsh-brand': 'opc-dsh-brand-0.1.4.tgz',
-    '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz',
+    '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz',
     '@opc/dsh-assets': 'opc-dsh-assets-0.1.1.tgz',
     '@opc/dsh-assets-workbench': 'opc-dsh-assets-workbench-0.1.1.tgz',
     '@opc/dsh-file-attachments': 'opc-dsh-file-attachments-0.1.0.tgz',
@@ -64,7 +68,8 @@ function artifactFor(name) {
 }
 
 function versionFor(name) {
-  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.5'
+  if (name === '@opc/dsh-second-brain') return '0.1.3'
+  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.6'
   if (name === '@opc/dsh-assets' || name === '@opc/dsh-context-retrieval') return '0.1.1'
   if (name === '@opc/dsh-assets-workbench') return '0.1.1'
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
@@ -188,6 +193,7 @@ export function validateDesktopProfile(candidate) {
 }
 
 function windowsDispositionFor(name) {
+  if (name === '@opc/DSH-ai-customer-service') return 'requires-native-adapter'
   if (name === '@opc/DSH-dong-computer-use' || name === '@opc/dsh-dong-mobile-control') {
     return 'requires-native-adapter'
   }
