@@ -38,5 +38,7 @@ describe('desktop login entry', () => {
     expect(source).toContain("ipcMain.handle('desktop-auth:login-history'")
     expect(source).toContain("ipcMain.handle('desktop-auth:login-password'")
     expect(source).toContain("ipcMain.handle('desktop-auth:registration-request-code'")
+    expect(page).toContain("await window.dshDesktopAuth.signIn({ username: username.value, password: password.value, rememberPassword: rememberPassword.checked })")
+    expect(page).toContain("注册成功，正在进入工作区…")
   })
 })
