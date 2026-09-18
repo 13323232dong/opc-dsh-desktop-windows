@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { isLocalCapability, type LocalCapability } from '../../shared/broker-contracts'
+import { boundedUpload, isAnchorMediaPath, streamMediaResponse, uploadHeaders } from './viral-media-proxy'
 import {
   isMediaCapability,
   type LocalMediaRuntime,
@@ -14,6 +15,7 @@ const MAX_BODY_BYTES = 64 * 1024
 const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
 const MAX_PROVIDER_OUTPUT_TOKENS = 32_768
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
+const CLOUD_MEDIA_REQUEST_TIMEOUT_MS = 300_000
 const DESKTOP_BROKER_HEADER = 'x-opc-desktop-broker'
 const FORGED_CLOUD_HEADERS = new Set([
   'authorization',
@@ -189,7 +191,7 @@ export class LocalCapabilityBroker {
     const parsed = new URL(request.url ?? '/', this.origin ?? 'http://127.0.0.1')
     const modelMatch = /^\/v1\/runtimes\/([^/]+)\/model\/chat\/completions$/u.exec(parsed.pathname)
     if (modelMatch?.[1]) return this.proxyModel(decodeURIComponent(modelMatch[1]), request, response)
-    const match = /^\/v1\/runtimes\/([^/]+)\/capabilities\/([^/]+)$/u.exec(parsed.pathname)
+    const match = /^\/v1\/runtimes\/([^/]+)\/capabilities\/([^/]+)(\/media-upload)?$/u.exec(parsed.pathname)
     if (!match?.[1] || !match[2]) return this.send(response, 404, { code: 'desktop_broker_route_not_found' })
     const runtime = this.runtimes.get(decodeURIComponent(match[1]))
     if (!runtime || !this.validToken(request.headers.authorization, runtime.tokenHash)) {
@@ -198,6 +200,10 @@ export class LocalCapabilityBroker {
     const capability = decodeURIComponent(match[2])
     if (!isBrokerCapability(capability) || !runtime.capabilities.has(capability)) {
       return this.send(response, 403, { code: 'desktop_broker_capability_denied' })
+    }
+    if (match[3]) {
+      if (capability !== 'cloud.proxy' || parsed.search) return this.send(response, 404, { code: 'desktop_broker_route_not_found' })
+      return this.proxyMediaUpload(request, runtime, response)
     }
     const body = await this.readJson(request, response)
     if (body === undefined) return
@@ -323,6 +329,8 @@ export class LocalCapabilityBroker {
   private async proxyCloud(body: Record<string, unknown>, request: IncomingMessage, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {
     const payload = body as unknown as CloudProxyRequest
     const method = typeof payload.method === 'string' ? payload.method.toUpperCase() : 'GET'
+    const mediaResponse = method === 'GET' && isAnchorMediaPath(payload.path)
+    if (mediaResponse && !runtime.cloudSessionToken) return this.send(response, 401, { code: 'desktop_broker_cloud_session_missing' })
     if (!isAllowedCloudPath(payload.path)) return this.send(response, 400, { code: 'desktop_broker_invalid_cloud_path' })
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && typeof request.headers['idempotency-key'] !== 'string') {
       return this.send(response, 400, { code: 'desktop_broker_idempotency_key_required' })
@@ -331,6 +339,7 @@ export class LocalCapabilityBroker {
     // tenant identity: only authenticated viral requests may preserve it.
     const allowViralAgent = !!runtime.cloudSessionToken && payload.path.startsWith('/api/v1/viral/')
     const headers = safeHeaders(payload.headers, allowViralAgent)
+    if (mediaResponse) headers.set('accept-encoding', 'identity')
     if (runtime.cloudSessionToken) headers.set('cookie', `opc_session=${runtime.cloudSessionToken}`)
     // This value is written only by the loopback Broker after capability-token
     // verification. It lets the production API derive tenant identity from the
@@ -341,22 +350,59 @@ export class LocalCapabilityBroker {
     if (typeof requestId === 'string') headers.set('x-request-id', requestId)
     if (typeof idempotencyKey === 'string') headers.set('idempotency-key', idempotencyKey)
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? CLOUD_REQUEST_TIMEOUT_MS)
+    const onClose = () => { if (!response.writableFinished) controller.abort() }
+    if (mediaResponse) response.once('close', onClose)
+    const timeout = setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? (mediaResponse ? CLOUD_MEDIA_REQUEST_TIMEOUT_MS : CLOUD_REQUEST_TIMEOUT_MS))
     try {
       const upstream = await (this.options.fetchCloud ?? fetch)(new URL(payload.path, this.cloudBaseUrl).toString(), {
         method,
         headers,
         body: payload.body === undefined || method === 'GET' || method === 'HEAD' ? undefined : JSON.stringify(payload.body),
-        signal: controller.signal
+        signal: controller.signal,
+        ...(mediaResponse ? { redirect: 'error' as const } : {})
       })
+      if (mediaResponse) {
+        await streamMediaResponse(upstream, response, controller.signal)
+        return
+      }
       const upstreamBody = await upstream.text()
       response.writeHead(upstream.status, { 'content-type': upstream.headers.get('content-type') ?? 'application/json', 'cache-control': 'no-store' })
       response.end(upstreamBody)
     } catch (error) {
+      if (response.headersSent || response.destroyed) { response.destroy(); return }
       const code = error instanceof Error && error.name === 'AbortError' ? 'desktop_broker_cloud_timeout' : 'desktop_broker_cloud_unavailable'
       this.send(response, 502, { code })
     } finally {
       clearTimeout(timeout)
+      response.off('close', onClose)
+    }
+  }
+
+  private async proxyMediaUpload(request: IncomingMessage, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {
+    if (!runtime.cloudSessionToken) return this.send(response, 401, { code: 'desktop_broker_cloud_session_missing' })
+    const metadata = uploadHeaders(request, runtime.cloudSessionToken)
+    if (!metadata) return this.send(response, 400, { code: 'desktop_broker_invalid_media_upload' })
+    const controller = new AbortController()
+    const abort = () => { if (!response.writableFinished) controller.abort() }
+    response.once('close', abort)
+    request.once('aborted', abort)
+    const timeout = setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? CLOUD_MEDIA_REQUEST_TIMEOUT_MS)
+    const body = boundedUpload(request, metadata.size)
+    try {
+      const init: RequestInit & { duplex: 'half' } = {
+        method: 'POST', headers: metadata.headers, body: body as unknown as BodyInit,
+        duplex: 'half', redirect: 'error', signal: controller.signal
+      }
+      const upstream = await (this.options.fetchCloud ?? fetch)(new URL('/api/v1/viral/protagonist-anchors/uploads', this.cloudBaseUrl).toString(), init)
+      await streamMediaResponse(upstream, response, controller.signal)
+    } catch {
+      if (response.headersSent || response.destroyed) response.destroy()
+      else this.send(response, 502, { code: 'desktop_broker_media_transfer_failed' })
+    } finally {
+      clearTimeout(timeout)
+      body.destroy()
+      request.off('aborted', abort)
+      response.off('close', abort)
     }
   }
 
