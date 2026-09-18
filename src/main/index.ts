@@ -106,6 +106,7 @@ import {
   clearStaleHarnessAuthCookies,
   desktopHarnessUrl,
   isAbortedNavigationError,
+  shouldRecoverMainWindowLoadFailure,
   shouldLoadHarnessUrl
 } from './window-navigation'
 import {
@@ -418,6 +419,12 @@ function installMainWindowRendererRecovery(window: BrowserWindow): void {
   })
   webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (!isMainFrame) return
+    if (!shouldRecoverMainWindowLoadFailure(errorCode, errorDescription)) {
+      runtime?.note(
+        `[desktop] ignored normal main window navigation cancellation: errorCode=${errorCode} description=${errorDescription}`
+      )
+      return
+    }
     clearProfileBootConfirmation()
     // The harness web server is local; a failure to reach it is almost
     // always the renderer dropping, not a real network error. Surface the
