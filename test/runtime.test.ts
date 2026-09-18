@@ -24,6 +24,7 @@ import {
   clearStaleHarnessAuthCookies,
   desktopHarnessUrl,
   isAbortedNavigationError,
+  shouldRecoverMainWindowLoadFailure,
   shouldLoadHarnessUrl
 } from '../src/main/window-navigation'
 
@@ -673,5 +674,16 @@ describe('Harness window activation', () => {
     expect(isAbortedNavigationError({ code: 'ERR_CONNECTION_REFUSED', errno: -102 })).toBe(
       false
     )
+  })
+
+  it('does not recover the main window for an intentional cancelled navigation', () => {
+    expect(shouldRecoverMainWindowLoadFailure(-3, 'ERR_ABORTED')).toBe(false)
+    expect(
+      shouldRecoverMainWindowLoadFailure(
+        -3,
+        "ERR_ABORTED (-3) loading 'file:///Applications/Evan-AI%E7%AE%A1%E5%AE%B6.app/Contents/Resources/splash.html'"
+      )
+    ).toBe(false)
+    expect(shouldRecoverMainWindowLoadFailure(-102, 'ERR_CONNECTION_REFUSED')).toBe(true)
   })
 })

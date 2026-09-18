@@ -83,3 +83,16 @@ export function isAbortedNavigationError(error: unknown): boolean {
     /(?:^|\s)ERR_ABORTED\s*\(-3\)(?:\s|$)/.test(navigationError.message)
   )
 }
+
+/**
+ * `webContents.stop()` intentionally cancels the outgoing renderer navigation.
+ * Electron reports that cancellation through `did-fail-load` as -3, which is
+ * not a renderer or Harness failure and must not start a competing reload.
+ */
+export function shouldRecoverMainWindowLoadFailure(
+  errorCode: number,
+  errorDescription: string
+): boolean {
+  if (errorCode === -3) return false
+  return !isAbortedNavigationError({ errno: errorCode, message: errorDescription })
+}
