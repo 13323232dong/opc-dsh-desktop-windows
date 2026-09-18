@@ -59,6 +59,9 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
   // main process owns. The DSH plugin cannot select a tenant or sign for one.
   /^\/api\/v1\/agent\/onboarding\/status$/u,
   /^\/api\/v1\/agent\/onboarding\/interview\/(start|answers|skip)$/u,
+  // The realtime voice plugin uses the Harness interview bridge directly.
+  // Keep the route family constrained to the dedicated interview endpoints.
+  /^\/api\/v1\/onboarding\/interview(?:\/(start|answers|skip))?$/u,
   // The viral workbench and its agent tools use a constrained service family.
   // Route authorization, ownership and charge approvals stay enforced by the
   // production API; the desktop Broker only contributes its opaque login session.

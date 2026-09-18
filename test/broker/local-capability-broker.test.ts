@@ -209,6 +209,15 @@ describe('LocalCapabilityBroker', () => {
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
       path: '/api/v1/agent/onboarding/interview/not-allowed', method: 'POST', body: {},
     }, { 'idempotency-key': 'onboarding-invalid-1' })).status).toBe(400)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/onboarding/interview', method: 'GET',
+    })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/onboarding/interview/start', method: 'POST', body: {},
+    }, { 'idempotency-key': 'onboarding-direct-start-1' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/onboarding/interview/nope', method: 'POST', body: {},
+    }, { 'idempotency-key': 'onboarding-direct-invalid-1' })).status).toBe(400)
 
     const outboundHeaders = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
     expect(fetchCloud.mock.calls[0]?.[0]).toBe('https://opc.example.test/api/v1/agent/onboarding/status')
