@@ -46,9 +46,12 @@ describe('DSH Desktop sidebar branding', () => {
     expect(client).toContain("ctx.slots.inject('sidebar.brand.mark'")
     expect(client).toContain("ctx.slots.inject('sidebar.brand.name'")
     expect(client).toContain("ctx.slots.inject('conversation.hero.brand.mark'")
-    expect(client).toContain("React.createElement(BrandWordmark, { includeMark: false })")
-    expect(client).toContain('/dsh-desktop-logo-light.png')
-    expect(client).toContain('/dsh-desktop-logo-dark.png')
+    expect(client).toContain("const PRODUCT_NAME = 'Evan超级管家'")
+    expect(client).toContain("const EVAN_LOGO_URL = '/dsh-desktop-evan-logo.svg'")
+    expect(client).not.toContain('FishLogo')
+    expect(client).not.toContain('BrandWordmark')
+    expect(client).not.toContain('/dsh-desktop-logo-light.png')
+    expect(client).not.toContain('/dsh-desktop-logo-dark.png')
     expect(client).not.toContain('translateX')
     const normalizedComposition = composition.replaceAll('\r\n', '\n')
     expect(normalizedComposition).toMatch(/- id: ui-brand-official\n  disabled: true/u)
@@ -107,19 +110,19 @@ describe('DSH Desktop sidebar branding', () => {
   it('installs the source logo into the Harness static frontend', async () => {
     const packageJson = JSON.parse(
       await readFile(path.join(projectRoot, 'package.json'), 'utf8')
-    ) as { scripts: { postinstall: string } }
+    ) as { scripts: Record<string, string> }
     const installer = await readFile(
       path.join(projectRoot, 'scripts', 'install-brand-assets.mjs'),
       'utf8'
     )
 
     expect(packageJson.scripts.postinstall).toContain('node scripts/install-brand-assets.mjs')
-    expect(installer).toContain("'build', 'icon.png'")
+    expect(packageJson.scripts.build).toContain('npm run prepare:brand')
+    expect(packageJson.scripts['prepare:brand']).toContain('npm run verify:brand')
+    expect(installer).toContain("'build', 'app-icon.png'")
     expect(installer).toContain("'dsh-desktop-logo.png'")
-    expect(installer).toContain("'build', 'logo-light.png'")
-    expect(installer).toContain("'dsh-desktop-logo-light.png'")
-    expect(installer).toContain("'build', 'logo-dark.png'")
-    expect(installer).toContain("'dsh-desktop-logo-dark.png'")
+    expect(installer).toContain("'build', 'evan-super-employee.svg'")
+    expect(installer).toContain("'dsh-desktop-evan-logo.svg'")
     expect(installer).toContain('<link rel="icon" type="image/png" href="/dsh-desktop-logo.png" />')
     // The manifest is edited as JSON now rather than as a pinned multi-line
     // string: 0.1.2-alpha.1 added "purpose": "any" to the icon entry, which no

@@ -11,7 +11,7 @@ interface Registration {
 }
 
 describe('DSH Desktop client slot occupants', () => {
-  it('registers one occupant per brand seat and keeps the official name mark-free', async () => {
+  it('registers the Evan mark at every product brand seat without relying on the optional brand plugin', async () => {
     const source = await readFile(
       path.join(projectRoot, 'packages', 'dsh-desktop-client-ui', 'client.js'),
       'utf8'
@@ -49,8 +49,6 @@ describe('DSH Desktop client slot occupants', () => {
       type,
       props: { ...props, children }
     })
-    const BrandWordmark = vi.fn()
-    const FishLogo = vi.fn()
     const plugin = definition!.factory((id) => {
       if (id === 'react') {
         return {
@@ -60,7 +58,7 @@ describe('DSH Desktop client slot occupants', () => {
         }
       }
       if (id === '@deepseek-ai/dsh-client-ui-primitives') {
-        return { BrandWordmark, FishLogo }
+        return {}
       }
       throw new Error(`Unexpected client dependency: ${id}`)
     })
@@ -90,24 +88,26 @@ describe('DSH Desktop client slot occupants', () => {
       'sidebar.brand.name',
       'conversation.hero.brand.mark'
     ])
-    expect(appended).toHaveLength(1)
+    expect(appended).toHaveLength(0)
 
     const sidebarName = registrations.find(
       ({ config }) => config.name === 'sidebar.brand.name'
     )!.component({}) as { type: unknown; props: Record<string, unknown> }
-    expect(sidebarName.type).toBe(BrandWordmark)
-    expect(sidebarName.props.includeMark).toBe(false)
+    expect(sidebarName.type).toBe('span')
+    expect(sidebarName.props.children).toEqual(['Evan超级管家'])
 
     const sidebarMark = registrations.find(
       ({ config }) => config.name === 'sidebar.brand.mark'
     )!.component({ size: 24 }) as { type: unknown; props: Record<string, unknown> }
-    expect(sidebarMark.type).toBe('svg')
-    expect(sidebarMark.props.height).toBe(17)
+    expect(sidebarMark.type).toBe('img')
+    expect(sidebarMark.props.src).toBe('/dsh-desktop-evan-logo.svg')
+    expect(sidebarMark.props.width).toBe(24)
 
     const heroMark = registrations.find(
       ({ config }) => config.name === 'conversation.hero.brand.mark'
     )!.component({ size: 48 }) as { type: unknown; props: Record<string, unknown> }
-    expect(heroMark.type).toBe(FishLogo)
-    expect(heroMark.props.size).toBe(48)
+    expect(heroMark.type).toBe('img')
+    expect(heroMark.props.src).toBe('/dsh-desktop-evan-logo.svg')
+    expect(heroMark.props.width).toBe(48)
   })
 })
