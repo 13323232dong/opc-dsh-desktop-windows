@@ -116,9 +116,9 @@
     },
     {
       "name": "@opc/DSH-ai-customer-service",
-      "version": "0.1.12",
-      "artifact": "plugins/opc-DSH-ai-customer-service-0.1.12.tgz",
-      "sha256": "c3f03001a1dc29654f7390429d20b82ad45372886e48c02f20945c8cef48bec1"
+      "version": "0.1.13",
+      "artifact": "plugins/opc-DSH-ai-customer-service-0.1.13.tgz",
+      "sha256": "a2f6c26a04cae202a570d4e69650566f3543b705f1fc8b40602a05c2da9c3924"
     },
     {
       "name": "@opc/dsh-second-brain",
