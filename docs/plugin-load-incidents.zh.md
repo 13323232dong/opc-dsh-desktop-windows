@@ -75,6 +75,21 @@
 | 关联提交 | `d0964f8 fix: align desktop voice bootstrap artifact`；合并 `62524b5`。 |
 | 遗留风险 | 当前本机测试账户的桌面登录会话已失效，无法在不重新登录的情况下完成真实语音 Overlay 验收；新注册自动建立桌面会话的路径仍需使用可登录的新商户账户复测。 |
 
+## 2026-09-18：AI 客服全局草稿升级的 Profile 版本一致性
+
+| 项目 | 记录 |
+| --- | --- |
+| 状态 | 已完成打包前静态门禁；安装后真实界面验收待执行 |
+| 受影响范围 | `@opc/DSH-ai-customer-service` 从 `0.1.7` 升级至 `0.1.10` 的 macOS 桌面 Profile。 |
+| 用户症状 | 升级后若 Profile、启动器 artifact map 与内置 tgz 版本不一致，桌面可能继续运行旧插件，导致“全局微信草稿”工具或看板不出现。 |
+| 稳定复现证据 | 既有启动流程会按 `OPC_DESKTOP_PLUGINS` 的 artifact 名称替换桌面内置依赖；仅更新 release manifest 不足以替换旧包。 |
+| 已验证根因 | 这是桌面 Profile 的版本映射约束，不是本次插件运行时故障。`0.1.10` 的包名、版本和 SHA-256 已与 manifest、Profile artifact map 和启动器 map 对齐。 |
+| 修复 | 内置 artifact 更新为 `opc-DSH-ai-customer-service-0.1.10.tgz`，并将 Profile manifest、启动器 map 和测试期望同步至 `0.1.10`。该版本新增全局微信未读消息的回复草稿能力，只写入微信输入框，不发送消息。 |
+| 预防门禁 | `test/plugins/wechat-customer-service.test.ts` 校验 release manifest、启动器 artifact map、tgz 元数据和客户端工具注册；正式打包前运行全量测试、类型检查、构建与 macOS arm64 打包。 |
+| 验证 | 插件自身 47 项测试、构建、类型检查及高危依赖审计均已通过；桌面集成定向测试 10 项和类型检查已通过。安装后将验证 AI 客服标签和 `wechat_customer_service_global_preview` 工具可见。 |
+| 关联提交 | `53cd450 feat: draft global replies in WeChat`；桌面合并 `cd5c1fb feat: integrate global WeChat reply drafts`。 |
+| 遗留风险 | 静态与打包检查不代表微信界面自动化已实际写入草稿；必须在最终安装的 App 中完成真实界面验收，且不得把草稿写入误报为消息已发送。 |
+
 ## 复盘模板
 
 ```markdown
