@@ -2,11 +2,12 @@
 
 ## 单一正式包
 
+- 桌面产品、App 和安装包的唯一正式名称统一为 `Evan超级管家`。后续不得再使用 `伟东 OPC`、`伟东 OPC Dev` 或 `Evan-AI管家` 作为新构建、安装、更新源或发布文件名。
 - 桌面功能完成后只构建一次正式 App、DMG 和 ZIP，不再常规生成、安装或启动 Dev App。
 - 正式包只能从干净、已同步且测试通过的 `main` 构建；功能分支和临时 Worktree 仅用于开发、测试和审查，不得直接打包。
-- 固定正式产物为 `dist/mac-arm64/Evan-AI管家.app`、`dist/opc-desktop-mac-arm64.dmg` 和 `dist/opc-desktop-mac-arm64.zip`；同平台后续构建直接覆盖这些路径，不创建带日期副本。
-- 安装前停止所有 Evan/OPC 正式版和 Dev 版进程，直接覆盖 `/Applications/Evan-AI管家.app`；不得创建备份 App 或第二个用户可见入口。
-- 安装后不得从 `dist/`、`dist-dev/` 或临时目录启动，只从 `/Applications/Evan-AI管家.app` 启动和验收。
+- 固定正式产物为 `dist/mac-arm64/Evan超级管家.app`、`dist/Evan超级管家-mac-arm64.dmg` 和 `dist/Evan超级管家-mac-arm64.zip`；同平台后续构建直接覆盖这些路径，不创建带日期副本。
+- 安装前停止所有 Evan/OPC 正式版和 Dev 版进程，直接覆盖 `/Applications/Evan超级管家.app`；不得创建备份 App 或第二个用户可见入口。
+- 安装后不得从 `dist/`、`dist-dev/` 或临时目录启动，只从 `/Applications/Evan超级管家.app` 启动和验收。
 - 不删除账号数据、工作区、会话、插件运行数据或钥匙串凭据。只清理明确识别的旧 App 副本、Dev App 和构建产物。
 
 ## 发布门禁
