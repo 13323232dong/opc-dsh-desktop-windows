@@ -1094,9 +1094,17 @@ async function showSplash(): Promise<void> {
   const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createWindow()
   const navigationVersion = ++mainWindowNavigationVersion
   window.webContents.stop()
-  await window.loadFile(desktopResourcePath('splash.html'), {
-    query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light' }
-  })
+  try {
+    await window.loadFile(desktopResourcePath('splash.html'), {
+      query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light' }
+    })
+  } catch (error) {
+    // Stopping the previous renderer navigation can surface as ERR_ABORTED
+    // while a restart immediately loads the splash screen. It is recoverable;
+    // only propagate real file/load failures.
+    if (!isAbortedNavigationError(error)) throw error
+    return
+  }
   if (window.isDestroyed() || navigationVersion !== mainWindowNavigationVersion) return
   raiseWindowWithoutStealingFocus(window, process.platform, () => app.isActive())
 }
