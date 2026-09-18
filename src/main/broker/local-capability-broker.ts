@@ -327,7 +327,10 @@ export class LocalCapabilityBroker {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && typeof request.headers['idempotency-key'] !== 'string') {
       return this.send(response, 400, { code: 'desktop_broker_idempotency_key_required' })
     }
-    const headers = safeHeaders(payload.headers)
+    // The path has already passed the route allowlist. Agent metadata is not
+    // tenant identity: only authenticated viral requests may preserve it.
+    const allowViralAgent = !!runtime.cloudSessionToken && payload.path.startsWith('/api/v1/viral/')
+    const headers = safeHeaders(payload.headers, allowViralAgent)
     if (runtime.cloudSessionToken) headers.set('cookie', `opc_session=${runtime.cloudSessionToken}`)
     // This value is written only by the loopback Broker after capability-token
     // verification. It lets the production API derive tenant identity from the
@@ -437,11 +440,17 @@ function normalizeModelOutputBudget(body: Record<string, unknown>): Record<strin
   return { ...rest, max_tokens: Math.max(1, Math.min(MAX_PROVIDER_OUTPUT_TOKENS, Math.floor(rest.max_tokens))) }
 }
 
-function safeHeaders(value: unknown): Headers {
+function safeHeaders(value: unknown, allowViralAgent = false): Headers {
   const headers = new Headers({ accept: 'application/json', 'content-type': 'application/json' })
   if (!value || typeof value !== 'object' || Array.isArray(value)) return headers
   for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
     const normalized = name.toLowerCase()
+    if (normalized === 'x-agent-id') {
+      if (allowViralAgent && typeof raw === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(raw)) {
+        headers.set(normalized, raw)
+      }
+      continue
+    }
     if (
       FORGED_CLOUD_HEADERS.has(normalized) ||
       normalized.startsWith('x-opc-') ||
