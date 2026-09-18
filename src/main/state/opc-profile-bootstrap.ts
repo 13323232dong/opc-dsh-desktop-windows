@@ -27,7 +27,7 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
   ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.6.tgz'],
   ['@opc/dsh-dev-status-control', 'opc-dsh-dev-status-control-0.2.4.tgz'],
-  ['@opc/DSH-ai-customer-service', 'opc-DSH-ai-customer-service-0.1.10.tgz']
+  ['@opc/DSH-ai-customer-service', 'opc-DSH-ai-customer-service-0.1.11.tgz']
 ] as const
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
