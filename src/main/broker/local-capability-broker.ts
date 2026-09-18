@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { isLocalCapability, type LocalCapability } from '../../shared/broker-contracts'
-import { boundedUpload, isAnchorMediaPath, streamMediaResponse, uploadHeaders } from './viral-media-proxy'
+import { boundedUpload, createIdleDeadline, isAnchorMediaPath, streamMediaResponse, uploadHeaders } from './viral-media-proxy'
 import {
   isMediaCapability,
   type LocalMediaRuntime,
@@ -97,6 +97,8 @@ export interface LocalCapabilityBrokerOptions {
   revealPath?: (path: string) => Promise<void>
   pickPaths?: () => Promise<string[]>
   requestTimeoutMs?: number
+  /** Abort media only after this long without receiving or forwarding bytes. */
+  mediaIdleTimeoutMs?: number
   mediaRuntime?: Pick<LocalMediaRuntime, 'handle'>
 }
 
@@ -352,7 +354,8 @@ export class LocalCapabilityBroker {
     const controller = new AbortController()
     const onClose = () => { if (!response.writableFinished) controller.abort() }
     if (mediaResponse) response.once('close', onClose)
-    const timeout = setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? (mediaResponse ? CLOUD_MEDIA_REQUEST_TIMEOUT_MS : CLOUD_REQUEST_TIMEOUT_MS))
+    const idle = mediaResponse ? createIdleDeadline(controller, this.mediaIdleTimeoutMs()) : undefined
+    const timeout = mediaResponse ? undefined : setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? CLOUD_REQUEST_TIMEOUT_MS)
     try {
       const upstream = await (this.options.fetchCloud ?? fetch)(new URL(payload.path, this.cloudBaseUrl).toString(), {
         method,
@@ -362,7 +365,7 @@ export class LocalCapabilityBroker {
         ...(mediaResponse ? { redirect: 'error' as const } : {})
       })
       if (mediaResponse) {
-        await streamMediaResponse(upstream, response, controller.signal)
+        await streamMediaResponse(upstream, response, controller.signal, idle?.touch)
         return
       }
       const upstreamBody = await upstream.text()
@@ -373,7 +376,8 @@ export class LocalCapabilityBroker {
       const code = error instanceof Error && error.name === 'AbortError' ? 'desktop_broker_cloud_timeout' : 'desktop_broker_cloud_unavailable'
       this.send(response, 502, { code })
     } finally {
-      clearTimeout(timeout)
+      if (timeout) clearTimeout(timeout)
+      idle?.clear()
       response.off('close', onClose)
     }
   }
@@ -386,24 +390,31 @@ export class LocalCapabilityBroker {
     const abort = () => { if (!response.writableFinished) controller.abort() }
     response.once('close', abort)
     request.once('aborted', abort)
-    const timeout = setTimeout(() => controller.abort(), this.options.requestTimeoutMs ?? CLOUD_MEDIA_REQUEST_TIMEOUT_MS)
-    const body = boundedUpload(request, metadata.size)
+    const idle = createIdleDeadline(controller, this.mediaIdleTimeoutMs())
+    const body = boundedUpload(request, metadata.size, idle.touch)
     try {
       const init: RequestInit & { duplex: 'half' } = {
         method: 'POST', headers: metadata.headers, body: body as unknown as BodyInit,
         duplex: 'half', redirect: 'error', signal: controller.signal
       }
       const upstream = await (this.options.fetchCloud ?? fetch)(new URL('/api/v1/viral/protagonist-anchors/uploads', this.cloudBaseUrl).toString(), init)
-      await streamMediaResponse(upstream, response, controller.signal)
+      await streamMediaResponse(upstream, response, controller.signal, idle.touch)
     } catch {
       if (response.headersSent || response.destroyed) response.destroy()
       else this.send(response, 502, { code: 'desktop_broker_media_transfer_failed' })
     } finally {
-      clearTimeout(timeout)
+      idle.clear()
       body.destroy()
       request.off('aborted', abort)
       response.off('close', abort)
     }
+  }
+
+  private mediaIdleTimeoutMs(): number {
+    const configured = this.options.mediaIdleTimeoutMs
+    return typeof configured === 'number' && Number.isFinite(configured) && configured > 0
+      ? Math.floor(configured)
+      : CLOUD_MEDIA_REQUEST_TIMEOUT_MS
   }
 
   private async revealWorkspacePath(body: Record<string, unknown>, runtime: RuntimeRecord, response: ServerResponse): Promise<void> {

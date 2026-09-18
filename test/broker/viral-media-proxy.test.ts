@@ -1,19 +1,37 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocalCapabilityBroker } from '../../src/main/broker/local-capability-broker'
-import { boundedUpload, uploadHeaders, VIRAL_UPLOAD_MAX_BYTES } from '../../src/main/broker/viral-media-proxy'
+import { boundedUpload, createIdleDeadline, uploadHeaders, VIRAL_UPLOAD_MAX_BYTES } from '../../src/main/broker/viral-media-proxy'
 import { Readable } from 'node:stream'
 import type { IncomingMessage } from 'node:http'
 
 const brokers: LocalCapabilityBroker[] = []
 afterEach(async () => { await Promise.all(brokers.splice(0).map((broker) => broker.stop())) })
 
-async function setup(fetchCloud: (url: string, init: RequestInit) => Promise<Response>, session = 'test-account') {
-  const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+async function setup(fetchCloud: (url: string, init: RequestInit) => Promise<Response>, session = 'test-account', mediaIdleTimeoutMs?: number) {
+  const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud, mediaIdleTimeoutMs })
   brokers.push(broker)
   return broker.registerRuntime({ runtimeId: 'test-runtime', capabilities: ['cloud.proxy'], cloudSessionToken: session })
 }
 
 describe('viral media broker', () => {
+  it('aborts only after a full idle interval and resets the deadline on activity', () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const idle = createIdleDeadline(controller, 10)
+      vi.advanceTimersByTime(9)
+      expect(controller.signal.aborted).toBe(false)
+      idle.touch()
+      vi.advanceTimersByTime(9)
+      expect(controller.signal.aborted).toBe(false)
+      vi.advanceTimersByTime(1)
+      expect(controller.signal.aborted).toBe(true)
+      idle.clear()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('streams raw upload without interpreting binary bytes or forwarding forged identity', async () => {
     const bytes = new Uint8Array([0, 255, 128, 13, 10, 42])
     const fetchCloud = vi.fn(async (_url: string, init: RequestInit) => {
@@ -38,6 +56,30 @@ describe('viral media broker', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ assetId: 'asset-one' })
     expect(fetchCloud.mock.calls[0]?.[0]).toBe('https://opc.example.test/api/v1/viral/protagonist-anchors/uploads')
+  })
+
+  it('keeps a slow upload alive while chunks continue before the idle deadline', async () => {
+    const fetchCloud = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(new Uint8Array(await new Response(init.body).arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
+      return Response.json({ uploadId: 'upload-one' })
+    })
+    const runtime = await setup(fetchCloud, 'test-account', 30)
+    const body = Readable.from((async function* () {
+      yield Buffer.from([1])
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      yield Buffer.from([2])
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      yield Buffer.from([3])
+    })())
+    const init: RequestInit & { duplex: 'half' } = {
+      method: 'POST', body: body as unknown as BodyInit, duplex: 'half',
+      headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'video/mp4',
+        'content-length': '3', 'x-file-name': 'self.mp4', 'idempotency-key': 'upload-one',
+        'x-session-id': 'session-one' }
+    }
+    const response = await fetch(`${runtime.endpoint}/capabilities/cloud.proxy/media-upload`, init)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ uploadId: 'upload-one' })
   })
 
   it.each<Record<string, string>>([
@@ -110,5 +152,24 @@ describe('viral media broker', () => {
     expect(response.status).toBe(206)
     expect(response.headers.get('content-range')).toBe('bytes 0-3/10')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
+  })
+
+  it('keeps a slow media download alive while chunks continue before the idle deadline', async () => {
+    const runtime = await setup(async () => new Response(new ReadableStream({
+      async start(controller) {
+        controller.enqueue(new Uint8Array([1]))
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        controller.enqueue(new Uint8Array([2]))
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        controller.enqueue(new Uint8Array([3]))
+        controller.close()
+      }
+    }), { headers: { 'content-type': 'video/mp4' } }), 'test-account', 30)
+    const response = await fetch(`${runtime.endpoint}/capabilities/cloud.proxy`, {
+      method: 'POST', headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ path: '/api/v1/viral/protagonist-anchors/anchor-one/video', method: 'GET' })
+    })
+    expect(response.status).toBe(200)
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
   })
 })

@@ -6,6 +6,26 @@ import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 export const VIRAL_UPLOAD_MAX_BYTES = 512 * 1024 * 1024
 const opaqueId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
 
+export interface IdleDeadline {
+  readonly touch: () => void
+  readonly clear: () => void
+}
+
+export function createIdleDeadline(controller: AbortController, timeoutMs: number): IdleDeadline {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const touch = () => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => controller.abort(), timeoutMs)
+    timer.unref?.()
+  }
+  const clear = () => {
+    if (timer) clearTimeout(timer)
+    timer = undefined
+  }
+  touch()
+  return { touch, clear }
+}
+
 export function isAnchorMediaPath(path: string): boolean {
   return /^\/api\/v1\/viral\/protagonist-anchors\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(video|portrait|voice)$/u.test(path)
 }
@@ -37,20 +57,21 @@ export function uploadHeaders(request: IncomingMessage, sessionToken: string): {
   return { headers, size }
 }
 
-export function boundedUpload(request: IncomingMessage, expected: number): Readable {
+export function boundedUpload(request: IncomingMessage, expected: number, onActivity: () => void = () => {}): Readable {
   return Readable.from((async function* () {
     let received = 0
     for await (const chunk of request) {
       const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       received += bytes.length
       if (received > expected || received > VIRAL_UPLOAD_MAX_BYTES) throw new Error('desktop_broker_media_length_mismatch')
+      onActivity()
       yield bytes
     }
     if (received !== expected) throw new Error('desktop_broker_media_length_mismatch')
   })())
 }
 
-export async function streamMediaResponse(upstream: Response, response: ServerResponse, signal: AbortSignal): Promise<void> {
+export async function streamMediaResponse(upstream: Response, response: ServerResponse, signal: AbortSignal, onActivity: () => void = () => {}): Promise<void> {
   const headers: Record<string, string> = { 'cache-control': 'private, no-store' }
   for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
     const value = upstream.headers.get(name)
@@ -58,5 +79,12 @@ export async function streamMediaResponse(upstream: Response, response: ServerRe
   }
   response.writeHead(upstream.status, headers)
   if (!upstream.body) { response.end(); return }
-  await pipeline(Readable.fromWeb(upstream.body as NodeReadableStream<Uint8Array>), response, { signal })
+  const source = Readable.fromWeb(upstream.body as NodeReadableStream<Uint8Array>)
+  const tracked = Readable.from((async function* () {
+    for await (const chunk of source) {
+      onActivity()
+      yield chunk
+    }
+  })())
+  await pipeline(tracked, response, { signal })
 }
