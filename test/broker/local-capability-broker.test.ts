@@ -194,6 +194,58 @@ describe('LocalCapabilityBroker', () => {
     expect(outboundHeaders.has('x-tenant-id')).toBe(false)
   })
 
+  it.each([
+    '/api/v1/viral/chase-jobs',
+    '/api/v1/viral/chase-jobs/job-1/script?sessionId=session-1',
+    '/api/v1/viral/protagonist-anchors',
+    '/api/v1/viral/runtime/status'
+  ])('preserves validated agent metadata for authenticated viral requests: %s', async (path) => {
+    const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-agent', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-session' })
+    const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path, headers: {
+        'X-Agent-ID': 'dsh-agent_1:main', 'x-tenant-id': 'forged', 'x-user-id': 'forged',
+        'x-opc-agent-id': 'forged', 'x-opc-identity-signature': 'forged', cookie: 'forged=yes'
+      }
+    })
+    expect(response.status).toBe(200)
+    const headers = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
+    expect(headers.get('x-agent-id')).toBe('dsh-agent_1:main')
+    expect(headers.get('cookie')).toBe('opc_session=server-session')
+    for (const name of ['x-tenant-id', 'x-user-id', 'x-opc-agent-id', 'x-opc-identity-signature']) {
+      expect(headers.has(name)).toBe(false)
+    }
+  })
+
+  it.each(['', ' agent', 'agent ', 'a/b', '中文', 'a\r\nx-user-id: forged', 'a'.repeat(129), ['agent'], 7])(
+    'never forwards malformed viral agent metadata: %j', async (agentId) => {
+      const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'))
+      const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+      brokers.push(broker)
+      const runtime = await broker.registerRuntime({ runtimeId: 'runtime-agent', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-session' })
+      const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+        path: '/api/v1/viral/chase-jobs', headers: { 'x-agent-id': agentId }
+      })
+      expect(response.status).toBe(200)
+      expect((fetchCloud.mock.calls[0]?.[1]?.headers as Headers).has('x-agent-id')).toBe(false)
+    }
+  )
+
+  it.each([
+    ['/api/v1/health', 'server-session'],
+    ['/api/v1/agent/conversations', 'server-session'],
+    ['/api/v1/viral/chase-jobs', undefined]
+  ])('keeps agent identity filtered outside authenticated viral requests: %s', async (path, cloudSessionToken) => {
+    const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-agent', capabilities: ['cloud.proxy'], cloudSessionToken })
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path, headers: { 'x-agent-id': 'agent-1' } })).status).toBe(200)
+    expect((fetchCloud.mock.calls[0]?.[1]?.headers as Headers).has('x-agent-id')).toBe(false)
+  })
+
   it('proxies only the first-run interview route family with the broker-owned session', async () => {
     const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response(JSON.stringify(init), { status: 200 }))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
