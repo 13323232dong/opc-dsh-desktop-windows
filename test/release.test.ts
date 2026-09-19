@@ -353,7 +353,7 @@ describe('GitHub release contract', () => {
     expect(packageJson.scripts['package:dev:win']).toContain('electron-builder.dev.cjs')
     expect(packageJson.scripts['package:dev:win']).toContain('--publish never')
     expect(developmentConfig).toContain("appId: 'cc.ohmycode.opc.desktop.dev'")
-    expect(developmentConfig).toContain("productName: 'Evan-AI管家 Dev'")
+    expect(developmentConfig).toContain("productName: 'Evan超级管家 Dev'")
     expect(developmentConfig).toContain("output: 'dist-dev'")
     expect(developmentConfig).toContain("dshDesktopChannel: 'development'")
     expect(developmentConfig).toContain(

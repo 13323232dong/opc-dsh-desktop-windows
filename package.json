@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
-  "author": "Evan-AI管家",
+  "author": "Evan超级管家",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -305,7 +305,7 @@
   },
   "build": {
     "appId": "cc.ohmycode.opc.desktop",
-    "productName": "Evan-AI管家",
+    "productName": "Evan超级管家",
     "asar": false,
     "npmRebuild": false,
     "compression": "maximum",
