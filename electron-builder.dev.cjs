@@ -2,8 +2,8 @@ const packageJson = require('./package.json')
 
 module.exports = {
   ...packageJson.build,
-  appId: 'cc.ohmycode.opc.desktop.dev.viral-eight',
-  productName: 'Evan超级管家 八卡验收',
+  appId: 'cc.ohmycode.opc.desktop.dev',
+  productName: 'Evan超级管家 Dev',
   directories: {
     ...packageJson.build.directories,
     output: 'dist-dev'

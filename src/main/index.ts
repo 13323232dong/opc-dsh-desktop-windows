@@ -530,9 +530,7 @@ function attachWindowsMenuView(window: BrowserWindow): void {
 function configureAppIdentity(): void {
   if (developmentBuild) {
     app.setName('DSH Desktop Dev')
-    const instance = process.env.OPC_DESKTOP_DEV_INSTANCE
-    const suffix = instance && /^[a-z0-9-]{1,48}$/.test(instance) ? `-${instance}` : ''
-    app.setPath('userData', join(app.getPath('appData'), `opc-dsh-desktop-dev${suffix}`))
+    app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop-dev'))
     return
   }
 
