@@ -158,7 +158,7 @@ describe('GitHub release contract', () => {
       'utf8'
     )
 
-    expect(packageJson.build.artifactName).toBe('opc-desktop-${os}-${arch}.${ext}')
+    expect(packageJson.build.artifactName).toBe('Evan超级管家-${os}-${arch}.${ext}')
     expect(packageJson.build.extraResources).toContainEqual({
       from: 'build/app-icon.png',
       to: 'icon.png'
@@ -194,7 +194,7 @@ describe('GitHub release contract', () => {
       to: 'dsh-desktop.patch.yml'
     })
     expect(packageJson.build.nsis.artifactName).toBe(
-      'opc-desktop-windows-${arch}-setup.${ext}'
+      'Evan超级管家-windows-${arch}-setup.${ext}'
     )
     expect(packageJson.build.nsis.include).toBe('build/installer.nsh')
     expect(packageJson.build.win.target).toEqual([{ target: 'nsis', arch: ['x64'] }])
@@ -357,10 +357,10 @@ describe('GitHub release contract', () => {
     expect(developmentConfig).toContain("output: 'dist-dev'")
     expect(developmentConfig).toContain("dshDesktopChannel: 'development'")
     expect(developmentConfig).toContain(
-      "artifactName: 'opc-desktop-dev-${os}-${arch}.${ext}'"
+      "artifactName: 'Evan超级管家-Dev-${os}-${arch}.${ext}'"
     )
     expect(developmentConfig).toContain(
-      "artifactName: 'opc-desktop-dev-windows-${arch}-setup.${ext}'"
+      "artifactName: 'Evan超级管家-Dev-windows-${arch}-setup.${ext}'"
     )
     expect(main).toContain("app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop-dev'))")
     expect(main).toContain("app.setPath('userData', join(app.getPath('appData'), 'opc-dsh-desktop'))")

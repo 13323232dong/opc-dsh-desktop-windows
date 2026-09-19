@@ -7,6 +7,7 @@
 ## 修改范围
 
 - 将 Electron 正式 `productName` 和 author 统一为“Evan超级管家”。
+- 将 macOS、Windows 和开发验收产物文件名统一为 `Evan超级管家-*`。
 - 将开发验收应用名统一为“Evan超级管家 Dev”。
 - 更新登录页标题和标题文案。
 - 更新发布、应用边界、登录入口和 Profile 迁移测试。

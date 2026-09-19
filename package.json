@@ -391,7 +391,7 @@
     ],
     "publish": [],
     "detectUpdateChannel": false,
-    "artifactName": "opc-desktop-${os}-${arch}.${ext}",
+    "artifactName": "Evan超级管家-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
@@ -418,7 +418,7 @@
       ]
     },
     "nsis": {
-      "artifactName": "opc-desktop-windows-${arch}-setup.${ext}",
+      "artifactName": "Evan超级管家-windows-${arch}-setup.${ext}",
       "include": "build/installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
