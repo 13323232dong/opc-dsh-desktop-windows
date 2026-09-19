@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "productName": "Evan超级管家",
+  "appName": "Evan超级管家.app",
+  "applicationPath": "/Applications/Evan超级管家.app",
+  "macArtifactName": "Evan超级管家-${os}-${arch}.${ext}",
+  "windowsArtifactName": "Evan超级管家-windows-${arch}-setup.${ext}",
+  "iconSource": "build/app-icon.png",
+  "iconSha256": "b892742dd9fd7e16cf771d08a7e38006fddd9f955dfdc826f85a1c2591c78968",
+  "logoSource": "build/evan-super-employee.svg",
+  "logoSha256": "b2086233d06592f78588649ac2a91c7736d2ea949618bc702e973877688282b7",
+  "forbiddenProductNames": [
+    "伟东 OPC",
+    "伟东 OPC Dev",
+    "Evan-AI管家"
+  ]
+}
