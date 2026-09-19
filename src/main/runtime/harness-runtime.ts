@@ -32,7 +32,9 @@ export function readDesktopEnvironmentFile(path: string): Record<string, string>
     for (const line of readFileSync(path, 'utf8').split(/\r?\n/u)) {
       const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/u.exec(line)
       if (!match || match[1] === undefined || match[2] === undefined || match[2].startsWith('#')) continue
-      result[match[1]] = match[2].replace(/^['"]|['"]$/gu, '')
+      const value = match[2].replace(/^['"]|['"]$/gu, '')
+      if (!value) continue
+      result[match[1]] = value
     }
   } catch {
     return {}

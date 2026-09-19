@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { resolve } from 'node:path'
@@ -16,6 +17,7 @@ import {
   extractSlotConflictName,
   formatExitCode,
   isHarnessStartupProbeHealthy,
+  readDesktopEnvironmentFile,
   resolveEnvironmentPath,
   resolveShellEnvironment,
   updateReadyStability
@@ -30,6 +32,16 @@ import {
 } from '../src/main/window-navigation'
 
 describe('Harness launch contract', () => {
+  it('ignores empty desktop environment values so they cannot erase inherited credentials', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'desktop-environment-'))
+    const file = join(directory, 'desktop.env')
+    await writeFile(file, 'DEEPSEEK_API_KEY=\nOPC_PUBLIC_API_BASE_URL=https://opc.ohmycode.cc\n', 'utf8')
+
+    expect(readDesktopEnvironmentFile(file)).toEqual({
+      OPC_PUBLIC_API_BASE_URL: 'https://opc.ohmycode.cc'
+    })
+  })
+
   it('does not treat a briefly reachable port as a completed Harness startup', () => {
     const firstProbe = updateReadyStability(undefined, true, 1_000)
     expect(firstProbe).toEqual({ readySince: 1_000, ready: false })
