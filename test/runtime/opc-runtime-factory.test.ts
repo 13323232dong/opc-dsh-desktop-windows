@@ -95,13 +95,13 @@ describe('resolveOpcDesktopEnvironment', () => {
 
   it('requires an explicit opt-in before using a loopback API', () => {
     expect(resolveOpcDesktopEnvironment({ OPC_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001', OPC_DESKTOP_USE_LOCAL_API: '1' }, true)).toMatchObject({
-      OPC_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001'
+      OPC_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+      OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010'
     })
   })
-  it('adds the local task service for a development Mac client when no proxy is configured', () => {
+  it('keeps development clients online when no task proxy is configured', () => {
     expect(resolveOpcDesktopEnvironment({ HARNESS_IDENTITY_HMAC_SECRET: 'secret' }, true)).toEqual({
-      HARNESS_IDENTITY_HMAC_SECRET: 'secret',
-      OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010'
+      HARNESS_IDENTITY_HMAC_SECRET: 'secret'
     })
   })
 

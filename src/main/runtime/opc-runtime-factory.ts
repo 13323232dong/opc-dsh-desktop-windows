@@ -47,8 +47,10 @@ export function resolveOpcDesktopEnvironment(
     ? { ...configured }
     : { ...configured, OPC_PUBLIC_API_BASE_URL: apiBaseUrl }
   if (explicitTaskProxy) return { ...environment, OPC_TASKS_PROXY_URL: explicitTaskProxy }
-  if (!developmentBuild) return environment
-  return { ...environment, OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010' }
+  if (developmentBuild && useLocalApi) {
+    return { ...environment, OPC_TASKS_PROXY_URL: 'http://127.0.0.1:3010' }
+  }
+  return environment
 }
 
 /** The Broker requires an origin, while older env files stored /api/v1. */
