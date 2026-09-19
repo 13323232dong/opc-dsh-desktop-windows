@@ -64,6 +64,14 @@ describe('LocalCapabilityBroker', () => {
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/%2e%2e/private' })).status).toBe(400)
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/admin/users' })).status).toBe(400)
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/v1/health' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/v1/agent/context/sources' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path: '/api/v1/agent/assets?kind=work' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/context/search', method: 'POST', body: { query: '门店活动' }
+    }, { 'idempotency-key': 'context-search-1' })).status).toBe(200)
+    expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/agent/context/resolve', method: 'POST', body: { reference: 'opc-context://knowledge-base/a' }
+    }, { 'idempotency-key': 'context-resolve-1' })).status).toBe(200)
     expect((await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
       path: '/api/v1/agent/profiles/ensure-member', method: 'POST', body: { name: '线索采集', teamId: 'team-a' }
     }, { 'idempotency-key': 'member-key-1' })).status).toBe(200)

@@ -44,8 +44,8 @@ const PLUGINS = [
 
 const ARTIFACTS = new Map([
   ['@opc/dsh-brand', 'plugins/opc-dsh-brand-0.1.0-opc-desktop.4.tgz'],
-  ['@nanmicoder/dsh-agent-teams', 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'],
-  ['@opc/dsh-assets', 'plugins/opc-dsh-assets-0.1.1.tgz'],
+  ['@nanmicoder/dsh-agent-teams', 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz'],
+  ['@opc/dsh-assets', 'plugins/opc-dsh-assets-0.1.2.tgz'],
   ['@opc/dsh-assets-workbench', 'plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
   ['@opc/dsh-file-attachments', 'plugins/opc-dsh-file-attachments-0.1.2.tgz'],
   ['dsh-file-picker', 'plugins/dsh-file-picker-0.1.0.tgz'],
@@ -53,7 +53,7 @@ const ARTIFACTS = new Map([
   ['@opc/dsh-inspiration', 'plugins/opc-dsh-inspiration.tgz'],
   ['@opc/dsh-douyin-publisher', 'plugins/opc-dsh-douyin-publisher-0.1.0.tgz'],
   ['@opc/dsh-feishu-docs', 'plugins/opc-dsh-feishu-docs-0.1.0.tgz'],
-  ['@opc/dsh-context-retrieval', 'plugins/opc-dsh-context-retrieval-0.1.1.tgz'],
+  ['@opc/dsh-context-retrieval', 'plugins/opc-dsh-context-retrieval-0.1.2.tgz'],
   ['@omdsh-dev/dsh-genui', 'plugins/omdsh-dev-dsh-genui-0.9.1.tgz'],
   ['@opc/dsh-publish-precheck', 'plugins/opc-dsh-publish-precheck-0.1.0.tgz'],
   ['DSH-opc-material-matcher', 'plugins/DSH-opc-material-matcher-0.1.0.tgz'],
@@ -71,12 +71,12 @@ function artifactFor(name) {
 }
 
 function versionFor(name) {
-  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.6'
-  if (name === '@opc/dsh-assets') return '0.1.1'
+  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.7'
+  if (name === '@opc/dsh-assets') return '0.1.2'
   if (name === '@opc/dsh-brand') return '0.1.0-opc-desktop.4'
   if (name === '@opc/dsh-assets-workbench') return '0.1.0-opc-desktop.2'
   if (name === '@opc/dsh-file-attachments') return '0.1.2'
-  if (name === '@opc/dsh-context-retrieval') return '0.1.1'
+  if (name === '@opc/dsh-context-retrieval') return '0.1.2'
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
   return '0.1.0'
 }

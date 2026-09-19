@@ -44,8 +44,8 @@ describe('OPC macOS desktop profile', () => {
     )
 
     expect(assetPlugin).toMatchObject({
-      version: '0.1.1',
-      artifact: 'plugins/opc-dsh-assets-0.1.1.tgz'
+      version: '0.1.2',
+      artifact: 'plugins/opc-dsh-assets-0.1.2.tgz'
     })
   })
 
@@ -66,8 +66,8 @@ describe('OPC macOS desktop profile', () => {
     )
 
     expect(agentTeamsPlugin).toMatchObject({
-      version: '0.1.8-opc-desktop.6',
-      artifact: 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'
+      version: '0.1.8-opc-desktop.7',
+      artifact: 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz'
     })
   })
 
@@ -77,8 +77,8 @@ describe('OPC macOS desktop profile', () => {
     )
 
     expect(contextPlugin).toMatchObject({
-      version: '0.1.1',
-      artifact: 'plugins/opc-dsh-context-retrieval-0.1.1.tgz'
+      version: '0.1.2',
+      artifact: 'plugins/opc-dsh-context-retrieval-0.1.2.tgz'
     })
   })
 

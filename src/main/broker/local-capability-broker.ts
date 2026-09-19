@@ -49,6 +49,13 @@ const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
   /^\/api\/v1\/agent\/experiences\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(\/disable)?$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(memory|disable)$/u,
   /^\/api\/v1\/agent\/profiles\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/memory\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/disable$/u,
+  /^\/api\/v1\/agent\/context\/(sources|search|resolve)$/u,
+  /^\/api\/v1\/agent\/assets$/u,
+  /^\/api\/v1\/agent\/assets\/upload$/u,
+  /^\/api\/v1\/agent\/assets\/knowledge\/documents$/u,
+  /^\/api\/v1\/agent\/assets\/index\/(search|jobs)$/u,
+  /^\/api\/v1\/agent\/assets\/index\/jobs\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
+  /^\/api\/v1\/agent\/assets\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}(?:\/(operations|archive|restore))?$/u,
   /^\/api\/v1\/viral\/chase-jobs(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127})?(?:\/[A-Za-z0-9][A-Za-z0-9._:/-]{0,255})?$/u,
   /^\/api\/v1\/viral\/protagonist-anchors(?:\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127})?(?:\/[A-Za-z0-9][A-Za-z0-9._:/-]{0,255})?$/u,
   /^\/api\/v1\/viral\/runtime\/status$/u

@@ -12,7 +12,7 @@ describe('ensureOpcDesktopProfile', () => {
   it('installs the desktop-compatible Agent Teams artifact', () => {
     expect(OPC_DESKTOP_PLUGINS).toContainEqual([
       '@nanmicoder/dsh-agent-teams',
-      'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'
+      'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz'
     ])
   })
 
@@ -27,7 +27,7 @@ describe('ensureOpcDesktopProfile', () => {
   it('installs the asset plugin from the versioned 0.1.1 artifact', () => {
     expect(OPC_DESKTOP_PLUGINS).toContainEqual([
       '@opc/dsh-assets',
-      'opc-dsh-assets-0.1.1.tgz'
+      'opc-dsh-assets-0.1.2.tgz'
     ])
   })
 
@@ -48,7 +48,7 @@ describe('ensureOpcDesktopProfile', () => {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
       const upgraded = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(upgraded.dependencies['@opc/dsh-assets']).toBe(
-        `file:${join(plugins, 'opc-dsh-assets-0.1.1.tgz')}`
+        `file:${join(plugins, 'opc-dsh-assets-0.1.2.tgz')}`
       )
     } finally {
       await rm(root, { recursive: true, force: true })
