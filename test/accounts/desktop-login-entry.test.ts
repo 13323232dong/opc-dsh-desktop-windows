@@ -29,7 +29,7 @@ describe('desktop login entry', () => {
       readFile(mainEntry, 'utf8')
     ])
 
-    expect(page).toContain('<title>Evan-AI管家 登录</title>')
+    expect(page).toContain('<title>Evan超级管家 登录</title>')
     expect(page).toContain('id="toggle-password"')
     expect(page).toContain('id="account-history"')
     expect(page).toContain('记住账号和密码')

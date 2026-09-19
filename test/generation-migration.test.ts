@@ -156,11 +156,43 @@ describe('one-time profile migration to generations', () => {
     expect(existsSync(link)).toBe(true)
   })
 
+  it('keeps packaged desktop baseline plugins in the shared tree while migrating community plugins', async () => {
+    const packagedArtifact =
+      'file:/Applications/Evan超级管家.app/Contents/Resources/opc-profile/plugins/opc-dsh-brand-0.1.4.tgz'
+    const home = await preUpgradeProfile(
+      {
+        '@opc/dsh-brand': '0.1.4',
+        'community-plugin': '1.0.0'
+      },
+      {
+        '@opc/dsh-brand': packagedArtifact
+      }
+    )
+
+    expect(await migrateProfileToGenerations({
+      ...deps(home),
+      bundledPluginArtifactDirectory:
+        '/Applications/Evan超级管家.app/Contents/Resources/opc-profile/plugins',
+      bundledPluginNames: ['@opc/dsh-brand']
+    })).toEqual({ outcome: 'migrated' })
+    expect(installCalls).toEqual(['community-plugin'])
+
+    const manifest = JSON.parse(
+      await readFile(join(home, 'profiles', 'web', 'package.json'), 'utf8')
+    )
+    expect(manifest.dependencies['@opc/dsh-brand']).toBe(packagedArtifact)
+    expect(manifest.dsh.profile.bundles).toContain('@opc/dsh-brand')
+    expect(await readDesired(home)).toHaveLength(1)
+  })
+
   it('is a no-op and self-marks when there are no community plugins', async () => {
     const home = await preUpgradeProfile({})
+    const deferred = join(home, 'profiles', 'web', '.generations-deferred.json')
+    await writeFile(deferred, JSON.stringify({ protocol: 4, fingerprint: 'obsolete' }))
     const migrated = await migrateProfileToGenerations(deps(home))
     expect(migrated).toEqual({ outcome: 'no-op' })
     expect(isProfileMigrated(home)).toBe(true)
+    expect(existsSync(deferred)).toBe(false)
     expect(await readDesired(home)).toEqual([])
   })
 
