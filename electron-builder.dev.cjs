@@ -3,20 +3,20 @@ const packageJson = require('./package.json')
 module.exports = {
   ...packageJson.build,
   appId: 'cc.ohmycode.opc.desktop.dev',
-  productName: 'Evan-AI管家 Dev',
+  productName: 'Evan超级管家 Dev',
   directories: {
     ...packageJson.build.directories,
     output: 'dist-dev'
   },
   extraMetadata: {
     name: 'opc-dsh-desktop-dev',
-    productName: 'Evan-AI管家 Dev',
+    productName: 'Evan超级管家 Dev',
     dshDesktopChannel: 'development'
   },
-  artifactName: 'opc-desktop-dev-${os}-${arch}.${ext}',
+  artifactName: 'Evan超级管家-Dev-${os}-${arch}.${ext}',
   nsis: {
     ...packageJson.build.nsis,
-    artifactName: 'opc-desktop-dev-windows-${arch}-setup.${ext}'
+    artifactName: 'Evan超级管家-Dev-windows-${arch}-setup.${ext}'
   },
   publish: null
 }

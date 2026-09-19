@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-  <title>Evan-AI管家 登录</title>
+  <title>Evan超级管家 登录</title>
   <style>
     :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f5f7; color: #202124; }
@@ -25,7 +25,7 @@
 </head>
 <body>
   <main class="panel">
-    <h1 id="heading">Evan-AI管家</h1>
+    <h1 id="heading">Evan超级管家</h1>
     <p id="subtitle" class="subtitle">登录后将打开属于当前商户的独立工作台。</p>
     <form id="login">
       <label>账号<input id="username" list="account-history" autocomplete="username" required autofocus></label>
@@ -91,7 +91,7 @@
 
     function setMode(nextMode) {
       mode = nextMode; registrationSent = false; stopCountdown(); setNotice(''); const registering = mode === 'register'
-      document.getElementById('heading').textContent = registering ? '注册商户账号' : 'Evan-AI管家'
+      document.getElementById('heading').textContent = registering ? '注册商户账号' : 'Evan超级管家'
       document.getElementById('subtitle').textContent = registering ? '使用邮箱验证码创建独立商户工作台。' : '登录后将打开属于当前商户的独立工作台。'
       submit.textContent = registering ? '提交注册' : '登录'; registerButton.textContent = registering ? '返回登录' : '注册商户账号'; rememberRow.hidden = registering; password.autocomplete = registering ? 'new-password' : 'current-password'
       document.getElementById('registration-fields')?.remove(); if (registering) {

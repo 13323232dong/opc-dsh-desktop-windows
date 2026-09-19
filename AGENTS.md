@@ -12,11 +12,14 @@
 
 ## 发布门禁
 
+- `build/release-brand-contract.json` 是产品名称、安装路径、产物名称和品牌图标哈希的唯一打包契约。品牌图标变更必须先由用户确认，再更新源文件和契约哈希；不得只替换 `.icns`、`.ico` 或缓存产物。
+- 所有正式打包命令必须先重新从 `build/app-icon.png` 生成 `.icns/.ico`，再执行 `verify:release-contract`；禁止复用其他 Worktree、旧 `dist/` 或历史安装包中的图标文件。
 - 构建前记录 `main` commit，确认本地 `main` 与 `fork/main` 一致且工作树干净。
 - 运行完整测试、typecheck、build 和正式平台打包；任一步失败都不得覆盖已安装 App。
 - 包内必须核验登录页、Evan 品牌与 Logo、内测声明、Profile、所有启用插件和 Codex 任务看板。
 - 对源码、正式构建产物和安装后 App 的关键资源比较 SHA-256；不一致时停止交付。
 - 覆盖后使用真实界面验收并重启一次。Profile generation/migration 失败并恢复旧 Profile 时视为发布失败。
+- 安装后必须刷新 LaunchServices 和 Dock 图标缓存，并核验 Finder、Dock、登录页和 Harness 侧边栏四个用户可见位置；只看源码哈希或只看 Dock 均不算验收完成。
 - 最终报告 commit、App/DMG/ZIP 的绝对路径与哈希、实际进程路径、界面验收结果和未解决风险。
 
 ## 插件加载故障复盘
