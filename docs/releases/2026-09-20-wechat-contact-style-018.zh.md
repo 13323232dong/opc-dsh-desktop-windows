@@ -22,4 +22,17 @@
 - 插件：101 项测试、类型检查、客户端和 native 构建通过；依赖审计无已知漏洞。
 - Artifact SHA-256：`771f1ed50359d409c6931b9931ff6c9ff209f0d592934f5ce7dbcae31bbad3c8`。
 - 桌面测试检查版本、稳定插件标识、工具、编译后界面与 Profile 配置。编译器将中文转义为 Unicode，断言解码后核对显示文本。
-- 本记录不声称已完成正式包安装或真实联系人验收；安装结果后续补记。
+- 桌面合并后 120 个测试文件、903 项测试及类型检查通过；独立审查无阻断项。
+
+## 本机安装验收
+
+- 从干净且同步的 `main` 提交 `0e6e2fb6859218c62be30825b876b6a5423b0824` 执行正式平台打包命令，品牌与包内校验通过。未签名本机验收包，未公开发布。
+- 已覆盖 `/Applications/Evan超级管家.app`，实际进程来自该路径。未清除账号、会话和插件数据。
+- 首次启动出现“无法验证登录状态”；域名 TLS 可达，未认证 auth/me 返回 401。第二次冷启动恢复原会话。只证实重试恢复，未确认首次失败根因。
+- 真实 UI 已验证：AI 客服同级标签、联系人回复习惯面板、点击后即时核验进度、微信连接恢复、空列表“暂无已学习的联系人”、工作/朋友/家人关系菜单。截图保存在本机 `/tmp/wechat-contact-style-018-ui.png`，不入库保存私人会话侧栏。
+- 全局监听保持关闭，没有发送微信消息。真实联系人学习、导出与生成草稿仍待用户指定验收联系人；不能据此宣称端到端风格效果已通过。
+- 源码、包内和安装后的插件 tgz SHA-256 一致。App 可执行文件：`1af684f056a8eb13e49fbd677072e437316086b076e3b9b92de3ddb343edc5b1`；品牌 PNG：`b892742dd9fd7e16cf771d08a7e38006fddd9f955dfdc826f85a1c2591c78968`。
+- DMG：`/Users/mac/opc-dsh-desktop-release-main/dist/Evan超级管家-mac-arm64.dmg`，SHA-256 `4ed90fe8aef37c41675847fa6c14e63beb19717a6d6b450e6fc636d674977d2b`。
+- ZIP：`/Users/mac/opc-dsh-desktop-release-main/dist/Evan超级管家-mac-arm64.zip`，SHA-256 `476d9127daa5cdb895a4d5e8ace5d1694e9c2dbcd52f2c5523a2b9d7c6d0a889`。
+- 完整插件分发目录：`/Users/mac/dsh-community-plugins/DSH-ai-customer-service/`。
+- 桌面 npm audit 此轮因注册表 audit 端点返回 400 未完成，不等同于审计通过；本次没有新增依赖。插件自身审计通过。
