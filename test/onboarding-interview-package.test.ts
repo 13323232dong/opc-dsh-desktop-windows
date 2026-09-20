@@ -5,13 +5,19 @@ import { describe, expect, it } from 'vitest'
 
 const root = process.cwd()
 const settingsPatch = readFileSync(join(root, 'patches', '@deepseek-ai+dsh-client-ui-settings-models+0.1.2-rc.1.patch'), 'utf8')
-const voiceBundle = join(root, 'packages', 'opc-profile', 'plugins', 'opc-dsh-realtime-voice-0.1.3.tgz')
+const voiceBundle = join(root, 'packages', 'opc-profile', 'plugins', 'opc-dsh-realtime-voice-0.1.4.tgz')
 
 function bundledVoiceClient(): string {
   return execFileSync('tar', ['-xOf', voiceBundle, 'package/lib/client.js'], { encoding: 'utf8' })
 }
 
 describe('packaged onboarding interview', () => {
+  it('packages platform status routing and the interview opening question', () => {
+    const server = execFileSync('tar', ['-xOf', voiceBundle, 'package/lib/index.js'], { encoding: 'utf8' })
+    expect(server).toContain('/api/v1/agent/onboarding/status')
+    expect(server).toContain('resolveOpeningSpeech')
+    expect(server).toContain('openingDelivered')
+  })
   it('starts the voice interview after the internal notice is acknowledged', () => {
     expect(settingsPatch).toContain('opc:internal-testing-notice-acknowledged')
     expect(settingsPatch).toContain('__opcInternalTestingNoticeAcknowledged')
