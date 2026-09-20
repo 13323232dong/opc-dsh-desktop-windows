@@ -58,7 +58,7 @@ function artifactFor(name) {
     '@omdsh-dev/dsh-genui': 'omdsh-dev-dsh-genui-0.9.1.tgz',
     '@opc/dsh-publish-precheck': 'opc-dsh-publish-precheck-0.1.0.tgz',
     'DSH-opc-material-matcher': 'DSH-opc-material-matcher-0.1.0.tgz',
-    '@opc/dsh-realtime-voice': 'opc-dsh-realtime-voice-0.1.4.tgz',
+    '@opc/dsh-realtime-voice': 'opc-dsh-realtime-voice-0.1.5.tgz',
     '@opc/dsh-session-context': 'opc-dsh-session-context-0.1.0.tgz',
     '@opc/dsh-task-tracker': 'opc-dsh-task-tracker-0.1.0.tgz',
     '@opc/dsh-dev-status-control': 'opc-dsh-dev-status-control-0.2.4.tgz',
@@ -78,7 +78,7 @@ function versionFor(name) {
   if (name === '@opc/dsh-viral-chase') return '0.1.15'
   if (name === '@opc/dsh-dev-status-control') return '0.2.4'
   if (name === '@opc/dsh-brand') return '0.1.4'
-  if (name === '@opc/dsh-realtime-voice') return '0.1.4'
+  if (name === '@opc/dsh-realtime-voice') return '0.1.5'
   return '0.1.0'
 }
 
