@@ -86,9 +86,9 @@
     },
     {
       "name": "@opc/dsh-realtime-voice",
-      "version": "0.1.6",
-      "artifact": "plugins/opc-dsh-realtime-voice-0.1.6.tgz",
-      "sha256": "808f1bc69f0da36a97edec6a5b0b1e8b5a921edf14541bd41074c790f41297cc"
+      "version": "0.1.7",
+      "artifact": "plugins/opc-dsh-realtime-voice-0.1.7.tgz",
+      "sha256": "97d2c0900fea0cbc450003309c00ffc94523ea299a05b3f9d31240414cf2cff9"
     },
     {
       "name": "@opc/dsh-task-tracker",

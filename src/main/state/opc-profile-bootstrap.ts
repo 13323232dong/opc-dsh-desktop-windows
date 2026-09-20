@@ -22,7 +22,7 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@omdsh-dev/dsh-genui', 'omdsh-dev-dsh-genui-0.9.1.tgz'],
   ['@opc/dsh-publish-precheck', 'opc-dsh-publish-precheck-0.1.0.tgz'],
   ['DSH-opc-material-matcher', 'DSH-opc-material-matcher-0.1.0.tgz'],
-  ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.6.tgz'],
+  ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.7.tgz'],
   ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
   ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.15.tgz'],
