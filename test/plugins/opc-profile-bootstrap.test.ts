@@ -76,7 +76,7 @@ describe('ensureOpcDesktopProfile', () => {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(manifest.dependencies['@opc/dsh-realtime-voice']).toBe(
-        `file:${join(plugins, 'opc-dsh-realtime-voice-0.1.5.tgz')}`
+        `file:${join(plugins, 'opc-dsh-realtime-voice-0.1.6.tgz')}`
       )
     } finally {
       await rm(root, { recursive: true, force: true })
