@@ -11,7 +11,7 @@ export const OPC_DESKTOP_PLUGINS = [
   // desktop build retains Agent Teams while deferring only that optional route
   // selection bridge to the host's provider defaults.
   ['@nanmicoder/dsh-agent-teams', 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz'],
-  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.3.tgz'],
+  ['@opc/dsh-assets', 'opc-dsh-assets-0.1.4.tgz'],
   ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.1.tgz'],
   ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
   ['dsh-file-picker', 'dsh-file-picker-0.1.0.tgz'],
