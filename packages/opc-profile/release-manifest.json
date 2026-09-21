@@ -44,9 +44,9 @@
     },
     {
       "name": "@opc/dsh-douyin-comment-ops",
-      "version": "0.1.0",
-      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz",
-      "sha256": "14f1028b5eae5f0e4b039ae5f2956ad0b09ef1ef243cf4b7bfc380b569dd2889"
+      "version": "0.1.1",
+      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.1.tgz",
+      "sha256": "233e4c65a6c6e1e1da17a7ff91d718c307cd03df6ab35609c8e186c033d1617c"
     },
     {
       "name": "@opc/dsh-douyin-publisher",
