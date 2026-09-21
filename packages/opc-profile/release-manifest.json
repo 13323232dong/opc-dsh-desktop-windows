@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.14",
+  "version": "0.7.27",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -14,9 +14,9 @@
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
-      "version": "0.1.8-opc-desktop.6",
-      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz",
-      "sha256": "843a845959415d8d942b05610746ec5b94492467c3e1188b9a85cb4f2ddc229a"
+      "version": "0.1.8-opc-desktop.7",
+      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz",
+      "sha256": "ee0a014f0fcdb4db442066dd44ec7f9bf3ffbeaf945064c976af30acb3ad0bca"
     },
     {
       "name": "@opc/dsh-assets",
@@ -86,9 +86,9 @@
     },
     {
       "name": "@opc/dsh-realtime-voice",
-      "version": "0.1.7",
-      "artifact": "plugins/opc-dsh-realtime-voice-0.1.7.tgz",
-      "sha256": "97d2c0900fea0cbc450003309c00ffc94523ea299a05b3f9d31240414cf2cff9"
+      "version": "0.1.8",
+      "artifact": "plugins/opc-dsh-realtime-voice-0.1.8.tgz",
+      "sha256": "b18f87125f3497242aa095aa32a9e3661aad72ec0a29abf0789c422c3afcbc0b"
     },
     {
       "name": "@opc/dsh-task-tracker",
@@ -112,7 +112,7 @@
       "name": "@opc/dsh-dev-status-control",
       "version": "0.2.8",
       "artifact": "plugins/opc-dsh-dev-status-control-0.2.8.tgz",
-      "sha256": "03f842641d2e9b7b8e3aaf07a8b196a8bebbbc3b23decc677df4d7b6c5e11ea5"
+      "sha256": "275dc75955ca8f169529998308a43f7bc78e0c2f72b9cbcc378ccfbeda6d1c0b"
     },
     {
       "name": "@opc/DSH-ai-customer-service",
