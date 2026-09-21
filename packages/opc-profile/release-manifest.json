@@ -20,9 +20,9 @@
     },
     {
       "name": "@opc/dsh-assets",
-      "version": "0.1.4",
-      "artifact": "plugins/opc-dsh-assets-0.1.4.tgz",
-      "sha256": "bc3635524c6081c0d5d73ede911efd219075c9a105f4efca33e59cf21ee0d57a"
+      "version": "0.1.5",
+      "artifact": "plugins/opc-dsh-assets-0.1.5.tgz",
+      "sha256": "0f8e289f59938433d564f7b44402f1cd1a9934d817c32a10ef4c0442631c2dc4"
     },
     {
       "name": "@opc/dsh-assets-workbench",
