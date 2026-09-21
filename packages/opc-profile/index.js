@@ -51,7 +51,7 @@ function artifactFor(name) {
     '@opc/dsh-assets-workbench': 'opc-dsh-assets-workbench-0.1.1.tgz',
     '@opc/dsh-file-attachments': 'opc-dsh-file-attachments-0.1.0.tgz',
     'dsh-file-picker': 'dsh-file-picker-0.1.0.tgz',
-    '@opc/dsh-douyin-comment-ops': 'opc-dsh-douyin-comment-ops-0.1.0.tgz',
+    '@opc/dsh-douyin-comment-ops': 'opc-dsh-douyin-comment-ops-0.1.1.tgz',
     '@opc/dsh-douyin-publisher': 'opc-dsh-douyin-publisher-0.1.0.tgz',
     '@opc/dsh-feishu-docs': 'opc-dsh-feishu-docs-0.1.0.tgz',
     '@opc/dsh-context-retrieval': 'opc-dsh-context-retrieval-0.1.1.tgz',
@@ -68,6 +68,7 @@ function artifactFor(name) {
 }
 
 function versionFor(name) {
+  if (name === '@opc/dsh-douyin-comment-ops') return '0.1.1'
   if (name === '@opc/DSH-ai-customer-service') return '0.1.22'
   if (name === '@opc/dsh-second-brain') return '0.1.6'
   if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.7'
