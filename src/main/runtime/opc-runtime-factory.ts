@@ -84,6 +84,9 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
 }
 
 function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBrokerRuntime): Readonly<Record<string, string>> {
+  const identitySecret = process.env.OPC_DSH_IDENTITY_HMAC_SECRET?.trim()
+    || process.env.HARNESS_IDENTITY_HMAC_SECRET?.trim()
+    || process.env.IDENTITY_HMAC_SECRET?.trim()
   return {
     OPC_DESKTOP_MODE: 'true',
     OPC_LOCAL_BROKER_URL: broker.endpoint,
@@ -97,6 +100,7 @@ function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBroker
     OPC_DSH_TENANT_ID: principal.tenantId,
     OPC_DSH_USER_ID: principal.userId,
     OPC_DSH_LOGIN_SESSION_ID: principal.sessionId,
+    ...(identitySecret ? { OPC_DSH_IDENTITY_HMAC_SECRET: identitySecret } : {}),
     ...(principal.tenantName ? { OPC_DSH_TENANT_NAME: principal.tenantName } : {}),
     ...(principal.accountName ? { OPC_DSH_ACCOUNT_NAME: principal.accountName } : {})
   }

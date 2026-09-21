@@ -12,6 +12,9 @@ const credential = { tenantId: 'tenant-a', userId: 'user-a', sessionId: 'session
 
 describe('createOpcRuntimeFactory', () => {
   it('starts DSH with account-only paths and an ephemeral broker registration', async () => {
+    const previousSecret = process.env.OPC_DSH_IDENTITY_HMAC_SECRET
+    process.env.OPC_DSH_IDENTITY_HMAC_SECRET = 'desktop-identity-secret-that-is-at-least-32-chars'
+    try {
     const broker = {
       registerRuntime: vi.fn(async () => ({ runtimeId: 'runtime-a', origin: 'http://127.0.0.1:40123', endpoint: 'http://127.0.0.1:40123/v1/runtimes/runtime-a', token: 'broker-secret' })),
       revokeRuntime: vi.fn()
@@ -37,6 +40,7 @@ describe('createOpcRuntimeFactory', () => {
         DEEPSEEK_BASE_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a/model',
         DEEPSEEK_API_KEY: 'broker-secret',
         OPC_ACCOUNT_KEY: principal.accountKey,
+        OPC_DSH_IDENTITY_HMAC_SECRET: 'desktop-identity-secret-that-is-at-least-32-chars',
         OPC_TENANT_ID: principal.tenantId,
         OPC_USER_ID: principal.userId,
         OPC_DSH_TENANT_NAME: '示例商户',
@@ -62,6 +66,10 @@ describe('createOpcRuntimeFactory', () => {
     await handle.stop()
     expect(broker.revokeRuntime).toHaveBeenCalledWith('runtime-a')
     expect(harness.stop).toHaveBeenCalledOnce()
+    } finally {
+      if (previousSecret === undefined) delete process.env.OPC_DSH_IDENTITY_HMAC_SECRET
+      else process.env.OPC_DSH_IDENTITY_HMAC_SECRET = previousSecret
+    }
   })
 
   it('revokes the broker registration when DSH fails to provide a loopback origin', async () => {
