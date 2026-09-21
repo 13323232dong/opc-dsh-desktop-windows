@@ -33,6 +33,7 @@ describe('createOpcRuntimeFactory', () => {
       environment: expect.objectContaining({
         OPC_LOCAL_BROKER_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a',
         OPC_LOCAL_BROKER_TOKEN: 'broker-secret',
+        OPC_DESKTOP_MODE: 'true',
         DEEPSEEK_BASE_URL: 'http://127.0.0.1:40123/v1/runtimes/runtime-a/model',
         DEEPSEEK_API_KEY: 'broker-secret',
         OPC_ACCOUNT_KEY: principal.accountKey,

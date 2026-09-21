@@ -84,6 +84,7 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
 
 function brokerEnvironment(principal: DesktopPrincipal, broker: RegisteredBrokerRuntime): Readonly<Record<string, string>> {
   return {
+    OPC_DESKTOP_MODE: 'true',
     OPC_LOCAL_BROKER_URL: broker.endpoint,
     OPC_LOCAL_BROKER_TOKEN: broker.token,
     DEEPSEEK_BASE_URL: `${broker.endpoint}/model`,
