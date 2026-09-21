@@ -5,7 +5,7 @@ import { disableGeneration } from 'dsh-desktop-market-installer/generations/regi
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
 export const OPC_DESKTOP_PLUGINS = [
-  ['@opc/dsh-second-brain', 'opc-dsh-second-brain-0.1.5.tgz'],
+  ['@opc/dsh-second-brain', 'opc-dsh-second-brain-0.1.6.tgz'],
   ['@opc/dsh-brand', 'opc-dsh-brand-0.1.4.tgz', undefined],
   // Desktop DSH 0.1.2 lacks the newer continuable setup hook. This reviewed
   // desktop build retains Agent Teams while deferring only that optional route
