@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { LocalCapabilityBroker } from '../../src/main/broker/local-capability-broker'
 import type { LocalMediaRuntime } from '../../src/main/broker/local-media-runtime'
+import { LocalAssetsRuntime } from '../../src/main/broker/local-assets-runtime'
 
 const brokers: LocalCapabilityBroker[] = []
 
@@ -30,6 +31,34 @@ async function request(
 }
 
 describe('LocalCapabilityBroker', () => {
+  it('connects local assets only for an explicitly granted account scope', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-broker-assets-'))
+    const broker = new LocalCapabilityBroker({
+      cloudBaseUrl: 'https://opc.example.test',
+      localAssetsRuntime: new LocalAssetsRuntime(root)
+    })
+    brokers.push(broker)
+    const accountA = await broker.registerRuntime({
+      runtimeId: 'runtime-assets-a', mediaScopeId: 'account-a', capabilities: ['local-assets']
+    })
+    const accountB = await broker.registerRuntime({
+      runtimeId: 'runtime-assets-b', mediaScopeId: 'account-b', capabilities: ['local-assets']
+    })
+
+    const status = await request(accountA.endpoint, accountA.token, 'local-assets', { action: 'status' })
+    expect(status.status).toBe(200)
+    expect(await status.json()).toMatchObject({ success: true, data: { connected: true, storage: 'local' } })
+    await request(accountA.endpoint, accountA.token, 'local-assets', {
+      action: 'write', kind: 'brand', name: '甲账号品牌'
+    })
+    const own = await (await request(accountA.endpoint, accountA.token, 'local-assets', { action: 'list' })).json() as { data: { assets: unknown[] } }
+    const other = await (await request(accountB.endpoint, accountB.token, 'local-assets', { action: 'list' })).json() as { data: { assets: unknown[] } }
+    expect(own.data.assets).toHaveLength(1)
+    expect(other.data.assets).toHaveLength(0)
+
+    const denied = await broker.registerRuntime({ runtimeId: 'runtime-assets-denied', capabilities: ['ego.status'] })
+    expect((await request(denied.endpoint, denied.token, 'local-assets', { action: 'status' })).status).toBe(403)
+  })
   it('adapts the native DeepSeek route to the authenticated platform model gateway', async () => {
     const fetchCloud = vi.fn(async (_url: string, init?: RequestInit) => new Response('data: {"id":"reply"}\n\ndata: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } }))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })

@@ -45,6 +45,7 @@ export function createOpcRuntimeFactory(options: OpcRuntimeFactoryOptions): Acco
           'ego.status',
           'ego.launch',
           'ego.run',
+          'local-assets',
           'media.status',
           'media.install',
           'media.claim',

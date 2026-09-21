@@ -48,6 +48,7 @@ describe('createOpcRuntimeFactory', () => {
       mediaScopeId: principal.accountKey,
       capabilities: expect.arrayContaining([
         'model.invoke',
+        'local-assets',
         'media.status',
         'media.install',
         'media.claim',

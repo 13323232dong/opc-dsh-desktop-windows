@@ -1,8 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createReadStream } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { realpath } from 'node:fs/promises'
-import { isAbsolute, relative, resolve, sep } from 'node:path'
+import { basename, extname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { isLocalCapability, type LocalCapability } from '../../shared/broker-contracts'
 import { boundedUpload, createIdleDeadline, isAnchorMediaPath, streamMediaResponse, uploadHeaders } from './viral-media-proxy'
 import {
@@ -10,9 +11,11 @@ import {
   type LocalMediaRuntime,
   type MediaCapability
 } from './local-media-runtime'
+import { LocalAssetsRuntime, type LocalAssetsRequest } from './local-assets-runtime'
 
 const MAX_BODY_BYTES = 64 * 1024
 const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
+const MAX_LOCAL_ASSET_BODY_BYTES = 70 * 1024 * 1024
 const MAX_PROVIDER_OUTPUT_TOKENS = 32_768
 const CLOUD_REQUEST_TIMEOUT_MS = 15_000
 const CLOUD_MEDIA_REQUEST_TIMEOUT_MS = 300_000
@@ -100,6 +103,10 @@ export interface LocalCapabilityBrokerOptions {
   /** Abort media only after this long without receiving or forwarding bytes. */
   mediaIdleTimeoutMs?: number
   mediaRuntime?: Pick<LocalMediaRuntime, 'handle'>
+  localAssetsRuntime?: Pick<LocalAssetsRuntime, 'handle'> & Partial<Pick<LocalAssetsRuntime, 'openContent'>>
+  pickLocalAssetsExportPath?: () => Promise<string | undefined>
+  pickLocalAssetsImportPath?: () => Promise<string | undefined>
+  pickLocalMaterialPath?: () => Promise<string | undefined>
 }
 
 export type BrokerCapability = LocalCapability | MediaCapability
@@ -207,13 +214,65 @@ export class LocalCapabilityBroker {
       if (capability !== 'cloud.proxy' || parsed.search) return this.send(response, 404, { code: 'desktop_broker_route_not_found' })
       return this.proxyMediaUpload(request, runtime, response)
     }
-    const body = await this.readJson(request, response)
+    const body = await this.readJson(request, response, capability === 'local-assets' ? MAX_LOCAL_ASSET_BODY_BYTES : MAX_BODY_BYTES)
     if (body === undefined) return
     if (capability === 'cloud.proxy') return this.proxyCloud(body, request, runtime, response)
     if (capability === 'filesystem.pick') return this.pickWorkspacePaths(runtime, response)
     if (capability === 'filesystem.reveal') return this.revealWorkspacePath(body, runtime, response)
     if (isMediaCapability(capability)) return this.handleMedia(capability, body, runtime.mediaScopeId, response)
+    if (capability === 'local-assets') return this.handleLocalAssets(body, runtime.mediaScopeId, response)
     return this.send(response, 501, { code: 'desktop_broker_capability_not_configured' })
+  }
+
+  private async handleLocalAssets(body: Record<string, unknown>, scopeId: string, response: ServerResponse): Promise<void> {
+    if (!this.options.localAssetsRuntime) return this.send(response, 503, { code: 'desktop_broker_local_assets_unavailable' })
+    try {
+      if (body.action === 'content' && typeof body.assetId === 'string' && this.options.localAssetsRuntime.openContent) {
+        const content = await this.options.localAssetsRuntime.openContent({ assetId: body.assetId }, { scopeId })
+        response.writeHead(200, {
+          'content-type': content.mediaType,
+          'content-length': String(content.size),
+          'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(content.name)}`,
+          'cache-control': 'private, no-store',
+          'x-content-type-options': 'nosniff'
+        })
+        await new Promise<void>((resolveStream, rejectStream) => {
+          const stream = createReadStream(content.path)
+          stream.once('error', rejectStream)
+          response.once('finish', resolveStream)
+          stream.pipe(response)
+        })
+        return
+      }
+      let trustedBody = body
+      if (body.action === 'export') {
+        const packagePath = await this.options.pickLocalAssetsExportPath?.()
+        if (!packagePath) return this.send(response, 200, { success: true, data: { cancelled: true } })
+        trustedBody = { ...body, packagePath }
+      } else if (body.action === 'import') {
+        const packagePath = await this.options.pickLocalAssetsImportPath?.()
+        if (!packagePath) return this.send(response, 200, { success: true, data: { cancelled: true } })
+        trustedBody = { ...body, packagePath }
+      } else if (body.action === 'write' && body.operation === 'upload-material') {
+        const selected = await this.options.pickLocalMaterialPath?.()
+        if (!selected) return this.send(response, 200, { success: true, data: { cancelled: true } })
+        const { trustedSourcePath: _forgedSource, relativePath: _forgedPath, contentBase64: _forgedContent, ...safeBody } = body
+        trustedBody = {
+          ...safeBody,
+          kind: 'material',
+          name: basename(selected),
+          mediaType: mediaTypeForFile(selected),
+          trustedSourcePath: selected
+        }
+      } else if ('trustedSourcePath' in body) {
+        const { trustedSourcePath: _forgedSource, ...safeBody } = body
+        trustedBody = safeBody
+      }
+      const result = await this.options.localAssetsRuntime.handle(trustedBody as unknown as LocalAssetsRequest, { scopeId })
+      this.send(response, 200, { success: true, data: result })
+    } catch (error) {
+      this.send(response, 400, { success: false, error: { code: error instanceof Error ? error.message : 'local_assets_failed' } })
+    }
   }
 
   private async proxyModel(runtimeId: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -299,8 +358,8 @@ export class LocalCapabilityBroker {
     return actualHash.length === expectedHash.length && timingSafeEqual(actualHash, expectedHash)
   }
 
-  private async readJson(request: IncomingMessage, response: ServerResponse): Promise<Record<string, unknown> | undefined> {
-    const raw = await this.readRawBody(request, response, MAX_BODY_BYTES)
+  private async readJson(request: IncomingMessage, response: ServerResponse, maximumBytes = MAX_BODY_BYTES): Promise<Record<string, unknown> | undefined> {
+    const raw = await this.readRawBody(request, response, maximumBytes)
     if (raw === undefined) return undefined
     try {
       const value: unknown = JSON.parse(raw)
@@ -487,6 +546,17 @@ function isAllowedCloudPath(value: unknown): value is string {
 
 function isBrokerCapability(value: unknown): value is BrokerCapability {
   return isLocalCapability(value) || isMediaCapability(value)
+}
+
+function mediaTypeForFile(path: string): string {
+  const extension = extname(path).toLowerCase()
+  const types: Readonly<Record<string, string>> = {
+    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+    '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm',
+    '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4',
+    '.pdf': 'application/pdf', '.md': 'text/markdown', '.txt': 'text/plain', '.csv': 'text/csv'
+  }
+  return types[extension] ?? 'application/octet-stream'
 }
 
 function normalizeModelOutputBudget(body: Record<string, unknown>): Record<string, unknown> {

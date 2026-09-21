@@ -6,6 +6,7 @@ export type LocalCapability =
   | 'ego.status'
   | 'ego.launch'
   | 'ego.run'
+  | 'local-assets'
 
 export const LOCAL_CAPABILITIES: readonly LocalCapability[] = [
   'cloud.proxy',
@@ -14,7 +15,8 @@ export const LOCAL_CAPABILITIES: readonly LocalCapability[] = [
   'model.invoke',
   'ego.status',
   'ego.launch',
-  'ego.run'
+  'ego.run',
+  'local-assets'
 ]
 
 export interface DesktopError {

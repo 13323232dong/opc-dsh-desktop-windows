@@ -156,6 +156,7 @@ import { desktopAccountProjection } from '../shared/account-contracts'
 import { createPlatformCredentialStore } from './accounts/platform-credential-store'
 import { LoginHistoryStore } from './accounts/login-history-store'
 import { LocalCapabilityBroker } from './broker/local-capability-broker'
+import { LocalAssetsRuntime } from './broker/local-assets-runtime'
 import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
 import { createOpcRuntimeFactory, type AccountHarnessConfiguration } from './runtime/opc-runtime-factory'
@@ -2776,7 +2777,40 @@ async function bootstrap(): Promise<void> {
     }
   })
   const mediaRuntime = createDesktopMediaRuntime(app.getPath('userData'))
-  const broker = new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl, mediaRuntime })
+  const localAssetsRuntime = new LocalAssetsRuntime(join(app.getPath('documents'), 'Evan超级管家', '本地资产库'))
+  const broker = new LocalCapabilityBroker({
+    cloudBaseUrl: apiBaseUrl,
+    mediaRuntime,
+    localAssetsRuntime,
+    pickLocalAssetsExportPath: async () => {
+      const stamp = new Date().toISOString().slice(0, 10)
+      const result = await dialog.showSaveDialog({
+        title: '导出本地资料迁移包',
+        defaultPath: join(app.getPath('downloads'), `Evan超级管家-本地资料-${stamp}.opc-local-pack`),
+        filters: [{ name: 'Evan 本地资料迁移包', extensions: ['opc-local-pack'] }]
+      })
+      return result.canceled ? undefined : result.filePath
+    },
+    pickLocalAssetsImportPath: async () => {
+      const result = await dialog.showOpenDialog({
+        title: '导入本地资料迁移包',
+        properties: ['openFile'],
+        filters: [{ name: 'Evan 本地资料迁移包', extensions: ['opc-local-pack'] }]
+      })
+      return result.canceled ? undefined : result.filePaths[0]
+    },
+    pickLocalMaterialPath: async () => {
+      const result = await dialog.showOpenDialog({
+        title: '选择本地素材',
+        properties: ['openFile'],
+        filters: [
+          { name: '素材文件', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov', 'webm', 'mp3', 'wav', 'm4a', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv'] },
+          { name: '所有文件', extensions: ['*'] }
+        ]
+      })
+      return result.canceled ? undefined : result.filePaths[0]
+    }
+  })
   accountRuntimeManager = new AccountRuntimeManager({
     root: app.getPath('userData'),
     credentialStore,
