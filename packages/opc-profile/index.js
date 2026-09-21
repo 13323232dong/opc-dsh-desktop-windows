@@ -49,7 +49,7 @@ const ARTIFACTS = new Map([
   ['@opc/dsh-assets-workbench', 'plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
   ['@opc/dsh-file-attachments', 'plugins/opc-dsh-file-attachments-0.1.2.tgz'],
   ['dsh-file-picker', 'plugins/dsh-file-picker-0.1.0.tgz'],
-  ['@opc/dsh-douyin-comment-ops', 'plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz'],
+  ['@opc/dsh-douyin-comment-ops', 'plugins/opc-dsh-douyin-comment-ops-0.1.1.tgz'],
   ['@opc/dsh-inspiration', 'plugins/opc-dsh-inspiration.tgz'],
   ['@opc/dsh-douyin-publisher', 'plugins/opc-dsh-douyin-publisher-0.1.0.tgz'],
   ['@opc/dsh-feishu-docs', 'plugins/opc-dsh-feishu-docs-0.1.0.tgz'],
@@ -77,6 +77,7 @@ function versionFor(name) {
   if (name === '@opc/dsh-assets-workbench') return '0.1.0-opc-desktop.2'
   if (name === '@opc/dsh-file-attachments') return '0.1.2'
   if (name === '@opc/dsh-context-retrieval') return '0.1.2'
+  if (name === '@opc/dsh-douyin-comment-ops') return '0.1.1'
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
   return '0.1.0'
 }
