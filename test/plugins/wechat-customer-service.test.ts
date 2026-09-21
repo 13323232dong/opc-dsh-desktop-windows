@@ -8,7 +8,7 @@ import { resolve } from 'node:path'
 
 describe('desktop WeChat customer service', () => {
   it('ships the second brain retrieval dependency in both profile and bootstrap', () => {
-    expect(DESKTOP_PROFILE_MANIFEST.plugins.find(p => p.name === '@opc/dsh-second-brain')).toMatchObject({version:'0.1.3'});
+    expect(DESKTOP_PROFILE_MANIFEST.plugins.find(p => p.name === '@opc/dsh-second-brain')).toMatchObject({version:'0.1.4'});
     expect(OPC_DESKTOP_PLUGINS.some(p => p[0] === '@opc/dsh-second-brain')).toBe(true);
   })
   it('registers one portable runtime and client with an explicit unsupported Windows adapter', () => {

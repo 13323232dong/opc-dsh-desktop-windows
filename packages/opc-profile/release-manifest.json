@@ -122,9 +122,9 @@
     },
     {
       "name": "@opc/dsh-second-brain",
-      "version": "0.1.3",
-      "artifact": "plugins/opc-dsh-second-brain-0.1.3.tgz",
-      "sha256": "44402ed954de19616e0f61b893c689cf7e72d729e77d8e986020590c0e68c25e"
+      "version": "0.1.4",
+      "artifact": "plugins/opc-dsh-second-brain-0.1.4.tgz",
+      "sha256": "236887ed9028f79810a1e41ef269b59bbf67a65d1b0717fb309c45fbcd17a5fa"
     }
   ]
 }
