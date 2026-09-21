@@ -8,6 +8,8 @@ describe('desktop media runtime wiring', () => {
 
     expect(source).toContain("import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'")
     expect(source).toContain("const mediaRuntime = createDesktopMediaRuntime(app.getPath('userData'))")
-    expect(source).toContain('new LocalCapabilityBroker({ cloudBaseUrl: apiBaseUrl, mediaRuntime })')
+    expect(source).toContain('const broker = new LocalCapabilityBroker({')
+    expect(source).toContain('cloudBaseUrl: apiBaseUrl,')
+    expect(source).toContain('mediaRuntime,')
   })
 })
