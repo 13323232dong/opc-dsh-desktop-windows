@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
-import { access, readFile } from 'node:fs/promises'
+import { access, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parse } from 'yaml'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const arch = process.argv[2] ?? 'x64'
@@ -11,15 +12,33 @@ async function sha256(file) {
   return createHash('sha256').update(await readFile(file)).digest('hex')
 }
 
+async function sha512(file) {
+  return createHash('sha512').update(await readFile(file)).digest('base64')
+}
+
 const resources = path.join(projectRoot, 'dist', 'win-unpacked', 'resources')
 const installer = path.join(projectRoot, 'dist', `Evan超级管家-windows-${arch}-setup.exe`)
 await Promise.all([
   access(installer),
+  access(path.join(projectRoot, 'dist', 'latest.yml')),
   access(path.join(resources, 'login.html')),
   access(path.join(resources, 'splash.html')),
   access(path.join(resources, 'evan-super-employee.svg')),
   access(path.join(resources, 'opc-profile', 'release-manifest.json'))
 ])
+
+const metadata = parse(await readFile(path.join(projectRoot, 'dist', 'latest.yml'), 'utf8'))
+const packageJson = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'))
+const entry = metadata?.files?.find((file) => file?.url === path.basename(installer))
+const installerStat = await stat(installer)
+if (
+  metadata?.version !== packageJson.version ||
+  !entry ||
+  entry.size !== installerStat.size ||
+  entry.sha512 !== (await sha512(installer))
+) {
+  throw new Error('packaged Windows latest.yml does not match the installer')
+}
 
 const login = await readFile(path.join(resources, 'login.html'), 'utf8')
 if (!login.includes('Evan超级管家')) {

@@ -45,6 +45,7 @@ describe('Windows release parity', () => {
       'utf8'
     )
 
+    expect(packageJson.scripts['package:win']).toContain('node scripts/finalize-packaged-windows-release.mjs')
     expect(packageJson.scripts['package:win']).toContain('npm run verify:package:win')
     expect(packageJson.scripts['verify:package:win']).toBe(
       'node scripts/verify-packaged-windows-release.mjs x64'
@@ -54,5 +55,6 @@ describe('Windows release parity', () => {
     expect(verifier).toContain("'evan-super-employee.svg'")
     expect(verifier).toContain("'opc-profile', 'release-manifest.json'")
     expect(verifier).toContain('packaged Windows plugin artifact is stale')
+    expect(verifier).toContain('packaged Windows latest.yml does not match the installer')
   })
 })

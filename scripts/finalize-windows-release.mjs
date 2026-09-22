@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { basename, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { buildBlockMap } = require('app-builder-lib/out/targets/blockmap/blockmap')
@@ -21,7 +22,7 @@ async function sha512(file) {
   return createHash('sha512').update(await readFile(file)).digest('base64')
 }
 
-async function finalizeRelease(releaseDir, version) {
+export async function finalizeRelease(releaseDir, version) {
   const installer = await findInstaller(releaseDir)
   const blockmap = `${installer}.blockmap`
   await rm(blockmap, { force: true })
@@ -48,10 +49,14 @@ async function finalizeRelease(releaseDir, version) {
   return { installer, blockmap }
 }
 
-const [releaseDirArg, version] = process.argv.slice(2)
-if (!releaseDirArg || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version ?? '')) {
-  throw new Error('Usage: finalize-windows-release.mjs <release-dir> <semver>')
+async function main() {
+  const [releaseDirArg, version] = process.argv.slice(2)
+  if (!releaseDirArg || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version ?? '')) {
+    throw new Error('Usage: finalize-windows-release.mjs <release-dir> <semver>')
+  }
+
+  const result = await finalizeRelease(resolve(releaseDirArg), version)
+  console.log(`Finalized signed installer metadata for ${basename(result.installer)}.`)
 }
 
-const result = await finalizeRelease(resolve(releaseDirArg), version)
-console.log(`Finalized signed installer metadata for ${basename(result.installer)}.`)
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main()
