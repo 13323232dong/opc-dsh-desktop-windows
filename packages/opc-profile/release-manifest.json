@@ -98,9 +98,9 @@
     },
     {
       "name": "@opc/dsh-viral-chase",
-      "version": "0.1.34",
-      "artifact": "plugins/opc-dsh-viral-chase-0.1.34.tgz",
-      "sha256": "b39a7b3edde8f79e8721d2bafe25a2db7fc8b072402c3801ba89c7019b84da53"
+      "version": "0.1.35",
+      "artifact": "plugins/opc-dsh-viral-chase-0.1.35.tgz",
+      "sha256": "b187eeb90fd90b98e45bae0e130b615dde9e3f998f20dbeb269c504e5832d1ce"
     },
     {
       "name": "@opc/dsh-session-context",
