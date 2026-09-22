@@ -100,7 +100,7 @@
       "name": "@opc/dsh-viral-chase",
       "version": "0.1.40",
       "artifact": "plugins/opc-dsh-viral-chase-0.1.40.tgz",
-      "sha256": "2d778fffb21b5dcbb62260ad338bbc043e578f48e3f97176f8f37aa4cbade27c"
+      "sha256": "3df4cf2ec33476fd9cdbe99eec3f9cb5e04af73be47a657f6ed9e4de29d917ed"
     },
     {
       "name": "@opc/dsh-session-context",
