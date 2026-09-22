@@ -15,7 +15,7 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-assets-workbench', 'opc-dsh-assets-workbench-0.1.1.tgz'],
   ['@opc/dsh-file-attachments', 'opc-dsh-file-attachments-0.1.0.tgz'],
   ['dsh-file-picker', 'dsh-file-picker-0.1.0.tgz'],
-  ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.1.tgz', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],
+  ['@opc/dsh-douyin-comment-ops', 'opc-dsh-douyin-comment-ops-0.1.2.tgz', 'opc-dsh-douyin-comment-ops-0.1.0.tgz'],
   ['@opc/dsh-douyin-publisher', 'opc-dsh-douyin-publisher-0.1.0.tgz'],
   ['@opc/dsh-feishu-docs', 'opc-dsh-feishu-docs-0.1.0.tgz'],
   ['@opc/dsh-context-retrieval', 'opc-dsh-context-retrieval-0.1.1.tgz'],
