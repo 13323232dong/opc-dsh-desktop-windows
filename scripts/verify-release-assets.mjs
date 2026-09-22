@@ -6,14 +6,14 @@ import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 
 const REQUIRED_ASSETS = [
-  'dsh-desktop-mac-arm64.dmg',
-  'dsh-desktop-mac-arm64.zip',
-  'dsh-desktop-mac-arm64.zip.blockmap',
-  'dsh-desktop-mac-x64.dmg',
-  'dsh-desktop-mac-x64.zip',
-  'dsh-desktop-mac-x64.zip.blockmap',
-  'dsh-desktop-windows-x64-setup.exe',
-  'dsh-desktop-windows-x64-setup.exe.blockmap',
+  'Evan超级管家-mac-arm64.dmg',
+  'Evan超级管家-mac-arm64.zip',
+  'Evan超级管家-mac-arm64.zip.blockmap',
+  'Evan超级管家-mac-x64.dmg',
+  'Evan超级管家-mac-x64.zip',
+  'Evan超级管家-mac-x64.zip.blockmap',
+  'Evan超级管家-windows-x64-setup.exe',
+  'Evan超级管家-windows-x64-setup.exe.blockmap',
   'latest-mac.yml',
   'latest.yml'
 ]
@@ -109,9 +109,9 @@ export async function verifyReleaseAssets(releaseDir, version, options = {}) {
     await assertFileHeader(file, kind, fileStat.size)
   }
 
-  await assertUpdateEntry(root, 'latest.yml', version, 'dsh-desktop-windows-x64-setup.exe')
-  await assertUpdateEntry(root, 'latest-mac.yml', version, 'dsh-desktop-mac-arm64.zip')
-  await assertUpdateEntry(root, 'latest-mac.yml', version, 'dsh-desktop-mac-x64.zip')
+  await assertUpdateEntry(root, 'latest.yml', version, 'Evan超级管家-windows-x64-setup.exe')
+  await assertUpdateEntry(root, 'latest-mac.yml', version, 'Evan超级管家-mac-arm64.zip')
+  await assertUpdateEntry(root, 'latest-mac.yml', version, 'Evan超级管家-mac-x64.zip')
 }
 
 async function main() {
