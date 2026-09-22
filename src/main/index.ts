@@ -160,6 +160,7 @@ import { LocalAssetsRuntime } from './broker/local-assets-runtime'
 import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
 import { createOpcRuntimeFactory, type AccountHarnessConfiguration } from './runtime/opc-runtime-factory'
+import { parseCreditBalanceResponse } from './credit-balance'
 
 type PluginRecoveryAction = 'uninstall' | 'upgrade' | 'show-log' | 'quit' | 'restart' | 'refresh' | 'safe-mode'
 type SafeModeAction =
@@ -2913,6 +2914,18 @@ async function bootstrap(): Promise<void> {
     clearProfileBootConfirmation()
     await showLoginPage()
     return { ok: true }
+  })
+  ipcMain.removeHandler('desktop:credit-balance')
+  ipcMain.handle('desktop:credit-balance', async (event) => {
+    assertTrustedMainWindowEvent(event)
+    const session = await desktopAuthController!.currentSession()
+    if (!session?.credential.accessToken) throw new Error('desktop_auth_required')
+    const response = await fetch(new URL('/api/v1/compute/balance', apiBaseUrl), {
+      headers: { accept: 'application/json', cookie: `opc_session=${session.credential.accessToken}` },
+      signal: AbortSignal.timeout(10_000)
+    })
+    const payload = await response.json().catch(() => null) as Parameters<typeof parseCreditBalanceResponse>[2]
+    return parseCreditBalanceResponse(response.ok, response.status, payload)
   })
   ipcMain.handle('directory-picker:open', async (event) => {
     if (

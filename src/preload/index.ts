@@ -374,6 +374,13 @@ contextBridge.exposeInMainWorld(
 )
 
 contextBridge.exposeInMainWorld(
+  'dshDesktopCredits',
+  Object.freeze({
+    balance: (): Promise<{ credits: string; cnyEquivalent: string }> => ipcRenderer.invoke('desktop:credit-balance')
+  })
+)
+
+contextBridge.exposeInMainWorld(
   'dshRecovery',
   Object.freeze({
     action: (action: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('recovery:action', action)
