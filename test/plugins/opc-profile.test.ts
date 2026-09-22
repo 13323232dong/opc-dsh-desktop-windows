@@ -31,7 +31,7 @@ describe('OPC desktop profile', () => {
       name: '@nanmicoder/dsh-agent-teams', version: '0.1.8-opc-desktop.7', artifact: 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz'
     }))
     expect(profile.plugins).toContainEqual(expect.objectContaining({
-      name: '@opc/dsh-realtime-voice', version: '0.1.8', artifact: 'plugins/opc-dsh-realtime-voice-0.1.8.tgz'
+      name: '@opc/dsh-realtime-voice', version: '0.1.9', artifact: 'plugins/opc-dsh-realtime-voice-0.1.9.tgz'
     }))
     expect(profile.plugins).toContainEqual(expect.objectContaining({
       name: '@opc/dsh-feishu-docs', artifact: 'plugins/opc-dsh-feishu-docs-0.1.0.tgz', client: false
