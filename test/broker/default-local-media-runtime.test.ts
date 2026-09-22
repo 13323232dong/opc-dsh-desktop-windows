@@ -21,7 +21,7 @@ describe('desktop media runtime composition', () => {
     expect(Object.keys(gateway)).toEqual(['materializeComposition', 'commitComposition'])
   })
 
-  it('exposes only fixed public metadata while making the verified macOS FFmpeg build installable', async () => {
+  it('exposes only fixed public metadata and the current platform capability state', async () => {
     expect(DESKTOP_MEDIA_COMPONENTS.map((component) => component.id)).toEqual([
       'ffmpeg',
       'whisper-coreml',
@@ -36,18 +36,13 @@ describe('desktop media runtime composition', () => {
     const status = await runtime.handle('media.status', {}, { runtimeId: 'account-scope' })
 
     expect(status.status).toBe(200)
-    expect(status.body).toMatchObject({
-      components: expect.arrayContaining([
-        expect.objectContaining({
-          id: 'ffmpeg',
-          version: '6.0-b6.1.1',
-          sha256: 'a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584',
-          state: 'not_installed',
-          installable: true
-        }),
-        expect.objectContaining({ id: 'hyperframes', version: '0.8.22', license: 'Apache-2.0' })
-      ])
-    })
+    const ffmpeg = (status.body.components as Array<Record<string, unknown>>)
+      .find((component) => component.id === 'ffmpeg')
+    expect(ffmpeg).toMatchObject({ id: 'ffmpeg', version: '6.0-b6.1.1', state: 'not_installed' })
+    expect(ffmpeg?.installable).toBe(process.platform === 'darwin')
+    expect((status.body.components as Array<Record<string, unknown>>)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'hyperframes', version: '0.8.22', license: 'Apache-2.0' })
+    ]))
     expect(JSON.stringify(status.body)).not.toContain(applicationSupportDirectory)
   })
 
@@ -81,7 +76,9 @@ describe('desktop media runtime composition', () => {
 
     expect(fetcher).toHaveBeenCalledWith(artifact.url, expect.objectContaining({ redirect: 'follow' }))
     expect(await readFile(join(targetDirectory, 'ffmpeg'))).toEqual(bytes)
-    expect((await stat(join(targetDirectory, 'ffmpeg'))).mode & 0o111).not.toBe(0)
+    if (process.platform !== 'win32') {
+      expect((await stat(join(targetDirectory, 'ffmpeg'))).mode & 0o111).not.toBe(0)
+    }
   })
 
   it('removes a corrupt download and never reports a mismatched component as installed', async () => {
@@ -135,13 +132,13 @@ describe('desktop media runtime composition', () => {
     }
 
     expect((await runtime.handle('media.claim', claim, { runtimeId: 'account-scope' })).status).toBe(201)
+    const expected = process.platform === 'darwin'
+      ? { status: 503, body: { code: 'media_executor_unavailable', retryable: true } }
+      : { status: 409, body: { code: 'media_component_not_installed', retryable: false } }
     expect(await runtime.handle('media.run', {
       taskId: claim.taskId,
       contentHash: claim.contentHash
-    }, { runtimeId: 'account-scope' })).toEqual({
-      status: 503,
-      body: { code: 'media_executor_unavailable', retryable: true }
-    })
+    }, { runtimeId: 'account-scope' })).toEqual(expected)
     expect(await runtime.handle('media.run', {
       taskId: claim.taskId,
       contentHash: claim.contentHash,

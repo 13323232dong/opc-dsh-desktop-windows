@@ -4,3 +4,8 @@ patches/*.patch whitespace=-space-before-tab
 
 # Preserve pinned third-party inputs byte-for-byte, including upstream whitespace.
 packages/ppt-runtime/upstream/** -whitespace
+
+# The release contract hashes the user-visible brand sources. Keep the SVG
+# bytes stable across Windows and macOS checkouts instead of letting Git's
+# platform line-ending conversion invalidate the approved hash.
+build/evan-super-employee.svg text eol=lf

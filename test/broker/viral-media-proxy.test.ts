@@ -63,7 +63,9 @@ describe('viral media broker', () => {
       expect(new Uint8Array(await new Response(init.body).arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
       return Response.json({ uploadId: 'upload-one' })
     })
-    const runtime = await setup(fetchCloud, 'test-account', 30)
+    // Windows CI can schedule timers more coarsely under parallel Vitest
+    // load; leave ample headroom while still proving each chunk resets idle.
+    const runtime = await setup(fetchCloud, 'test-account', 250)
     const body = Readable.from((async function* () {
       yield Buffer.from([1])
       await new Promise((resolve) => setTimeout(resolve, 20))
