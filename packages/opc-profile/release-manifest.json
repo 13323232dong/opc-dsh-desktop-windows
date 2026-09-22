@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.53",
+  "version": "0.7.56",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -8,9 +8,9 @@
   "plugins": [
     {
       "name": "@opc/dsh-brand",
-      "version": "0.1.4",
-      "artifact": "plugins/opc-dsh-brand-0.1.4.tgz",
-      "sha256": "cfbe7eb102e4839e07e64ec145b9bc870cfad7dd8e2b9c22045f7ff2e7da5257"
+      "version": "0.1.5",
+      "artifact": "plugins/opc-dsh-brand-0.1.5.tgz",
+      "sha256": "a56fbd955f21149d70413adc075683667deaa261b2032dfadbf81d9d9ddeb68b"
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",

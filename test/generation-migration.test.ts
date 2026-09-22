@@ -158,10 +158,10 @@ describe('one-time profile migration to generations', () => {
 
   it('keeps packaged desktop baseline plugins in the shared tree while migrating community plugins', async () => {
     const packagedArtifact =
-      'file:/Applications/Evan超级管家.app/Contents/Resources/opc-profile/plugins/opc-dsh-brand-0.1.4.tgz'
+      'file:/Applications/Evan超级管家.app/Contents/Resources/opc-profile/plugins/opc-dsh-brand-0.1.5.tgz'
     const home = await preUpgradeProfile(
       {
-        '@opc/dsh-brand': '0.1.4',
+        '@opc/dsh-brand': '0.1.5',
         'community-plugin': '1.0.0'
       },
       {
