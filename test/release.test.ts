@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = path.resolve(import.meta.dirname, '..')
 
 const releaseAssets = [
-  'dsh-desktop-mac-arm64.dmg',
-  'dsh-desktop-mac-x64.dmg',
-  'dsh-desktop-windows-x64-setup.exe'
+  'Evan超级管家-mac-arm64.dmg',
+  'Evan超级管家-mac-x64.dmg',
+  'Evan超级管家-windows-x64-setup.exe'
 ]
 
 describe('GitHub release contract', () => {
@@ -300,9 +300,9 @@ describe('GitHub release contract', () => {
       'latest-mac-x64.yml',
       'latest-mac.yml',
       'latest.yml',
-      'dsh-desktop-mac-arm64.zip.blockmap',
-      'dsh-desktop-mac-x64.zip.blockmap',
-      'dsh-desktop-windows-x64-setup.exe.blockmap'
+      'Evan超级管家-mac-arm64.zip.blockmap',
+      'Evan超级管家-mac-x64.zip.blockmap',
+      'Evan超级管家-windows-x64-setup.exe.blockmap'
     ]) {
       expect(workflow).toContain(asset)
     }
@@ -386,7 +386,7 @@ describe('GitHub release contract', () => {
     expect(workflow).toContain('$executable = Join-Path $isolatedApp $sourceExecutable.Name')
     expect(workflow).toContain('-WorkingDirectory $isolatedApp')
     expect(workflow).toContain('Packaged koffi native binding failed.')
-    expect(workflow).toContain("'dist-dev\\win-unpacked\\DSH Desktop Dev.exe'")
+    expect(workflow).toContain("'dist-dev\\win-unpacked\\Evan超级管家 Dev.exe'")
     expect(workflow).toContain('if (-not [string]::IsNullOrEmpty($log))')
     expect(workflow).toContain("dsh web: (http://127\\.0\\.0\\.1:\\d+/\\?token=[^\\s]+)")
     expect(workflow).toContain('-SessionVariable harnessSession')
@@ -399,7 +399,7 @@ describe('GitHub release contract', () => {
     expect(workflow).toContain('prerelease_tag:')
     expect(workflow).toContain('--prerelease')
     expect(workflow).toContain('name: windows-x64-dev')
-    expect(workflow).toContain('dist-dev/dsh-desktop-dev-windows-x64-setup.exe')
+    expect(workflow).toContain('dist-dev/Evan超级管家-Dev-windows-x64-setup.exe')
     for (const asset of releaseAssets) expect(workflow).toContain(asset)
     expect(
       workflow.match(

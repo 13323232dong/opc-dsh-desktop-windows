@@ -30,17 +30,17 @@ jobs:
       - name: Verify installer
         shell: pwsh
         run: |
-          $installer = 'dist\opc-desktop-windows-x64-setup.exe'
+          $installer = 'dist\Evan超级管家-windows-x64-setup.exe'
           if (-not (Test-Path $installer)) { throw "Windows installer was not created: $installer" }
           $size = (Get-Item $installer).Length
           if ($size -lt 50MB) { throw "Windows installer is unexpectedly small: $size bytes" }
           Get-FileHash -Algorithm SHA256 $installer
       - uses: actions/upload-artifact@v4
         with:
-          name: opc-desktop-windows-x64-candidate
+          name: evan-super-manager-windows-x64-candidate
           path: |
-            dist/opc-desktop-windows-x64-setup.exe
-            dist/opc-desktop-windows-x64-setup.exe.blockmap
+            dist/Evan超级管家-windows-x64-setup.exe
+            dist/Evan超级管家-windows-x64-setup.exe.blockmap
             dist/latest.yml
           if-no-files-found: error
           retention-days: 7
