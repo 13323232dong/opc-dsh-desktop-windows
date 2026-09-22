@@ -39,4 +39,20 @@ for (const legacyName of ['伟东 OPC', '伟东 OPC Dev', 'Evan-AI管家']) {
   if (login.includes(legacyName)) throw new Error(`packaged login page contains legacy product name: ${legacyName}`)
 }
 
+const profileManifest = JSON.parse(await readFile(
+  path.join(projectRoot, 'packages', 'opc-profile', 'release-manifest.json'),
+  'utf8'
+))
+for (const plugin of profileManifest.plugins ?? []) {
+  const artifact = plugin?.artifact
+  const expectedSha256 = plugin?.sha256
+  if (typeof artifact !== 'string' || typeof expectedSha256 !== 'string') continue
+  const packagedArtifact = path.join(resources, 'opc-profile', artifact)
+  await access(packagedArtifact)
+  const actualSha256 = await sha256(packagedArtifact)
+  if (actualSha256 !== expectedSha256) {
+    throw new Error(`packaged plugin artifact is stale: ${artifact}`)
+  }
+}
+
 console.log(`Packaged macOS release verified: ${app}`)
