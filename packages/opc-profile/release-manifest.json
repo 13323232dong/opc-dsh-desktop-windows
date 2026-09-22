@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.34",
+  "version": "0.7.35",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -44,9 +44,9 @@
     },
     {
       "name": "@opc/dsh-douyin-comment-ops",
-      "version": "0.1.3",
-      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.3.tgz",
-      "sha256": "306ce20dc8c3f108b35778fab31caf36197d840389211b258ef9eee4094c3c18"
+      "version": "0.1.4",
+      "artifact": "plugins/opc-dsh-douyin-comment-ops-0.1.4.tgz",
+      "sha256": "253a3b6fbbfd3504a9eec0c93c28f55a59fa40ddcefd2143bc457bb8e725f836"
     },
     {
       "name": "@opc/dsh-douyin-publisher",
