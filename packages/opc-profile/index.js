@@ -45,7 +45,7 @@ function artifactFor(name) {
   const artifacts = {
     '@opc/dsh-second-brain': 'opc-dsh-second-brain-0.1.6.tgz',
     '@opc/DSH-ai-customer-service': 'opc-DSH-ai-customer-service-0.1.24.tgz',
-    '@opc/dsh-brand': 'opc-dsh-brand-0.1.5.tgz',
+    '@opc/dsh-brand': 'opc-dsh-brand-0.1.6.tgz',
     '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.8.tgz',
     '@opc/dsh-assets': 'opc-dsh-assets-0.1.5.tgz',
     '@opc/dsh-assets-workbench': 'opc-dsh-assets-workbench-0.1.1.tgz',
@@ -78,7 +78,7 @@ function versionFor(name) {
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
   if (name === '@opc/dsh-viral-chase') return '0.1.44'
   if (name === '@opc/dsh-dev-status-control') return '0.2.8'
-  if (name === '@opc/dsh-brand') return '0.1.5'
+  if (name === '@opc/dsh-brand') return '0.1.6'
   if (name === '@opc/dsh-realtime-voice') return '0.1.9'
   return '0.1.0'
 }
