@@ -21,6 +21,7 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@omdsh-dev/dsh-genui', 'omdsh-dev-dsh-genui-0.9.1.tgz'],
   ['@opc/dsh-publish-precheck', 'opc-dsh-publish-precheck-0.1.0.tgz'],
   ['DSH-opc-material-matcher', 'DSH-opc-material-matcher-0.1.0.tgz'],
+  ['DSH-opc-smart-edit', 'DSH-opc-smart-edit-0.1.0.tgz'],
   ['@opc/DSH-dong-computer-use', 'opc-DSH-dong-computer-use-0.1.0.tgz'],
   ['@opc/dsh-dong-mobile-control', 'opc-dsh-dong-mobile-control-0.1.0.tgz'],
   ['@opc/dsh-desktop-orb', 'opc-dsh-desktop-orb-0.1.0.tgz'],

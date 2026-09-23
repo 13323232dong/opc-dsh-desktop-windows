@@ -17,6 +17,7 @@ describe('OPC macOS desktop profile', () => {
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@nanmicoder/dsh-agent-teams')
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@omdsh-dev/dsh-genui')
     expect(profile.plugins.map((plugin) => plugin.name)).toContain('@opc/dsh-task-tracker')
+    expect(profile.plugins.map((plugin) => plugin.name)).toContain('DSH-opc-smart-edit')
     expect(profile.plugins.map((plugin) => plugin.name)).not.toContain('@opc/dsh-secure-qr')
     expect(validateDesktopProfile(profile)).toEqual([])
   })
@@ -79,6 +80,16 @@ describe('OPC macOS desktop profile', () => {
     expect(contextPlugin).toMatchObject({
       version: '0.1.1',
       artifact: 'plugins/opc-dsh-context-retrieval-0.1.1.tgz'
+    })
+  })
+
+  it('loads smart edit as a desktop conversation view from its immutable artifact', () => {
+    const smartEdit = DESKTOP_PROFILE_MANIFEST.plugins.find((plugin) => plugin.name === 'DSH-opc-smart-edit')
+    expect(smartEdit).toMatchObject({
+      version: '0.1.0',
+      artifact: 'plugins/DSH-opc-smart-edit-0.1.0.tgz',
+      client: true,
+      clientInject: ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']
     })
   })
 
