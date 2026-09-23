@@ -15,7 +15,7 @@ describe('desktop WeChat customer service', () => {
     const plugins = DESKTOP_PROFILE_MANIFEST.plugins.filter(p => p.name === '@opc/DSH-ai-customer-service')
     expect(plugins).toHaveLength(1)
     if (!plugins[0]) throw new Error('customer service profile missing')
-    expect(plugins[0]).toMatchObject({ version: '0.1.28', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.28.tgz' })
+    expect(plugins[0]).toMatchObject({ version: '0.1.29', client: true, artifact: 'plugins/opc-DSH-ai-customer-service-0.1.29.tgz' })
     expect(OPC_PLUGIN_COMPATIBILITY_MATRIX.find(p => p.name === '@opc/DSH-ai-customer-service')).toMatchObject({ windowsDisposition: 'requires-native-adapter' })
     const plugin = plugins[0]
     expect(OPC_DESKTOP_PLUGINS.find(p => p[0] === plugin.name)?.[1]).toBe(plugin.artifact.replace('plugins/', ''))
@@ -34,7 +34,7 @@ describe('desktop WeChat customer service', () => {
   })
   it('ships the permission tool and a callable AI customer-service tab label', () => {
     const artifact = resolve(
-      'packages/opc-profile/plugins/opc-DSH-ai-customer-service-0.1.28.tgz'
+      'packages/opc-profile/plugins/opc-DSH-ai-customer-service-0.1.29.tgz'
     )
     const runtime = execFileSync(
       'tar',
@@ -56,13 +56,15 @@ describe('desktop WeChat customer service', () => {
     expect(runtime).toContain("['style_learn'")
     expect(runtime).toContain("['style_delete'")
     expect(runtime).toContain("['analyze'")
-    expect(clientBundle.replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))).toContain('监听范围：微信标签')
+    const decodedClient = clientBundle.replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    expect(decodedClient).toContain('监听范围：全部微信私聊')
+    expect(decodedClient).toContain('开始监听')
+    expect(decodedClient).not.toContain('管理标签')
     expect(runtime).toContain('wechat_customer_service_request_accessibility')
     expect(client).toContain("label:()=>'AI 客服'")
     expect(client).toContain("act('request-accessibility',{})")
-    expect(client).toContain('管理标签')
-    expect(client).toContain('const tagsAvailable=tags.length>0&&!tagError')
-    expect(client).toContain('disabled={busy||!tagsAvailable||!selected.length}')
+    expect(client).toContain('全部微信私聊')
+    expect(client).not.toContain('管理标签')
     expect(clientBundle).toMatch(
       /^window\.__ModuleLoader__\.load\(\{ id: "@opc\/DSH-ai-customer-service", factory: \(require\) => \{/
     )
