@@ -8,9 +8,9 @@
   "plugins": [
     {
       "name": "@opc/dsh-brand",
-      "version": "0.1.5",
-      "artifact": "plugins/opc-dsh-brand-0.1.5.tgz",
-      "sha256": "a56fbd955f21149d70413adc075683667deaa261b2032dfadbf81d9d9ddeb68b"
+      "version": "0.1.6",
+      "artifact": "plugins/opc-dsh-brand-0.1.6.tgz",
+      "sha256": "19189aa2c4d3d27dc827bf2be7615d9a68d2a2ab0fa4b52e8be203f6320727d8"
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
