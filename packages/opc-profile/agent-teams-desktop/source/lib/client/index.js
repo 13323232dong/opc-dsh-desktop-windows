@@ -7,6 +7,7 @@ import { agentTeamsCardDefinition } from "./agent-teams-card-definition.js";
 import { openMemberSubagent } from "./member-navigation.js";
 import { createToolLibraryClient } from "./tool-library-client.js";
 import { SessionArtifactDownloads } from "./session-artifact-downloads.js";
+import { InterviewGuidePanel } from "./InterviewGuidePanel.js";
 /**
  * The activity panel only needs slots and session navigation. Newer DSH web
  * clients additionally expose `conversationEvents`, which lets us render the
@@ -40,4 +41,9 @@ export function apply(ctx) {
             openMemberSession: (captainSessionId, memberSessionId) => openMemberSubagent(ctx.sessions, captainSessionId, memberSessionId),
         }),
     }, AgentTeamsCard));
+    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+        name: 'conversation.input.dock',
+        id: 'agent-teams-interview-guide',
+        order: 20,
+    }, InterviewGuidePanel));
 }
