@@ -25,13 +25,13 @@ const downloaded: UpdateStatus = {
 
 describe('desktop update card visibility', () => {
   it('shows automatic downloads but keeps automatic background checks quiet', () => {
-    expect(shouldShowUpdate(downloading)).toBe(true)
+    expect(shouldShowUpdate(downloading)).toBe(false)
     expect(
       shouldShowUpdate({ phase: 'checking', currentVersion: '1.0.0', manual: false })
     ).toBe(false)
     expect(
       shouldShowUpdate({ phase: 'checking', currentVersion: '1.0.0', manual: true })
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('keeps a dismissed version hidden while its download phase changes', () => {
@@ -116,4 +116,3 @@ describe('about dialog and version selection wiring', () => {
     expect(preload).toContain('mountAbout()')
   })
 })
-

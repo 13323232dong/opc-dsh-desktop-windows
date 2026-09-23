@@ -721,6 +721,7 @@ function renderAbout(): void {
   body.appendChild(hint)
   card.appendChild(body)
 
+  /*
   // Actions row: [ 选择版本 ] [ 检查更新 ] side-by-side
   const actions = element('div', 'about-actions')
 
@@ -776,6 +777,7 @@ function renderAbout(): void {
     }
     card.appendChild(pickerContainer)
   }
+  */
 
   overlay.replaceChildren(card)
 }
