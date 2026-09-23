@@ -106,6 +106,7 @@ import {
   clearStaleHarnessAuthCookies,
   desktopHarnessUrl,
   isAbortedNavigationError,
+  shouldShowUnexpectedDesktopError,
   shouldRecoverMainWindowLoadFailure,
   shouldLoadHarnessUrl
 } from './window-navigation'
@@ -1714,6 +1715,10 @@ async function waitForPluginRecoveryAction(options: {
 }
 
 function showUnexpectedError(error: unknown): void {
+  if (!shouldShowUnexpectedDesktopError(error)) {
+    runtime?.note('[desktop] ignored normal navigation cancellation in global error handler')
+    return
+  }
   const message = error instanceof Error ? error.stack ?? error.message : String(error)
   dialog.showErrorBox('DSH Desktop encountered an error', message)
 }

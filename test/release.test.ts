@@ -236,6 +236,7 @@ describe('GitHub release contract', () => {
     expect(main).toContain("desktopResourcePath('splash.html')")
     expect(main).toContain('await showSplash()')
     expect(main).toContain('if (!isAbortedNavigationError(error)) throw error')
+    expect(main).toContain('if (!shouldShowUnexpectedDesktopError(error))')
     expect(main).toContain("query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light' }")
     expect(main).toContain('nativeTheme.themeSource = harnessThemePreference()')
     expect(splash).toContain('Starting DSH Desktop')
