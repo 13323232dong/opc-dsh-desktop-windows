@@ -347,7 +347,7 @@ describe('GitHub release contract', () => {
     expect(packageJson.scripts['package:dev:win']).toContain('electron-builder.dev.cjs')
     expect(packageJson.scripts['package:dev:win']).toContain('--publish never')
     expect(developmentConfig).toContain("appId: 'cc.ohmycode.opc.desktop.dev'")
-    expect(developmentConfig).toContain("productName: '伟东 OPC Dev'")
+    expect(developmentConfig).toContain("productName: 'Evan超级管家 Dev'")
     expect(developmentConfig).toContain("output: 'dist-dev'")
     expect(developmentConfig).toContain("dshDesktopChannel: 'development'")
     expect(developmentConfig).toContain(
@@ -376,7 +376,7 @@ describe('GitHub release contract', () => {
     expect(workflow).toContain('npm run package:dev:win')
     expect(workflow).toContain('Smoke test packaged Windows Harness')
     expect(workflow).toContain('$executable = $env:SMOKE_EXE')
-    expect(workflow).toContain("'dist-dev\\win-unpacked\\伟东 OPC Dev.exe'")
+    expect(workflow).toContain("'dist-dev\\win-unpacked\\Evan超级管家 Dev.exe'")
     expect(workflow).toContain('if (-not [string]::IsNullOrEmpty($log))')
     expect(workflow).toContain("dsh web: (http://127\\.0\\.0\\.1:\\d+/\\?token=[^\\s]+)")
     expect(workflow).toContain('-SessionVariable harnessSession')

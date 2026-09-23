@@ -22,7 +22,7 @@ describe('OPC desktop island boundary', () => {
       artifactName: 'opc-desktop-${os}-${arch}.${ext}'
     })
     expect(developmentRaw).toContain("appId: 'cc.ohmycode.opc.desktop.dev'")
-    expect(developmentRaw).toContain("productName: '伟东 OPC Dev'")
+    expect(developmentRaw).toContain("productName: 'Evan超级管家 Dev'")
     expect(developmentRaw).toContain("output: 'dist-dev'")
   })
 
