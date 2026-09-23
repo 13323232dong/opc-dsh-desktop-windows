@@ -44,7 +44,7 @@ const PLUGINS = [
 function artifactFor(name) {
   const artifacts = {
     '@opc/dsh-second-brain': 'opc-dsh-second-brain-0.1.6.tgz',
-    '@opc/DSH-ai-customer-service': 'opc-DSH-ai-customer-service-0.1.26.tgz',
+    '@opc/DSH-ai-customer-service': 'opc-DSH-ai-customer-service-0.1.27.tgz',
     '@opc/dsh-brand': 'opc-dsh-brand-0.1.6.tgz',
     '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.8.tgz',
     '@opc/dsh-assets': 'opc-dsh-assets-0.1.5.tgz',
@@ -69,7 +69,7 @@ function artifactFor(name) {
 
 function versionFor(name) {
   if (name === '@opc/dsh-douyin-comment-ops') return '0.1.4'
-  if (name === '@opc/DSH-ai-customer-service') return '0.1.26'
+  if (name === '@opc/DSH-ai-customer-service') return '0.1.27'
   if (name === '@opc/dsh-second-brain') return '0.1.6'
   if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.8'
   if (name === '@opc/dsh-assets') return '0.1.5'
