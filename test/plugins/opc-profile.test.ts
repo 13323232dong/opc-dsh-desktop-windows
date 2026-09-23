@@ -43,6 +43,10 @@ describe('OPC desktop profile', () => {
       name: '@opc/dsh-dev-status-control', version: '0.2.8',
       artifact: 'plugins/opc-dsh-dev-status-control-0.2.8.tgz', client: true
     }))
+    expect(profile.plugins).toContainEqual(expect.objectContaining({
+      name: '@opc/DSH-ai-customer-service', version: '0.1.25',
+      artifact: 'plugins/opc-DSH-ai-customer-service-0.1.25.tgz', client: true
+    }))
     expect(validateDesktopProfile(profile)).toEqual([])
   })
 
