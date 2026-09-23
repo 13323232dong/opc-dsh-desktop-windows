@@ -262,7 +262,7 @@ describe('LocalCapabilityBroker', () => {
     '/api/v1/viral/chase-jobs/job-1/script?sessionId=session-1',
     '/api/v1/viral/protagonist-anchors',
     '/api/v1/viral/runtime/status'
-  ])('preserves validated agent metadata for authenticated viral requests: %s', async (path) => {
+  ])('filters unsigned identity metadata for authenticated viral requests: %s', async (path) => {
     const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'))
     const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
     brokers.push(broker)
@@ -280,6 +280,31 @@ describe('LocalCapabilityBroker', () => {
     for (const name of ['x-tenant-id', 'x-user-id', 'x-opc-agent-id', 'x-opc-identity-signature']) {
       expect(headers.has(name)).toBe(false)
     }
+  })
+
+  it('preserves a complete signed identity envelope for an authenticated viral request', async () => {
+    const fetchCloud = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}'))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'runtime-signed', capabilities: ['cloud.proxy'], cloudSessionToken: 'server-session' })
+    const signature = 'a'.repeat(64)
+    const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', {
+      path: '/api/v1/viral/chase-jobs/job-1/steps/speech', method: 'POST', body: {}, headers: {
+        'x-opc-session-id': 'dsh-session-1', 'x-opc-login-session-id': 'login-session-1',
+        'x-opc-tenant-id': 'tenant-1', 'x-opc-user-id': 'user-1', 'x-opc-agent-id': 'agent-1',
+        'x-opc-identity-timestamp': '1760000000000', 'x-opc-identity-nonce': 'nonce-1234567',
+        'x-opc-identity-signature': signature, 'x-opc-untrusted': 'never-forward',
+      },
+    }, { 'idempotency-key': 'signed-speech-1' })
+    expect(response.status).toBe(200)
+    const headers = fetchCloud.mock.calls[0]?.[1]?.headers as Headers
+    for (const [name, value] of Object.entries({
+      'x-opc-session-id': 'dsh-session-1', 'x-opc-login-session-id': 'login-session-1',
+      'x-opc-tenant-id': 'tenant-1', 'x-opc-user-id': 'user-1', 'x-opc-agent-id': 'agent-1',
+      'x-opc-identity-timestamp': '1760000000000', 'x-opc-identity-nonce': 'nonce-1234567',
+      'x-opc-identity-signature': signature,
+    })) expect(headers.get(name)).toBe(value)
+    expect(headers.has('x-opc-untrusted')).toBe(false)
   })
 
   it.each(['', ' agent', 'agent ', 'a/b', '中文', 'a\r\nx-user-id: forged', 'a'.repeat(129), ['agent'], 7])(
