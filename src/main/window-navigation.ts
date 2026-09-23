@@ -85,6 +85,15 @@ export function isAbortedNavigationError(error: unknown): boolean {
 }
 
 /**
+ * Electron reports a deliberate `webContents.stop()` as ERR_ABORTED (-3).
+ * It is a navigation lifecycle event rather than a user-actionable desktop
+ * failure, so it must never be sent to the global error dialog.
+ */
+export function shouldShowUnexpectedDesktopError(error: unknown): boolean {
+  return !isAbortedNavigationError(error)
+}
+
+/**
  * `webContents.stop()` intentionally cancels the outgoing renderer navigation.
  * Electron reports that cancellation through `did-fail-load` as -3, which is
  * not a renderer or Harness failure and must not start a competing reload.

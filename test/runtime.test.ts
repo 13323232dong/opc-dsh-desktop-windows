@@ -25,6 +25,7 @@ import {
   desktopHarnessUrl,
   isAbortedNavigationError,
   shouldRecoverMainWindowLoadFailure,
+  shouldShowUnexpectedDesktopError,
   shouldLoadHarnessUrl
 } from '../src/main/window-navigation'
 
@@ -673,6 +674,17 @@ describe('Harness window activation', () => {
     ).toBe(true)
     expect(isAbortedNavigationError({ code: 'ERR_CONNECTION_REFUSED', errno: -102 })).toBe(
       false
+    )
+  })
+
+  it('does not send intentional navigation cancellation to the global error dialog', () => {
+    expect(
+      shouldShowUnexpectedDesktopError(
+        new Error("ERR_ABORTED (-3) loading 'file:///Applications/Evan%E8%B6%85%E7%BA%A7%E7%AE%A1%E5%AE%B6.app/Contents/Resources/app/splash.html'")
+      )
+    ).toBe(false)
+    expect(shouldShowUnexpectedDesktopError({ code: 'ERR_CONNECTION_REFUSED', errno: -102 })).toBe(
+      true
     )
   })
 
