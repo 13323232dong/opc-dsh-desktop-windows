@@ -2,7 +2,10 @@ diff --git a/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js b/node_modu
 index 8c86237..4978340 100644
 --- a/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js
-@@ -1509,7 +1509,6 @@ function requestId(headers) {
+@@ -1,1 +1,2 @@
++import { reportExternalUsage } from "dsh-desktop-client-ui/billing-runtime";
+ import z from "@deepseek-ai/schemastery";
+@@ -1509,7 +1510,6 @@ function requestId(headers) {
  * @returns the normalized harness error code.
  */
  function httpErrorCode(status, error) {
@@ -10,7 +13,7 @@ index 8c86237..4978340 100644
  	if (status === 413) return "INVALID_REQUEST";
  	const detail = [
  		error?.code,
-@@ -1517,6 +1516,8 @@ function httpErrorCode(status, error) {
+@@ -1517,6 +1517,8 @@ function httpErrorCode(status, error) {
  		error?.message
  	].filter(Boolean).join(" ");
  	if (isQuotaExceededError(detail)) return QUOTA_EXCEEDED_CODE;
@@ -19,3 +22,18 @@ index 8c86237..4978340 100644
  	if (status === 429) return "RATE_LIMIT";
  	if (status === 400) {
  		if (isContextWindowExceededError(detail)) return CONTEXT_WINDOW_EXCEEDED_CODE;
+@@ -1652,2 +1654,4 @@
+ 			...options.sessionId !== void 0 ? { "x-deepseek-harness-session-id": String(options.sessionId) } : {},
++			...options.billingInvocationId ? { "x-opc-invocation-id": options.billingInvocationId } : {},
++			...options.billingContext ? { "x-opc-billing-context": Buffer.from(JSON.stringify(options.billingContext)).toString("base64url") } : {},
+ 			...options.purpose === "compaction" ? { "x-deepseek-harness-compact": "1" } : {}
+@@ -1800,3 +1804,8 @@
+ 			if (!response.body) throw new LlmError("DeepSeek API returned no response body", "EMPTY_RESPONSE");
+-			yield* translate(parseSse(response.body, onActivity));
++			let billingUsage = {};
++			for await (const chunk of translate(parseSse(response.body, onActivity))) {
++				if (chunk.type === "usage") billingUsage = chunk.usage;
++				yield chunk;
++			}
++			await reportExternalUsage(options, connection.baseURL, { ...billingUsage, cachedTokens: billingUsage.cacheReadTokens });
+ 			return;

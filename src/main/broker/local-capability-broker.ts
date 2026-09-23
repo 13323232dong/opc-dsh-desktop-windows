@@ -12,6 +12,7 @@ import {
   type MediaCapability
 } from './local-media-runtime'
 import { LocalAssetsRuntime, type LocalAssetsRequest } from './local-assets-runtime'
+import { modelBillingAttribution } from './billing-context'
 
 const MAX_BODY_BYTES = 64 * 1024
 const MAX_MODEL_BODY_BYTES = 16 * 1024 * 1024
@@ -36,6 +37,7 @@ const FORGED_CLOUD_HEADERS = new Set([
 // API route requires changing this list and its security test; there is no
 // generic `/api/*` escape hatch in the desktop broker.
 const OPC_DESKTOP_CLOUD_PATH_TEMPLATES = [
+  /^\/api\/v1\/compute\/external-usage$/u,
   /^\/api\/v1\/health$/u,
   /^\/api\/v1\/agent\/conversations$/u,
   /^\/api\/v1\/agent\/conversations\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u,
@@ -97,6 +99,7 @@ export interface RegisteredBrokerRuntime {
 export interface LocalCapabilityBrokerOptions {
   cloudBaseUrl: string
   fetchCloud?: (url: string, init: RequestInit) => Promise<Response>
+  onChargeActivity?: () => void
   revealPath?: (path: string) => Promise<void>
   pickPaths?: () => Promise<string[]>
   requestTimeoutMs?: number
@@ -292,11 +295,11 @@ export class LocalCapabilityBroker {
     } catch {
       return this.send(response, 400, { code: 'desktop_broker_invalid_json' })
     }
-    const outboundBody = JSON.stringify(modelBody)
-    const dshSessionId = typeof request.headers['x-deepseek-harness-session-id'] === 'string'
-      ? request.headers['x-deepseek-harness-session-id'].slice(0, 160)
-      : 'session-unavailable'
-    const idempotencyKey = `dsh-${createHash('sha256').update(runtimeId).update('\0').update(dshSessionId).update('\0').update(outboundBody).digest('hex')}`
+    let attribution: ReturnType<typeof modelBillingAttribution>
+    try { attribution = modelBillingAttribution(runtimeId, request.headers) }
+    catch { return this.send(response, 400, { code: 'desktop_broker_invalid_billing_context' }) }
+    const { idempotencyKey, billingContext } = attribution
+    const outboundBody = JSON.stringify({ ...modelBody, billingContext })
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 300_000)
     try {
@@ -327,6 +330,7 @@ export class LocalCapabilityBroker {
         response.write(Buffer.from(chunk.value))
       }
       response.end()
+      this.options.onChargeActivity?.()
     } catch (error) {
       if (!response.headersSent) {
         const code = error instanceof Error && error.name === 'AbortError' ? 'desktop_broker_model_timeout' : 'desktop_broker_model_unavailable'
@@ -410,6 +414,16 @@ export class LocalCapabilityBroker {
     const idempotencyKey = request.headers['idempotency-key']
     if (typeof requestId === 'string') headers.set('x-request-id', requestId)
     if (typeof idempotencyKey === 'string') headers.set('idempotency-key', idempotencyKey)
+    const nestedBillingContext = payload.headers && typeof payload.headers === 'object'
+      ? Object.entries(payload.headers).find(([name]) => name.toLowerCase() === 'x-opc-billing-context')?.[1] : undefined
+    const encodedBillingContext = request.headers['x-opc-billing-context'] ?? nestedBillingContext
+    if (encodedBillingContext !== undefined) {
+      try {
+        if (typeof encodedBillingContext !== 'string') throw new Error('invalid_billing_context')
+        const { billingContext } = modelBillingAttribution('cloud', { 'x-opc-billing-context': encodedBillingContext })
+        headers.set('x-opc-billing-context', Buffer.from(JSON.stringify(billingContext)).toString('base64url'))
+      } catch { return this.send(response, 400, { code: 'desktop_broker_invalid_billing_context' }) }
+    }
     const controller = new AbortController()
     const onClose = () => { if (!response.writableFinished) controller.abort() }
     if (mediaResponse) response.once('close', onClose)
@@ -425,11 +439,13 @@ export class LocalCapabilityBroker {
       })
       if (mediaResponse) {
         await streamMediaResponse(upstream, response, controller.signal, idle?.touch)
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) this.options.onChargeActivity?.()
         return
       }
       const upstreamBody = await upstream.text()
       response.writeHead(upstream.status, { 'content-type': upstream.headers.get('content-type') ?? 'application/json', 'cache-control': 'no-store' })
       response.end(upstreamBody)
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) this.options.onChargeActivity?.()
     } catch (error) {
       if (response.headersSent || response.destroyed) { response.destroy(); return }
       const code = error instanceof Error && error.name === 'AbortError' ? 'desktop_broker_cloud_timeout' : 'desktop_broker_cloud_unavailable'

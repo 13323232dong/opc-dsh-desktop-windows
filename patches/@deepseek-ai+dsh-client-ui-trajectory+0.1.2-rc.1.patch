@@ -29,3 +29,38 @@ index 798b9d3..6ef985d 100644
  			if (request.error === "trajectory.compaction-interrupted") return t("layout.compactionInterrupted");
  			return request.error;
  		}
+@@ -7787,3 +7793,3 @@ window.__ModuleLoader__.load({
+-		function TrajectoryView({ useSession, useTrajectory, useDuration, loadOlder, loadImage, setActualDuration, viewRequest, completeViewRequest, renderSlot, t }) {
++		function TrajectoryView({ conversationId, useSession, useTrajectory, useDuration, loadOlder, loadImage, setActualDuration, viewRequest, completeViewRequest, renderSlot, t }) {
+ 			const [collapsedTurns, setCollapsedTurns] = (0, react.useState)(EMPTY_TURN_IDS);
+ 			const renderImages = (0, react.useCallback)((owner) => renderSlot("conversation.trajectory.images", {
+@@ -8081,6 +8087,20 @@ window.__ModuleLoader__.load({
+ 				className: views_module_css_default.root,
+ 				"data-conversation-composer-overlay": "",
+ 				children: [
++					renderSlot("conversation.trajectory.charges", {
++						conversationId,
++						revision: latestNodeSeq,
++						canNavigateToAction: (context) => context?.conversationId === conversationId && timelineTurns.some(turn => turn.groups.some(group => group.cells.some(cell => (cell.callId && cell.callId === context.actionId) || completeInspection.eventNodes.some(node => node.seq === cell.sourceSeq && node.kind === "assistant" && context.actionId === `model:${node.turn}:${node.step}`)))),
++						navigateToAction: (context) => {
++							if (context?.conversationId !== conversationId) return;
++							const cell = timelineTurns.flatMap(turn => turn.groups.flatMap(group => group.cells)).find(cell => (cell.callId && cell.callId === context.actionId) || completeInspection.eventNodes.some(node => node.seq === cell.sourceSeq && node.kind === "assistant" && context.actionId === `model:${node.turn}:${node.step}`));
++							if (cell) {
++								setCollapsedTurns(EMPTY_TURN_IDS);
++								setCollapsedAssistants(EMPTY_RECORD_IDS);
++								handleTimelineRecordSelect(cell.index);
++							}
++						}
++					}),
+ 					(0, react_jsx_runtime.jsx)(TrajectoryToolbar, {
+ 						actualDuration,
+ 						onActualDurationChange: (nextActualDuration) => {
+@@ -8200,3 +8220,3 @@ window.__ModuleLoader__.load({
+-				children: { "conversation.trajectory.images": {
++				children: { "conversation.trajectory.charges": { kind: "single", scope: "session" }, "conversation.trajectory.images": {
+ 					kind: "single",
+ 					scope: "session"
+@@ -8208,2 +8228,3 @@ window.__ModuleLoader__.load({
+ 					return {
++						conversationId: sessionId,
+ 						hooks: { duration },

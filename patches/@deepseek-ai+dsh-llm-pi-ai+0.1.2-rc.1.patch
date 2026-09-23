@@ -2,7 +2,10 @@ diff --git a/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js b/node_modules
 index 5c89b80..193f5b7 100644
 --- a/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js
-@@ -1278,8 +1278,9 @@ function mapUsage(usage) {
+@@ -1,1 +1,2 @@
++import { reportExternalUsage } from "dsh-desktop-client-ui/billing-runtime";
+ import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
+@@ -1278,8 +1279,9 @@ function mapUsage(usage) {
  	};
  }
  function classifyPiAiError(message) {
@@ -13,3 +16,24 @@ index 5c89b80..193f5b7 100644
  	if (/\b429\b|rate.?limit/i.test(message)) return "RATE_LIMIT";
  	if (/\b413\b|failed to buffer the request body:\s*length limit exceeded|payload too large|request body too large/i.test(message)) return "INVALID_REQUEST";
  	if (/\b400\b|invalid.?request/i.test(message)) return "INVALID_REQUEST";
+@@ -1795,3 +1797,8 @@
+ 					signal: watchdog.signal,
+-					headers: requestHeaders(profile.headers)
++					headers: {
++						...requestHeaders(profile.headers),
++						...options.sessionId !== void 0 ? { "x-deepseek-harness-session-id": String(options.sessionId) } : {},
++						...options.billingInvocationId ? { "x-opc-invocation-id": options.billingInvocationId } : {},
++						...options.billingContext ? { "x-opc-billing-context": Buffer.from(JSON.stringify(options.billingContext)).toString("base64url") } : {}
++					}
+ 				}), model.contextWindow, options.signal)[Symbol.asyncIterator]();
+@@ -1798,2 +1805,3 @@
+ 				let exhausted = false;
++				let billingUsage = {};
+ 				try {
+@@ -1805,4 +1813,6 @@
+ 							exhausted = true;
++							await reportExternalUsage(options, model.baseUrl, { ...billingUsage, cachedTokens: billingUsage.cacheReadTokens });
+ 							return;
+ 						}
++						if (result.value.type === "usage") billingUsage = result.value.usage;
+ 						yield result.value;

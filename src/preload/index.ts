@@ -13,6 +13,7 @@ import { mountWindowsTitlebarLayout } from './windows-titlebar'
 
 // Intercept and persist localStorage to disk storage before any page script executes
 setupDesktopStoragePersistence()
+ipcRenderer.on('desktop:charge-activity', () => window.dispatchEvent(new CustomEvent('dsh:charge-settled')))
 
 const ROOT_ID = 'dsh-desktop-update-root'
 const MOBILE_BUTTON_ID = 'dsh-desktop-mobile-button'
@@ -376,7 +377,8 @@ contextBridge.exposeInMainWorld(
 contextBridge.exposeInMainWorld(
   'dshDesktopCredits',
   Object.freeze({
-    balance: (): Promise<{ credits: string; cnyEquivalent: string }> => ipcRenderer.invoke('desktop:credit-balance')
+    balance: (): Promise<{ credits: string; cnyEquivalent: string }> => ipcRenderer.invoke('desktop:credit-balance'),
+    chargeDetails: (query: { conversationId?: string; sort?: 'time' | 'amount'; cursor?: string; limit?: number }) => ipcRenderer.invoke('desktop:charge-details', query)
   })
 )
 
