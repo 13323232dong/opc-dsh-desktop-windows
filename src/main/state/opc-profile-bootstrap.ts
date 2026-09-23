@@ -25,7 +25,7 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.9.tgz'],
   ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
-  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.47.tgz'],
+  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.48.tgz'],
   ['@opc/dsh-dev-status-control', 'opc-dsh-dev-status-control-0.2.8.tgz'],
   ['@opc/DSH-ai-customer-service', 'opc-DSH-ai-customer-service-0.1.28.tgz']
 ] as const
