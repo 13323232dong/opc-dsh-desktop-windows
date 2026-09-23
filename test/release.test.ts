@@ -291,10 +291,12 @@ describe('GitHub release contract', () => {
     )
 
     expect(packageJson.dependencies['electron-updater']).toBeTruthy()
-    // The upstream update endpoint must never deliver builds to OPC users.
-    // Windows builds must reject unsigned update payloads even while the OPC
-    // release feed itself remains configured outside this repository.
-    expect(packageJson.build.publish).toEqual([])
+    // An empty `publish` array lets electron-builder infer GitHub metadata
+    // from the upstream repository URL and package it into app-update.yml.
+    // Every installed Evan build must carry our explicit HTTPS feed instead.
+    expect(packageJson.build.publish).toEqual([
+      { provider: 'generic', url: 'https://opc.ohmycode.cc/updates/latest/' }
+    ])
     expect(packageJson.build.win.verifyUpdateCodeSignature).toBe(true)
     for (const asset of [
       'latest-mac-arm64.yml',
