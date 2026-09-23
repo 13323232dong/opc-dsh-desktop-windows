@@ -9,6 +9,8 @@ test('interview guide is limited to the interview workspace and uses the shared 
   assert.match(source, /cwd\.endsWith\('\/访谈'\)/u)
   assert.match(source, /inputActions\.setDraft/u)
   assert.match(source, /inputActions\.submit/u)
+  assert.match(source, /position: 'fixed'/u)
+  assert.match(source, /inset: 0/u)
   assert.match(index, /conversation\.input\.dock/u)
   assert.match(index, /InterviewGuidePanel/u)
 })
