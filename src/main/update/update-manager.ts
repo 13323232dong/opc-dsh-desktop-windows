@@ -3,6 +3,7 @@ import electronUpdater from 'electron-updater'
 import type { UpdateStatus } from '../../shared/contracts'
 import {
   AUTO_INSTALL_ON_APP_QUIT,
+  DESKTOP_UPDATES_ENABLED,
   shouldCheckAfterResume,
   supportsAutoUpdates,
   UPDATE_CHECK_INTERVAL_MS,
@@ -96,6 +97,8 @@ export function startUpdateManager(options: { prepareToInstall: () => Promise<vo
   if (started) return
   started = true
 
+  if (!DESKTOP_UPDATES_ENABLED) return
+
   if (!supportsUpdates()) {
     transition({
       type: 'unsupported',
@@ -114,6 +117,7 @@ export function startUpdateManager(options: { prepareToInstall: () => Promise<vo
 }
 
 export async function checkForUpdates(manual = false): Promise<UpdateStatus> {
+  if (!DESKTOP_UPDATES_ENABLED) return getUpdateStatus()
   if (!supportsUpdates()) {
     transition(
       {

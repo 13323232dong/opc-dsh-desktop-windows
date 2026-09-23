@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { parse, stringify } from 'yaml'
 import {
   AUTO_INSTALL_ON_APP_QUIT,
+  DESKTOP_UPDATES_ENABLED,
   shouldCheckAfterResume,
   supportsAutoUpdates,
   UPDATE_CHECK_INTERVAL_MS
@@ -21,6 +22,9 @@ afterEach(async () => {
 })
 
 describe('desktop update policy', () => {
+  it('keeps the user-visible update channel paused until signed publishing is ready', () => {
+    expect(DESKTOP_UPDATES_ENABLED).toBe(false)
+  })
   it('only installs a downloaded update after explicit user confirmation', () => {
     expect(AUTO_INSTALL_ON_APP_QUIT).toBe(false)
   })

@@ -3,6 +3,9 @@ import type { UpdateStatus } from '../shared/contracts'
 export type UpdateLocale = 'en' | 'zh'
 
 export function shouldShowUpdate(status: UpdateStatus): boolean {
+  // 暂停期间即使收到旧 IPC 事件也不能显示更新卡片。
+  return false
+  /* istanbul ignore next */
   if (['available', 'downloading', 'downloaded'].includes(status.phase)) return true
   return status.manual && ['checking', 'up-to-date', 'error', 'unsupported'].includes(status.phase)
 }
