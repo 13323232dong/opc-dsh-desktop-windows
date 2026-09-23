@@ -6,6 +6,7 @@ import { AgentTeamsCard } from "./AgentTeamsCard.js";
 import { openMemberSubagent } from "./member-navigation.js";
 import { createToolLibraryClient } from "./tool-library-client.js";
 import { SessionArtifactDownloads } from "./session-artifact-downloads.js";
+import { InterviewGuidePanel } from "./InterviewGuidePanel.js";
 /**
  * DSH 0.1.2-rc.1 exposes slots and session navigation but not the newer
  * conversation-events card registry. The activity panel remains the primary
@@ -35,4 +36,9 @@ export function apply(ctx) {
             openMemberSession: (captainSessionId, memberSessionId) => openMemberSubagent(ctx.sessions, captainSessionId, memberSessionId),
         }),
     }, AgentTeamsCard));
+    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+        name: 'conversation.input.dock',
+        id: 'agent-teams-interview-guide',
+        order: 20,
+    }, InterviewGuidePanel));
 }
