@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop-client-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSH Desktop brand occupants for Harness UI slots.",
   "private": true,
   "type": "module",
@@ -8,6 +8,10 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./billing-runtime": {
+      "types": "./billing-runtime.d.ts",
+      "default": "./billing-runtime.js"
+    },
     "./package.json": "./package.json"
   },
   "dsh": {
@@ -15,7 +19,8 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-client-ui-sidebar"
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-trajectory"
       ],
       "platform": "web"
     }
@@ -25,6 +30,7 @@
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-rc.1"
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-trajectory": "^0.1.2-rc.1"
   }
 }

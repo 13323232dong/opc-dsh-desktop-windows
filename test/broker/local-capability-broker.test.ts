@@ -31,6 +31,40 @@ async function request(
 }
 
 describe('LocalCapabilityBroker', () => {
+  it('sanitizes billing metadata forwarded by paid tool gateways', async () => {
+    const fetchCloud = vi.fn(async () => new Response('{}'))
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'billing-tools', capabilities: ['cloud.proxy'], cloudSessionToken: 'opaque-token' })
+    const billing = { conversationId:'conversation',actionId:'tool',tenantId:'forged' }
+    const response = await request(runtime.endpoint, runtime.token, 'cloud.proxy', { path:'/api/v1/viral/chase-jobs',method:'POST',body:{},headers:{'x-opc-billing-context':Buffer.from(JSON.stringify(billing)).toString('base64url')} }, {'idempotency-key':'tool-call'})
+    expect(response.status).toBe(200)
+    const calls = fetchCloud.mock.calls as unknown as Array<[string, RequestInit]>
+    const forwarded = new Headers(calls[0]![1].headers).get('x-opc-billing-context')!
+    expect(JSON.parse(Buffer.from(forwarded,'base64url').toString())).toEqual({conversationId:'conversation',actionId:'tool'})
+  })
+  it('correlates child calls and preserves invocation retry identity', async () => {
+    const fetchCloud = vi.fn(async () => new Response('data: [DONE]\n\n'))
+    const onChargeActivity = vi.fn()
+    const broker = new LocalCapabilityBroker({ cloudBaseUrl: 'https://opc.example.test', fetchCloud, onChargeActivity })
+    brokers.push(broker)
+    const runtime = await broker.registerRuntime({ runtimeId: 'billing-runtime', capabilities: ['model.invoke'], cloudSessionToken: 'opaque-token' })
+    const context = { conversationId: 'child', rootConversationId: 'root', actionId: 'turn-1-step-1', actionName: '模型调用' }
+    for (const invocationId of ['first', 'first', 'rerun']) {
+      const response = await fetch(`${runtime.endpoint}/model/chat/completions`, {
+        method: 'POST', headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json', 'x-deepseek-harness-session-id': 'child', 'x-opc-invocation-id': invocationId, 'x-opc-billing-context': Buffer.from(JSON.stringify(context)).toString('base64url') },
+        body: JSON.stringify({ model: 'deepseek-chat', messages: [{role:'user',content:'same'}] })
+      })
+      expect(response.status).toBe(200)
+      await response.text()
+    }
+    const calls = fetchCloud.mock.calls as unknown as Array<[string, RequestInit]>
+    expect(JSON.parse(String(calls[0]![1].body)).billingContext).toEqual(context)
+    const keys = calls.map(([, init]) => new Headers(init.headers).get('idempotency-key'))
+    expect(keys[0]).toBe(keys[1])
+    expect(keys[2]).not.toBe(keys[0])
+    expect(onChargeActivity).toHaveBeenCalledTimes(3)
+  })
   it('connects local assets only for an explicitly granted account scope', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opc-broker-assets-'))
     const broker = new LocalCapabilityBroker({
@@ -81,7 +115,7 @@ describe('LocalCapabilityBroker', () => {
         'content-type': 'application/json',
         'idempotency-key': expect.stringMatching(/^dsh-[a-f0-9]{64}$/)
       }),
-      body
+      body: JSON.stringify({ ...JSON.parse(body), billingContext: { conversationId: 'session-one' } })
     }))
   })
 

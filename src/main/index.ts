@@ -162,6 +162,7 @@ import { createDesktopMediaRuntime } from './broker/desktop-media-runtime'
 import { AccountRuntimeManager } from './runtime/account-runtime-manager'
 import { createOpcRuntimeFactory, type AccountHarnessConfiguration } from './runtime/opc-runtime-factory'
 import { parseCreditBalanceResponse } from './credit-balance'
+import { chargeDetailsQuery, parseChargeDetailsResponse } from './charge-details'
 
 type PluginRecoveryAction = 'uninstall' | 'upgrade' | 'show-log' | 'quit' | 'restart' | 'refresh' | 'safe-mode'
 type SafeModeAction =
@@ -2786,6 +2787,9 @@ async function bootstrap(): Promise<void> {
   const localAssetsRuntime = new LocalAssetsRuntime(join(app.getPath('documents'), 'Evan超级管家', '本地资产库'))
   const broker = new LocalCapabilityBroker({
     cloudBaseUrl: apiBaseUrl,
+    onChargeActivity: () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('desktop:charge-activity')
+    },
     mediaRuntime,
     localAssetsRuntime,
     pickLocalAssetsExportPath: async () => {
@@ -2921,6 +2925,26 @@ async function bootstrap(): Promise<void> {
     return { ok: true }
   })
   ipcMain.removeHandler('desktop:credit-balance')
+  ipcMain.removeHandler('desktop:charge-details')
+  ipcMain.handle('desktop:charge-details', async (event, input: unknown) => {
+    assertTrustedMainWindowEvent(event)
+    const query = chargeDetailsQuery(input)
+    const session = await desktopAuthController!.currentSession()
+    if (!session?.credential.accessToken) throw new Error('请先登录后查看扣费明细')
+    const url = new URL('/api/v1/compute/charge-details', apiBaseUrl)
+    url.search = query.toString()
+    let response: Response
+    try {
+      response = await fetch(url, {
+        headers: { accept: 'application/json', cookie: `opc_session=${session.credential.accessToken}` },
+        signal: AbortSignal.timeout(10_000)
+      })
+    } catch { throw new Error('无法连接扣费服务，请检查网络后重试') }
+    const payload = await response.json().catch(() => null)
+    const current = await desktopAuthController!.currentSession()
+    if (current?.credential.accessToken !== session.credential.accessToken) throw new Error('账号已切换，请重新读取扣费明细')
+    return parseChargeDetailsResponse(response.ok, response.status, payload)
+  })
   ipcMain.handle('desktop:credit-balance', async (event) => {
     assertTrustedMainWindowEvent(event)
     const session = await desktopAuthController!.currentSession()

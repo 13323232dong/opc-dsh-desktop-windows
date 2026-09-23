@@ -84,6 +84,7 @@ describe('DSH Desktop client slot occupants', () => {
 
     expect(plugin.inject).toEqual(['slots'])
     expect(registrations.map(({ config }) => config.name)).toEqual([
+      'conversation.trajectory.charges',
       'sidebar.brand.mark',
       'sidebar.brand.name',
       'conversation.hero.brand.mark'

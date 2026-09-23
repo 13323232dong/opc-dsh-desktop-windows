@@ -1,0 +1,46 @@
+diff --git a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js
+@@ -335,2 +335,22 @@
++function billingContextFor(session, sessions, agentId, turn, step) {
++	const context = {
++		conversationId: String(session.id), turnId: String(turn),
++		actionId: `model:${turn}:${step}`, agentId: String(agentId), actionName: "模型调用"
++	};
++	if (session.header.origin === "subagent") context.taskId = String(session.id);
++	const seen = new Set();
++	let current = session;
++	while (current.header.origin === "subagent") {
++		if (seen.has(current.id)) return context;
++		seen.add(current.id);
++		const parentId = current.header.parentSession;
++		if (parentId === void 0) return context;
++		const parent = sessions.get(parentId);
++		if (parent === void 0) return context;
++		current = parent;
++	}
++	return { ...context, rootConversationId: String(current.id) };
++}
++// END BILLING CONTEXT
+ /** Drives one session through turn and step boundaries. */
+ var ReactLoopAgent = class {
+@@ -614,7 +634,8 @@
+ 		const system = renderPrompt(assembly);
++		const billingInvocationId = randomUUID();
+ 		while (true) {
+ 			const surfaceGeneration = this.session.surface.replaceGeneration;
+-			const { request, preparedCall } = await this.buildRequest(turn, step, assembly.tools, system, this.session.deriveMessages(), startsRequestSeries, surfaceGeneration, signal);
++			const { request, preparedCall } = await this.buildRequest(turn, step, assembly.tools, system, this.session.deriveMessages(), startsRequestSeries, surfaceGeneration, signal, billingInvocationId);
+ 			startsRequestSeries = false;
+ 			const assembler = new BlockAssembler();
+ 			const chunkSeqs = [];
+@@ -699,3 +720,3 @@
+ 	*/
+-	async buildRequest(turn, step, tools, system, boundaryMessages, startsRequestSeries, surfaceGeneration, signal) {
++	async buildRequest(turn, step, tools, system, boundaryMessages, startsRequestSeries, surfaceGeneration, signal, billingInvocationId) {
+ 		const { session } = this;
+@@ -772,2 +793,4 @@
+ 				sessionId: this.session.id,
++				billingInvocationId,
++				billingContext: billingContextFor(this.session, this.loopCtx.sessions, this.id, turn, step),
+ 				signal
