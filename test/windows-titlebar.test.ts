@@ -113,11 +113,11 @@ describe('Windows titlebar menu', () => {
     })
   })
 
-  it('shows the bundled Harness version and offers an update check from About', async () => {
+  it('shows the bundled Harness version without exposing an update check from About', async () => {
     const main = await readFile('src/main/index.ts', 'utf8')
 
     expect(main).toContain('bundledHarnessVersion(app.getAppPath())')
-    expect(main).toContain('if (result.response === 0) await checkForUpdates(true)')
+    expect(main).not.toContain('if (result.response === 0) await checkForUpdates(true)')
     expect(main).toContain('void showAbout(mainWindow).catch(showUnexpectedError)')
   })
 

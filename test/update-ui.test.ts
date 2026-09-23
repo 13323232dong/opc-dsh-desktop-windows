@@ -101,8 +101,8 @@ describe('accepting an update is what starts the download', () => {
   })
 })
 
-describe('about dialog and version selection wiring', () => {
-  it('wires about modal with top-right close and version picker alongside check for updates', async () => {
+describe('about dialog wiring', () => {
+  it('wires the about modal while update controls remain hidden', async () => {
     const [main, preload] = await Promise.all([
       readFile('src/main/index.ts', 'utf8'),
       readFile('src/preload/index.ts', 'utf8')
@@ -110,8 +110,6 @@ describe('about dialog and version selection wiring', () => {
 
     expect(main).toContain("window.webContents.send('desktop:show-about', info)")
     expect(preload).toContain("ipcRenderer.on('desktop:show-about'")
-    expect(preload).toContain("zh ? '选择版本' : 'Select version'")
-    expect(preload).toContain("zh ? '检查更新' : 'Check for updates'")
     expect(preload).toContain("button('×', 'about-close')")
     expect(preload).toContain('mountAbout()')
   })
