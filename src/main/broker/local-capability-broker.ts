@@ -32,6 +32,20 @@ const FORGED_CLOUD_HEADERS = new Set([
   'x-opc-user-id',
   'x-opc-agent-id'
 ])
+const SIGNED_VIRAL_IDENTITY_HEADERS = [
+  'x-opc-session-id',
+  'x-opc-login-session-id',
+  'x-opc-tenant-id',
+  'x-opc-user-id',
+  'x-opc-agent-id',
+  'x-opc-identity-timestamp',
+  'x-opc-identity-nonce',
+  'x-opc-identity-signature'
+] as const
+const REQUIRED_SIGNED_VIRAL_IDENTITY_HEADERS = SIGNED_VIRAL_IDENTITY_HEADERS.filter((name) => name !== 'x-opc-login-session-id')
+const VIRAL_IDENTITY_PART = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
+const VIRAL_IDENTITY_NONCE = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/u
+const VIRAL_IDENTITY_SIGNATURE = /^[a-f0-9]{64}$/u
 
 // This is intentionally a route-level, compile-time allowlist. Adding an OPC
 // API route requires changing this list and its security test; there is no
@@ -586,7 +600,12 @@ function normalizeModelOutputBudget(body: Record<string, unknown>): Record<strin
 function safeHeaders(value: unknown, allowViralAgent = false): Headers {
   const headers = new Headers({ accept: 'application/json', 'content-type': 'application/json' })
   if (!value || typeof value !== 'object' || Array.isArray(value)) return headers
-  for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
+  const input = value as Record<string, unknown>
+  const signedIdentity = allowViralAgent ? validatedViralIdentityHeaders(input) : undefined
+  if (signedIdentity) {
+    for (const [name, header] of Object.entries(signedIdentity)) headers.set(name, header)
+  }
+  for (const [name, raw] of Object.entries(input)) {
     const normalized = name.toLowerCase()
     if (normalized === 'x-agent-id') {
       if (allowViralAgent && typeof raw === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(raw)) {
@@ -604,4 +623,28 @@ function safeHeaders(value: unknown, allowViralAgent = false): Headers {
     if (typeof raw === 'string') headers.set(normalized, raw)
   }
   return headers
+}
+
+/**
+ * The capability token limits this to a registered local runtime and the API
+ * verifies the HMAC again. Preserve only a complete, syntactically valid
+ * signature envelope; never pass arbitrary x-opc-* headers through the broker.
+ */
+function validatedViralIdentityHeaders(input: Record<string, unknown>): Record<string, string> | undefined {
+  const normalized = new Map(Object.entries(input).map(([name, value]) => [name.toLowerCase(), value]))
+  const required = REQUIRED_SIGNED_VIRAL_IDENTITY_HEADERS.map((name) => [name, normalized.get(name)] as const)
+  if (required.some(([, value]) => typeof value !== 'string')) return undefined
+  const values = Object.fromEntries(required) as Record<(typeof REQUIRED_SIGNED_VIRAL_IDENTITY_HEADERS)[number], string>
+  if (
+    !VIRAL_IDENTITY_PART.test(values['x-opc-session-id'])
+    || !VIRAL_IDENTITY_PART.test(values['x-opc-tenant-id'])
+    || !VIRAL_IDENTITY_PART.test(values['x-opc-user-id'])
+    || !VIRAL_IDENTITY_PART.test(values['x-opc-agent-id'])
+    || !/^\d{13}$/u.test(values['x-opc-identity-timestamp'])
+    || !VIRAL_IDENTITY_NONCE.test(values['x-opc-identity-nonce'])
+    || !VIRAL_IDENTITY_SIGNATURE.test(values['x-opc-identity-signature'])
+  ) return undefined
+  const loginSession = normalized.get('x-opc-login-session-id')
+  if (loginSession !== undefined && (typeof loginSession !== 'string' || !VIRAL_IDENTITY_PART.test(loginSession))) return undefined
+  return { ...values, ...(typeof loginSession === 'string' ? { 'x-opc-login-session-id': loginSession } : {}) }
 }
