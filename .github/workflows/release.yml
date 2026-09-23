@@ -730,20 +730,33 @@ jobs:
 
           with tempfile.TemporaryDirectory() as work:
               names_file = pathlib.Path(work) / "names.json"
-              index_file = pathlib.Path(work) / "versions.json"
               names_file.write_text(json.dumps(sorted(known)))
-              subprocess.run(
-                  ["node", "scripts/build-version-index.mjs", str(names_file), str(index_file)],
-                  check=True,
-              )
+              # Keep the index platform-specific.  The desktop client asks
+              # for /updates/<platform>/versions.json, and a shared index
+              # would make Windows offer a macOS archive (or vice versa).
+              for channel in ("mac", "windows"):
+                  index_file = pathlib.Path(work) / f"versions-{channel}.json"
+                  subprocess.run(
+                      ["node", "scripts/build-version-index.mjs", str(names_file), str(index_file), channel],
+                      check=True,
+                  )
+                  api.upload_file(
+                      path_or_fileobj=str(index_file),
+                      path_in_repo=f"releases/{channel}/versions.json",
+                      repo_id=repo_id,
+                      commit_message=f"{channel} version index after {tag}",
+                      token=token,
+                  )
+              # Preserve the legacy root index for older clients. It uses
+              # Windows URLs, matching the historical root feed contract.
               api.upload_file(
-                  path_or_fileobj=str(index_file),
+                  path_or_fileobj=str(pathlib.Path(work) / "versions-windows.json"),
                   path_in_repo="releases/versions.json",
                   repo_id=repo_id,
-                  commit_message=f"Version index after {tag}",
+                  commit_message=f"Legacy version index after {tag}",
                   token=token,
               )
-          print("✅ Rebuilt releases/versions.json")
+          print("✅ Rebuilt platform-specific releases/{mac,windows}/versions.json")
           PY
 
       - name: Build Feishu release note prompt
