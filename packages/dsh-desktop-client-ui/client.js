@@ -43,6 +43,132 @@ window.__ModuleLoader__.load({
       return ({ pending: '处理中预扣', reserved: '处理中预扣', settlement_pending: '结算处理中', succeeded: '已结算', charged: '已结算', settled: '已结算', released: '已释放', failed: '调用失败', refunded: '已退款', partially_refunded: '部分退款' })[item.status] || '状态待确认'
     }
 
+    function isManualToolCharge(item) {
+      const actionId = item?.billingContext?.actionId
+      return Boolean(actionId && !String(actionId).startsWith('model:'))
+    }
+
+    function manualChargeSummary(items) {
+      return items.reduce((summary, item) => ({
+        chargedCreditMicros: summary.chargedCreditMicros + BigInt(item.chargedCreditMicros || '0'),
+        reservedCreditMicros: summary.reservedCreditMicros + BigInt(item.reservedCreditMicros || '0'),
+        refundedCreditMicros: summary.refundedCreditMicros + BigInt(item.refundedCreditMicros || '0')
+      }), { chargedCreditMicros: 0n, reservedCreditMicros: 0n, refundedCreditMicros: 0n })
+    }
+
+    function chargeByAction(items) {
+      const charges = new Map()
+      for (const item of items || []) {
+        const actionId = item?.billingContext?.actionId
+        if (!actionId) continue
+        const previous = charges.get(actionId) || { chargedCreditMicros: 0n, reservedCreditMicros: 0n, refundedCreditMicros: 0n }
+        charges.set(actionId, {
+          chargedCreditMicros: previous.chargedCreditMicros + BigInt(item.chargedCreditMicros || '0'),
+          reservedCreditMicros: previous.reservedCreditMicros + BigInt(item.reservedCreditMicros || '0'),
+          refundedCreditMicros: previous.refundedCreditMicros + BigInt(item.refundedCreditMicros || '0')
+        })
+      }
+      return charges
+    }
+
+    // Every visible trajectory cell shares the same conversation-level read.
+    // This avoids issuing one billing request for every timeline row.
+    const trajectoryChargeCache = new Map()
+    function useTrajectoryCharges(conversationId, revision) {
+      const [charges, setCharges] = React.useState(() => trajectoryChargeCache.get(conversationId)?.charges || new Map())
+      React.useEffect(() => {
+        if (!conversationId || !window.dshDesktopCredits?.chargeDetails) return
+        const cached = trajectoryChargeCache.get(conversationId)
+        if (cached?.revision === revision) {
+          setCharges(cached.charges)
+          return
+        }
+        let disposed = false
+        const pending = cached?.pending || window.dshDesktopCredits.chargeDetails({ conversationId, sort: 'time', limit: 100 })
+        trajectoryChargeCache.set(conversationId, { ...cached, pending })
+        pending.then(result => {
+          const next = chargeByAction(result.items)
+          trajectoryChargeCache.set(conversationId, { revision, charges: next })
+          if (!disposed) setCharges(next)
+        }).catch(() => {
+          if (!disposed) setCharges(new Map())
+        })
+        return () => { disposed = true }
+      }, [conversationId, revision])
+      return charges
+    }
+
+    function TrajectoryRowCharge({ conversationId, actionId, revision }) {
+      const charge = useTrajectoryCharges(conversationId, revision).get(actionId)
+      return React.createElement('span', {
+        'aria-label': '扣费',
+        style: { display: 'inline-block', minWidth: 78, marginLeft: 10, textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: .78 }
+      }, `扣费 ${formatCreditMicros(charge?.chargedCreditMicros || '0')}`)
+    }
+
+    function TrajectoryDetailCharge({ conversationId, actionId, revision }) {
+      const charge = useTrajectoryCharges(conversationId, revision).get(actionId)
+      const h = React.createElement
+      return h('div', { 'aria-label': '扣费', style: { display: 'grid', gap: 3, padding: '10px 0', borderTop: '1px solid rgba(128,128,128,.18)' } },
+        h('strong', null, '扣费'),
+        h('span', null, `实扣：${formatCreditMicros(charge?.chargedCreditMicros || '0')}`),
+        h('span', null, `预扣：${formatCreditMicros(charge?.reservedCreditMicros || '0')}`),
+        h('span', null, `退款：${formatCreditMicros(charge?.refundedCreditMicros || '0')}`)
+      )
+    }
+
+    function ToolChargeView() {
+      const h = React.createElement
+      const [data, setData] = React.useState(null)
+      const [sort, setSort] = React.useState('time')
+      const [loading, setLoading] = React.useState(true)
+      const [error, setError] = React.useState('')
+      const [refresh, setRefresh] = React.useState(0)
+      React.useEffect(() => {
+        let disposed = false
+        setLoading(true)
+        setError('')
+        if (!window.dshDesktopCredits?.chargeDetails) {
+          setError('当前版本不支持读取工具扣费，请更新桌面端')
+          setLoading(false)
+          return () => { disposed = true }
+        }
+        window.dshDesktopCredits.chargeDetails({ sort, limit: 100 })
+          .then(result => {
+            if (disposed) return
+            const items = (result.items || []).filter(isManualToolCharge)
+            setData({ items, summary: manualChargeSummary(items) })
+          })
+          .catch(failure => {
+            if (!disposed) setError(failure instanceof Error ? failure.message : '读取工具扣费失败，请重试')
+          })
+          .finally(() => { if (!disposed) setLoading(false) })
+        return () => { disposed = true }
+      }, [sort, refresh])
+      const metric = (label, value) => h('div', { key: label, style: { minWidth: 120 } }, h('div', { style: { fontSize: 12, opacity: .65 } }, label), h('strong', null, formatCreditMicros(value)))
+      return h('main', { 'aria-label': '工具扣费', style: { padding: 20, overflow: 'auto', height: '100%' } },
+        h('header', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' } },
+          h('div', null, h('h2', { style: { margin: 0 } }, '工具扣费'), h('p', { style: { margin: '6px 0', opacity: .68 } }, '只显示手动执行的工具和任务动作；对话模型调用不在这里重复计算。')),
+          h('label', null, '排序 ', h('select', { value: sort, onChange: event => setSort(event.target.value) }, h('option', { value: 'time' }, '按时间'), h('option', { value: 'amount' }, '扣费从高到低')))
+        ),
+        data && h('section', { 'aria-label': '工具扣费汇总', style: { display: 'flex', gap: 28, flexWrap: 'wrap', padding: '16px 0', borderBottom: '1px solid rgba(128,128,128,.2)' } }, metric('累计实扣', data.summary.chargedCreditMicros), metric('处理中预扣', data.summary.reservedCreditMicros), metric('已退回积分', data.summary.refundedCreditMicros)),
+        loading && h('p', { role: 'status' }, '正在读取'),
+        error && h('div', { role: 'alert' }, error, ' ', h('button', { type: 'button', onClick: () => setRefresh(value => value + 1) }, '重试')),
+        !loading && !error && data?.items.length === 0 && h('p', null, '暂无手动工具扣费记录'),
+        !loading && !error && data?.items.length > 0 && h('table', { style: { width: '100%', borderCollapse: 'collapse', marginTop: 16, textAlign: 'left' } },
+          h('thead', null, h('tr', null, ...['操作', '所属任务', '服务/模型', '实扣', '状态', '时间'].map(label => h('th', { key: label, style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.25)', fontSize: 13 } }, label)))),
+          h('tbody', null, ...data.items.map(item => h('tr', { key: item.id },
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)' } }, h('details', null, h('summary', null, item.actionName || '工具操作'), h('div', { style: { marginTop: 8, fontSize: 12, opacity: .75 } }, `预扣：${formatCreditMicros(item.reservedCreditMicros)}；退款：${formatCreditMicros(item.refundedCreditMicros)}`, h('br'), `计费用量：${Object.keys(item.usage || {}).length ? JSON.stringify(item.usage) : '未记录'}`, h('br'), `当时计价：${Object.keys(item.pricing || {}).length ? JSON.stringify(item.pricing) : '未记录'}`))),
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)' } }, item.billingContext?.taskId || '当前对话'),
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)' } }, [item.provider, item.model].filter(Boolean).join(' / ') || '平台服务'),
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)', fontVariantNumeric: 'tabular-nums' } }, formatCreditMicros(item.chargedCreditMicros)),
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)' } }, chargeStatus(item)),
+            h('td', { style: { padding: '10px 8px', borderBottom: '1px solid rgba(128,128,128,.12)', whiteSpace: 'nowrap' } }, new Date(item.createdAt).toLocaleString('zh-CN'))
+          )))
+        )
+      )
+    }
+
     function ChargeDetails({ conversationId, revision, navigateToAction, canNavigateToAction }) {
       const h = React.createElement
       const [open, setOpen] = React.useState(false)
@@ -115,7 +241,10 @@ window.__ModuleLoader__.load({
 
     const inject = ['slots']
     function apply(ctx) {
+      ctx.slots.inject('conversation.view', () => ctx.slots.register({ name: 'conversation.view', id: 'tool-charges', order: 25, label: '工具扣费' }, ToolChargeView))
       ctx.slots.inject('conversation.trajectory.charges', () => ctx.slots.register({ name: 'conversation.trajectory.charges' }, ChargeDetails))
+      ctx.slots.inject('conversation.trajectory.row-charge', () => ctx.slots.register({ name: 'conversation.trajectory.row-charge' }, TrajectoryRowCharge))
+      ctx.slots.inject('conversation.trajectory.detail-charge', () => ctx.slots.register({ name: 'conversation.trajectory.detail-charge' }, TrajectoryDetailCharge))
       ctx.slots.inject('sidebar.brand.mark', () =>
         ctx.slots.inject('sidebar.brand.name', () =>
           ctx.slots.inject('conversation.hero.brand.mark', function* () {
@@ -134,6 +263,9 @@ window.__ModuleLoader__.load({
     exports.inject = inject
     exports.formatCreditMicros = formatCreditMicros
     exports.chargeStatus = chargeStatus
+    exports.isManualToolCharge = isManualToolCharge
+    exports.manualChargeSummary = manualChargeSummary
+    exports.chargeByAction = chargeByAction
     return module.exports
   }
 })

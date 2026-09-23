@@ -23,6 +23,25 @@ describe('charge details display', () => {
     expect(chargeStatus({ status: 'reserved' })).toBe('处理中预扣')
     expect(chargeStatus({ status: 'future' })).toBe('状态待确认')
   })
+  it('keeps only action-linked manual tool charges and totals their true amounts', () => {
+    const { isManualToolCharge, manualChargeSummary } = load()
+    const toolCharge = { chargedCreditMicros: '1200000', reservedCreditMicros: '0', refundedCreditMicros: '200000', billingContext: { actionId: 'audio-generate' } }
+    const chatCharge = { chargedCreditMicros: '9999999', reservedCreditMicros: '0', refundedCreditMicros: '0', billingContext: { conversationId: 'conversation-a' } }
+    const modelCharge = { chargedCreditMicros: '9999999', billingContext: { actionId: 'model:2:1' } }
+    expect(isManualToolCharge(toolCharge)).toBe(true)
+    expect(isManualToolCharge(chatCharge)).toBe(false)
+    expect(isManualToolCharge(modelCharge)).toBe(false)
+    expect(manualChargeSummary([toolCharge])).toEqual({ chargedCreditMicros: 1200000n, reservedCreditMicros: 0n, refundedCreditMicros: 200000n })
+  })
+  it('indexes charges by action and keeps unmatched trajectory rows at zero', () => {
+    const { chargeByAction } = load()
+    const charges = chargeByAction([
+      { chargedCreditMicros: '300000', reservedCreditMicros: '0', refundedCreditMicros: '0', billingContext: { actionId: 'tool-a' } },
+      { chargedCreditMicros: '200000', reservedCreditMicros: '100000', refundedCreditMicros: '0', billingContext: { actionId: 'tool-a' } }
+    ])
+    expect(charges.get('tool-a')).toEqual({ chargedCreditMicros: 500000n, reservedCreditMicros: 100000n, refundedCreditMicros: 0n })
+    expect(charges.get('missing')).toBeUndefined()
+  })
   it('queries only when expanded and stops polling on unmount', async () => {
     let definition: any
     let component: any

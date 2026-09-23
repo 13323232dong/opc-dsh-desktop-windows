@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 const projectRoot = path.resolve(import.meta.dirname, '..')
 
 interface Registration {
-  config: { name: string; id?: string; order?: number }
+  config: { name: string; id?: string; order?: number; label?: string }
   component: (props: Record<string, unknown>) => unknown
 }
 
@@ -84,11 +84,19 @@ describe('DSH Desktop client slot occupants', () => {
 
     expect(plugin.inject).toEqual(['slots'])
     expect(registrations.map(({ config }) => config.name)).toEqual([
+      'conversation.view',
       'conversation.trajectory.charges',
+      'conversation.trajectory.row-charge',
+      'conversation.trajectory.detail-charge',
       'sidebar.brand.mark',
       'sidebar.brand.name',
       'conversation.hero.brand.mark'
     ])
+
+    const toolCharges = registrations.find(
+      ({ config }) => config.id === 'tool-charges'
+    )
+    expect(toolCharges?.config.label).toBe('工具扣费')
     expect(appended).toHaveLength(0)
 
     const sidebarName = registrations.find(
