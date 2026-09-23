@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.56",
+  "version": "0.7.60",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -116,9 +116,9 @@
     },
     {
       "name": "@opc/DSH-ai-customer-service",
-      "version": "0.1.24",
-      "artifact": "plugins/opc-DSH-ai-customer-service-0.1.24.tgz",
-      "sha256": "35b1592d14ae3ed10d3aea12b90234dce6355396d8d1e702f04851d3cbf3a303"
+      "version": "0.1.25",
+      "artifact": "plugins/opc-DSH-ai-customer-service-0.1.25.tgz",
+      "sha256": "f10e627f730e0427e1f1725c79af027544781205cda4b86d79b459d63563c0e7"
     },
     {
       "name": "@opc/dsh-second-brain",
