@@ -1593,7 +1593,6 @@ async function showAbout(window: BrowserWindow): Promise<void> {
     }
   }
 
-  const checkForUpdatesLabel = locale === 'zh' ? '检查更新' : 'Check for Updates'
   const result = await dialog.showMessageBox(window, {
     type: 'info',
     title: 'DSH Desktop',
@@ -1603,12 +1602,11 @@ async function showAbout(window: BrowserWindow): Promise<void> {
       bundledHarnessVersion(app.getAppPath()),
       locale
     ),
-    buttons: [checkForUpdatesLabel, locale === 'zh' ? '关闭' : 'Close'],
-    defaultId: 1,
-    cancelId: 1,
+    buttons: [locale === 'zh' ? '关闭' : 'Close'],
+    defaultId: 0,
+    cancelId: 0,
     noLink: true
   })
-  if (result.response === 0) await checkForUpdates(true)
 }
 
 async function executeDesktopMenuCommand(command: DesktopMenuCommand): Promise<number | undefined> {
@@ -2522,9 +2520,6 @@ async function showSafeModeManager(initial?: {
 
 function installMenu(): void {
   const isChinese = harnessLocale() === 'zh'
-  const checkForUpdatesLabel = isChinese
-    ? '检查更新…'
-    : 'Check for Updates…'
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(process.platform === 'darwin'
       ? [
@@ -2538,11 +2533,6 @@ function installMenu(): void {
                   void showAbout(mainWindow).catch(showUnexpectedError)
                 }
               }
-            },
-            {
-              label: checkForUpdatesLabel,
-              accelerator: 'CmdOrCtrl+U',
-              click: () => void checkForUpdates(true).catch(showUnexpectedError)
             },
             { type: 'separator' as const },
             { role: 'hide' as const },
@@ -2578,16 +2568,7 @@ function installMenu(): void {
             if (activeHarnessLogPath) shell.showItemInFolder(currentHarnessLogPath())
           }
         },
-        ...(process.platform === 'darwin'
-          ? []
-          : [
-            { type: 'separator' as const },
-            {
-              label: checkForUpdatesLabel,
-              accelerator: 'CmdOrCtrl+U',
-              click: () => void checkForUpdates(true).catch(showUnexpectedError)
-            }
-          ]),
+        ...[],
         ...(process.platform === 'darwin'
           ? []
           : [{ type: 'separator' as const }, { role: 'quit' as const }])
