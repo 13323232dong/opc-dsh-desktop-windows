@@ -24,60 +24,62 @@ const PLUGINS = [
   ['@opc/dsh-assets', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
   ['@opc/dsh-assets-workbench', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
   ['@opc/dsh-file-attachments', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
-  ['dsh-file-picker', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
+  ['dsh-file-picker', true, ['@deepseek-ai/dsh-client-runtime']],
   ['@opc/dsh-douyin-comment-ops', true, ['@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
-  ['@opc/dsh-inspiration', false, []],
   ['@opc/dsh-douyin-publisher', false, []],
   ['@opc/dsh-feishu-docs', false, []],
   ['@opc/dsh-context-retrieval', false, []],
-  ['@omdsh-dev/dsh-genui', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
+  ['@omdsh-dev/dsh-genui', true, []],
   ['@opc/dsh-publish-precheck', false, []],
   ['DSH-opc-material-matcher', false, []],
-  ['@opc/DSH-dong-computer-use', false, []],
-  ['@opc/dsh-dong-mobile-control', false, []],
-  ['@opc/dsh-desktop-orb', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-layout']],
   ['@opc/dsh-realtime-voice', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-layout']],
-  ['@opc/dsh-session-context', true, ['@deepseek-ai/dsh-client-runtime']],
   ['@opc/dsh-task-tracker', true, ['@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-slots']],
-  ['@opc/dsh-viral-chase', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']]
+  ['@opc/dsh-viral-chase', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation']],
+  ['@opc/dsh-session-context', true, ['@deepseek-ai/dsh-client-runtime']],
+  ['@opc/dsh-dev-status-control', true, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots']],
+  ['@opc/DSH-ai-customer-service', true, ['@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-slots']],
+  ['@opc/dsh-second-brain', false, []]
 ]
 
-const ARTIFACTS = new Map([
-  ['@opc/dsh-brand', 'plugins/opc-dsh-brand-0.1.0-opc-desktop.4.tgz'],
-  ['@nanmicoder/dsh-agent-teams', 'plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz'],
-  ['@opc/dsh-assets', 'plugins/opc-dsh-assets-0.1.1.tgz'],
-  ['@opc/dsh-assets-workbench', 'plugins/opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz'],
-  ['@opc/dsh-file-attachments', 'plugins/opc-dsh-file-attachments-0.1.2.tgz'],
-  ['dsh-file-picker', 'plugins/dsh-file-picker-0.1.0.tgz'],
-  ['@opc/dsh-douyin-comment-ops', 'plugins/opc-dsh-douyin-comment-ops-0.1.0.tgz'],
-  ['@opc/dsh-inspiration', 'plugins/opc-dsh-inspiration.tgz'],
-  ['@opc/dsh-douyin-publisher', 'plugins/opc-dsh-douyin-publisher-0.1.0.tgz'],
-  ['@opc/dsh-feishu-docs', 'plugins/opc-dsh-feishu-docs-0.1.0.tgz'],
-  ['@opc/dsh-context-retrieval', 'plugins/opc-dsh-context-retrieval-0.1.1.tgz'],
-  ['@omdsh-dev/dsh-genui', 'plugins/omdsh-dev-dsh-genui-0.9.1.tgz'],
-  ['@opc/dsh-publish-precheck', 'plugins/opc-dsh-publish-precheck-0.1.0.tgz'],
-  ['DSH-opc-material-matcher', 'plugins/DSH-opc-material-matcher-0.1.0.tgz'],
-  ['@opc/DSH-dong-computer-use', 'plugins/opc-DSH-dong-computer-use-0.1.0.tgz'],
-  ['@opc/dsh-dong-mobile-control', 'plugins/opc-dsh-dong-mobile-control-0.1.0.tgz'],
-  ['@opc/dsh-desktop-orb', 'plugins/opc-dsh-desktop-orb-0.1.0.tgz'],
-  ['@opc/dsh-realtime-voice', 'plugins/opc-dsh-realtime-voice-0.1.0.tgz'],
-  ['@opc/dsh-session-context', 'plugins/opc-dsh-session-context-0.1.0.tgz'],
-  ['@opc/dsh-task-tracker', 'plugins/opc-dsh-task-tracker-0.1.0.tgz'],
-  ['@opc/dsh-viral-chase', 'plugins/opc-dsh-viral-chase-0.1.0.tgz']
-])
-
 function artifactFor(name) {
-  return ARTIFACTS.get(name) ?? `plugins/${name.replaceAll('@', '').replaceAll('/', '-').replaceAll('--', '-')}.tgz`
+  const artifacts = {
+    '@opc/dsh-second-brain': 'opc-dsh-second-brain-0.1.6.tgz',
+    '@opc/DSH-ai-customer-service': 'opc-DSH-ai-customer-service-0.1.23.tgz',
+    '@opc/dsh-brand': 'opc-dsh-brand-0.1.5.tgz',
+    '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.7.tgz',
+    '@opc/dsh-assets': 'opc-dsh-assets-0.1.5.tgz',
+    '@opc/dsh-assets-workbench': 'opc-dsh-assets-workbench-0.1.1.tgz',
+    '@opc/dsh-file-attachments': 'opc-dsh-file-attachments-0.1.0.tgz',
+    'dsh-file-picker': 'dsh-file-picker-0.1.0.tgz',
+    '@opc/dsh-douyin-comment-ops': 'opc-dsh-douyin-comment-ops-0.1.4.tgz',
+    '@opc/dsh-douyin-publisher': 'opc-dsh-douyin-publisher-0.1.0.tgz',
+    '@opc/dsh-feishu-docs': 'opc-dsh-feishu-docs-0.1.0.tgz',
+    '@opc/dsh-context-retrieval': 'opc-dsh-context-retrieval-0.1.1.tgz',
+    '@omdsh-dev/dsh-genui': 'omdsh-dev-dsh-genui-0.9.1.tgz',
+    '@opc/dsh-publish-precheck': 'opc-dsh-publish-precheck-0.1.0.tgz',
+    'DSH-opc-material-matcher': 'DSH-opc-material-matcher-0.1.0.tgz',
+    '@opc/dsh-realtime-voice': 'opc-dsh-realtime-voice-0.1.9.tgz',
+    '@opc/dsh-session-context': 'opc-dsh-session-context-0.1.0.tgz',
+    '@opc/dsh-task-tracker': 'opc-dsh-task-tracker-0.1.0.tgz',
+    '@opc/dsh-dev-status-control': 'opc-dsh-dev-status-control-0.2.8.tgz',
+    '@opc/dsh-viral-chase': 'opc-dsh-viral-chase-0.1.43.tgz'
+  }
+  return `plugins/${artifacts[name]}`
 }
 
 function versionFor(name) {
+  if (name === '@opc/dsh-douyin-comment-ops') return '0.1.4'
+  if (name === '@opc/DSH-ai-customer-service') return '0.1.23'
+  if (name === '@opc/dsh-second-brain') return '0.1.6'
   if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.7'
-  if (name === '@opc/dsh-assets') return '0.1.1'
-  if (name === '@opc/dsh-brand') return '0.1.0-opc-desktop.4'
-  if (name === '@opc/dsh-assets-workbench') return '0.1.0-opc-desktop.2'
-  if (name === '@opc/dsh-file-attachments') return '0.1.2'
+  if (name === '@opc/dsh-assets') return '0.1.5'
   if (name === '@opc/dsh-context-retrieval') return '0.1.1'
+  if (name === '@opc/dsh-assets-workbench') return '0.1.1'
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
+  if (name === '@opc/dsh-viral-chase') return '0.1.43'
+  if (name === '@opc/dsh-dev-status-control') return '0.2.8'
+  if (name === '@opc/dsh-brand') return '0.1.5'
+  if (name === '@opc/dsh-realtime-voice') return '0.1.9'
   return '0.1.0'
 }
 
@@ -95,7 +97,7 @@ function clone(value) {
 
 const profile = {
   schemaVersion: 1,
-  id: 'opc-macos-desktop',
+  id: 'opc-desktop',
   harnessVersion: '0.1.2-rc.1',
   plugins: PLUGINS.map(([name, client, clientInject]) => ({
     name,
@@ -116,9 +118,34 @@ export const OPC_PLUGIN_COMPATIBILITY_MATRIX = deepFreeze([
     desktopDisposition: plugin.name === '@opc/DSH-dong-computer-use'
       ? 'broker-adapter'
       : plugin.client ? 'client-and-runtime' : 'runtime-only',
+    windowsDisposition: windowsDispositionFor(plugin.name),
     harnessTarget: '0.1.2-rc.1',
     status: 'requires-adapter-validation'
-  }))
+  })),
+  {
+    name: '@opc/dsh-feishu-docs',
+    clientBundle: false,
+    desktopDisposition: 'runtime-only',
+    windowsDisposition: 'requires-browser-provider',
+    harnessTarget: '0.1.2-rc.1',
+    status: 'deferred-until-windows-provider-validation'
+  },
+  {
+    name: '@opc/dsh-dong-mobile-control',
+    clientBundle: false,
+    desktopDisposition: 'broker-adapter',
+    windowsDisposition: 'requires-native-adapter',
+    harnessTarget: '0.1.2-rc.1',
+    status: 'deferred-until-windows-adapter-validation'
+  },
+  {
+    name: '@opc/DSH-dong-computer-use',
+    clientBundle: false,
+    desktopDisposition: 'broker-adapter',
+    windowsDisposition: 'requires-native-adapter',
+    harnessTarget: '0.1.2-rc.1',
+    status: 'deferred-until-windows-adapter-validation'
+  }
 ])
 
 export function createDesktopProfileManifest(overrides = {}) {
@@ -138,7 +165,7 @@ function isPortableArtifact(value) {
 
 export function validateDesktopProfile(candidate) {
   const issues = []
-  if (!candidate || candidate.schemaVersion !== 1 || candidate.id !== 'opc-macos-desktop') {
+  if (!candidate || candidate.schemaVersion !== 1 || candidate.id !== 'opc-desktop') {
     return ['profile has an unsupported identity or schema version']
   }
   if (!Array.isArray(candidate.plugins)) return ['profile plugins must be an array']
@@ -166,6 +193,15 @@ export function validateDesktopProfile(candidate) {
     }
   }
   return issues
+}
+
+function windowsDispositionFor(name) {
+  if (name === '@opc/DSH-ai-customer-service') return 'requires-native-adapter'
+  if (name === '@opc/DSH-dong-computer-use' || name === '@opc/dsh-dong-mobile-control') {
+    return 'requires-native-adapter'
+  }
+  if (name === '@opc/dsh-feishu-docs') return 'requires-browser-provider'
+  return 'supported'
 }
 
 function importedModules(source) {
