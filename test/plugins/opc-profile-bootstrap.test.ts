@@ -195,7 +195,7 @@ describe('ensureOpcDesktopProfile', () => {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(manifest.dependencies['@opc/dsh-viral-chase']).toBe(
-        `file:${join(plugins, 'opc-dsh-viral-chase-0.1.52.tgz')}`
+        `file:${join(plugins, 'opc-dsh-viral-chase-0.1.53.tgz')}`
       )
       expect(manifest.dependencies['@opc/dsh-inspiration']).toBeUndefined()
       expect(manifest.dependencies['community-plugin']).toBe('1.2.3')
