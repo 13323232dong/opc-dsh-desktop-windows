@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.7.70",
+  "version": "0.7.75",
   "platform": "win32",
   "arch": "x64",
   "profileId": "opc-desktop",
@@ -98,9 +98,9 @@
     },
     {
       "name": "@opc/dsh-viral-chase",
-      "version": "0.1.51",
-      "artifact": "plugins/opc-dsh-viral-chase-0.1.51.tgz",
-      "sha256": "0bcc6291a0f2e4830486f9e7a97242847a473b3c990541d2bc319df06bf44de1"
+      "version": "0.1.52",
+      "artifact": "plugins/opc-dsh-viral-chase-0.1.52.tgz",
+      "sha256": "7a023f2e44ff41ffbce5b658da6bb82aed8777e072353c9f6b3a40460369c331"
     },
     {
       "name": "@opc/dsh-session-context",
