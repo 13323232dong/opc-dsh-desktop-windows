@@ -27,7 +27,7 @@ export function createIdleDeadline(controller: AbortController, timeoutMs: numbe
 }
 
 export function isAnchorMediaPath(path: string): boolean {
-  return /^\/api\/v1\/viral\/protagonist-anchors\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(video|portrait|voice)$/u.test(path)
+  return /^\/api\/v1\/viral\/(?:protagonist-anchors\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/(video|portrait|voice)|chase-jobs\/[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\/files\/audio\/[A-Za-z0-9][A-Za-z0-9._:-]{0,255})$/u.test(path)
 }
 
 export function uploadHeaders(request: IncomingMessage, sessionToken: string): { headers: Headers; size: number } | undefined {

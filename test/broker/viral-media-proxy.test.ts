@@ -156,6 +156,24 @@ describe('viral media broker', () => {
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
   })
 
+  it('streams generated viral audio byte-for-byte with range headers', async () => {
+    const bytes = new Uint8Array([255, 251, 144, 0])
+    const runtime = await setup(async (_url, init) => {
+      expect(new Headers(init.headers).get('range')).toBe('bytes=0-3')
+      return new Response(bytes, { status: 206, headers: { 'content-type': 'audio/mpeg', 'content-length': '4', 'content-range': 'bytes 0-3/10', 'accept-ranges': 'bytes' } })
+    })
+    const response = await fetch(`${runtime.endpoint}/capabilities/cloud.proxy`, {
+      method: 'POST', headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ path: '/api/v1/viral/chase-jobs/job-one/files/audio/job-one-audio.mp3', method: 'GET', headers: { range: 'bytes=0-3' } })
+    })
+    expect(response.status).toBe(206)
+    expect(response.headers.get('content-type')).toBe('audio/mpeg')
+    expect(response.headers.get('content-length')).toBe('4')
+    expect(response.headers.get('content-range')).toBe('bytes 0-3/10')
+    expect(response.headers.get('accept-ranges')).toBe('bytes')
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
+  })
+
   it('keeps a slow media download alive while chunks continue before the idle deadline', async () => {
     const runtime = await setup(async () => new Response(new ReadableStream({
       async start(controller) {
