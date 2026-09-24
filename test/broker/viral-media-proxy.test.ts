@@ -160,7 +160,7 @@ describe('viral media broker', () => {
     const bytes = new Uint8Array([255, 251, 144, 0])
     const runtime = await setup(async (_url, init) => {
       expect(new Headers(init.headers).get('range')).toBe('bytes=0-3')
-      return new Response(bytes, { status: 206, headers: { 'content-type': 'audio/mpeg', 'content-length': '4', 'content-range': 'bytes 0-3/10', 'accept-ranges': 'bytes' } })
+      return new Response(bytes, { status: 206, headers: { 'content-type': 'audio/mpeg', 'content-length': '4', 'content-range': 'bytes 0-3/10', 'accept-ranges': 'bytes', 'content-disposition': 'inline; filename="generated-preview.mp3"' } })
     })
     const response = await fetch(`${runtime.endpoint}/capabilities/cloud.proxy`, {
       method: 'POST', headers: { authorization: `Bearer ${runtime.token}`, 'content-type': 'application/json' },
@@ -171,6 +171,7 @@ describe('viral media broker', () => {
     expect(response.headers.get('content-length')).toBe('4')
     expect(response.headers.get('content-range')).toBe('bytes 0-3/10')
     expect(response.headers.get('accept-ranges')).toBe('bytes')
+    expect(response.headers.get('content-disposition')).toBe('inline; filename="generated-preview.mp3"')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
   })
 

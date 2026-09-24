@@ -73,7 +73,7 @@ export function boundedUpload(request: IncomingMessage, expected: number, onActi
 
 export async function streamMediaResponse(upstream: Response, response: ServerResponse, signal: AbortSignal, onActivity: () => void = () => {}): Promise<void> {
   const headers: Record<string, string> = { 'cache-control': 'private, no-store' }
-  for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
+  for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'content-disposition']) {
     const value = upstream.headers.get(name)
     if (value && !(name === 'content-length' && upstream.headers.has('content-encoding'))) headers[name] = value
   }
