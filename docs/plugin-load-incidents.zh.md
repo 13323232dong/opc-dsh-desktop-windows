@@ -4,6 +4,20 @@
 >
 > 记录边界：只写已验证的技术事实。商户身份、会话内容、密码、Token、Cookie、HMAC 密钥及供应商原始鉴权错误不得进入本台账。
 
+## 2026-09-25：访谈引导源码存在但实际客户端入口未包含
+
+- 来源任务：`01a0d8a0-311e-7d93-99a0-9acba9429e3b`，续接 `01a0d89a-7209-77e2-9373-6168f1c4fae1`。
+- 范围：Agent Teams 桌面插件 `.8` 及旧全屏候选提交 `c5da73a`；正式 main 基线 `ae7c4cc`。
+- 已验证根因：`package.json` 的 `./client` 指向 `lib/client.js`，而旧变更只修改 `lib/client/InterviewGuidePanel.js` 与分散入口；实际 bundle 没有引导注册。独立目录缺少 TypeScript 配置和 CSS 源文件，旧 build 无法重建。
+- 第二根因：dock 的 `session` 是不含 `cwd/title` 的 `SessionSnapshot`。改用宿主标准 `useSessions` 从 `byId[sessionId]` 获取摘要；不再用伪造快照验证。
+- 修复候选：`.10` 建立可重复客户端构建链，恢复四份有 Git 来源的 CSS；全屏通过 body portal 展示，保留同一个输入框及语音入口。暂停不发送消息，按宿主每会话稳定的 inputActions 弱引用记住关闭状态，并提供重新打开入口；有草稿、图片或输入框非 plain 状态时禁止阶段按钮覆盖内容；全屏层级高于团队浮层。
+- 门禁：React DOM 行为测试、真实 bundle factory/slot 注册测试、最终 tgz 的 `lib/client.js` 与重建文件逐字一致性检查。此前测试只匹配分散源码字符串，不能作为客户端已生效证据。
+- 当前证据：最终全量串行 132 文件 / 958 项通过，访谈定向 18 项通过；TypeScript、桌面编译、品牌和 diff 检查通过。首轮全量并发有 1 项媒体持久化时序测试失败，单独及全量串行复测通过，未修改该无关业务代码。独立审查确认既有客户端业务模块和旧 CSS 规则保留。
+- 发布状态：功能分支 `codex/interview-fullscreen-delivery` 是本次唯一候选，桌面版本保持 `0.7.79`；`.10` 仅为候选插件包。桌面本地 main 与 fork/main 为 2/27 分叉，merge-tree 预览在 package.json、package-lock.json、Profile index/manifest、bootstrap 共 5 文件冲突；未改动其他任务的主线。OPC 发布壳实际 preflight 因非 main、197 个现有改动及 20 个未合入候选失败。
+- 尚未完成：正式 main 集成、安装包覆盖、真实桌面全屏和错误状态截图、重启验收。未生成本次 App/DMG/ZIP、未覆盖正式 App、未部署线上，不得根据本记录宣称已发布。
+- 供应链：npm audit --omit=dev 报 4 项 high，均来自既有 PPT 依赖链；独立审查确认其锁文件节点与 main 基线完全一致，本次未修改该无关链路。
+- 安全边界：不创建第二个 Agent Loop，不重置访谈档案、不自动创建第二大脑、不持久化账号身份或输入内容。
+
 ## 登记规则
 
 ### 2026-09-20：访谈完成后入口消失与语音模式混用

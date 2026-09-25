@@ -25,7 +25,7 @@
   "scripts": {
     "postinstall": "patch-package && node scripts/install-brand-assets.mjs && install-electron --no",
     "dev": "electron-vite dev",
-    "build": "npm run icons:generate && npm run prepare:brand && npm run verify:release-contract && npm run build:market && electron-vite build",
+    "build": "npm run icons:generate && npm run prepare:brand && npm run verify:release-contract && npm run build:market && npm run build:agent-teams && electron-vite build",
     "build:market": "tsc -p packages/dshmarket/tsconfig.json",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "preview": "electron-vite preview",
@@ -48,7 +48,8 @@
     "package:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never && npm run verify:package:mac:arm64",
     "package:mac:x64": "node scripts/verify-target.mjs darwin x64 && npm run build && electron-builder --mac --x64 --publish never && npm run verify:package:mac:x64",
     "package:win": "node scripts/verify-target.mjs win32 x64 && npm run build && npm run verify:win-release && electron-builder --win --x64 --publish never && node scripts/finalize-packaged-windows-release.mjs && npm run verify:package:win",
-    "ppt:build": "node scripts/generate-zara-ppt-templates.mjs && node scripts/localize-ppt-templates.mjs && node scripts/enrich-ppt-templates.mjs && node scripts/build-ppt-runtime.mjs"
+    "ppt:build": "node scripts/generate-zara-ppt-templates.mjs && node scripts/localize-ppt-templates.mjs && node scripts/enrich-ppt-templates.mjs && node scripts/build-ppt-runtime.mjs",
+    "build:agent-teams": "node scripts/build-agent-teams-client.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "file:packages/harness-0.1.2-rc.1/npm-vendor/deepseek-ai-cordis-4.0.2.tgz",
@@ -299,6 +300,9 @@
     "electron": "43.4.0",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
+    "esbuild": "0.25.12",
+    "lightningcss": "1.33.0",
+    "lucide-react": "0.468.0",
     "patch-package": "^8.0.1",
     "typescript": "5.9.3",
     "vitest": "^4.1.10",

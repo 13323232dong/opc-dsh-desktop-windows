@@ -14,9 +14,9 @@
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
-      "version": "0.1.8-opc-desktop.8",
-      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.8.tgz",
-      "sha256": "fc5dd7c21b8e04036ffda45542956ef34d8140449b67d579674d5380f809fe90"
+      "version": "0.1.8-opc-desktop.10",
+      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.10.tgz",
+      "sha256": "249472586a2040124ff277374d898e46da7743ec588cd02a41338ed961944471"
     },
     {
       "name": "@opc/dsh-assets",
