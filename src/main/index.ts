@@ -1075,6 +1075,7 @@ async function openHarness(
       )
       return 0
     })
+    if (window.isDestroyed() || navigationVersion !== mainWindowNavigationVersion) return
     if (clearedCookies > 0) {
       runtime.note(`[desktop] cleared ${clearedCookies} stale Harness authentication cookie(s)`)
     }
@@ -2719,6 +2720,8 @@ function createAccountHarness(configuration: AccountHarnessConfiguration) {
 async function showLoginPage(message?: string): Promise<void> {
   const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : createWindow()
   clearProfileBootConfirmation()
+  ++mainWindowNavigationVersion
+  window.webContents.stop()
   await window.loadFile(desktopResourcePath('login.html'), { query: message ? { message } : undefined })
   window.show()
   window.focus()

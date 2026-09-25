@@ -1,11 +1,69 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { runInNewContext } from 'node:vm'
+import { transpileModule, ScriptTarget } from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const mainEntry = resolve(import.meta.dirname, '../../src/main/index.ts')
 const loginPage = resolve(import.meta.dirname, '../../build/login.html')
 
 describe('desktop login entry', () => {
+  it('keeps login visible when an older Harness cookie cleanup completes late', async () => {
+    const source = await readFile(mainEntry, 'utf8')
+    const loginFunction = source.slice(
+      source.indexOf('async function showLoginPage('),
+      source.indexOf('async function bootstrap():')
+    )
+    const harnessFunction = source.slice(
+      source.indexOf('async function openHarness('),
+      source.indexOf('async function showSplash(')
+    )
+    const program = transpileModule(`
+      (async () => {
+        let mainWindowNavigationVersion = 0
+        let rendererPluginFailureLogs = []
+        let destination = 'splash'
+        let stops = 0
+        let finishCookieCleanup
+        const cleanup = new Promise(resolve => { finishCookieCleanup = resolve })
+        const mainWindow = {
+          isDestroyed: () => false,
+          webContents: {
+            stop: () => { stops++ }, getURL: () => destination,
+            session: { cookies: {} }
+          },
+          loadFile: async () => { destination = 'login' },
+          loadURL: async () => { destination = 'harness' },
+          show: () => {}, focus: () => {}
+        }
+        const runtime = {
+          snapshot: () => ({ authToken: 'fixture', url: 'http://localhost:1234', phase: 'ready' }),
+          note: () => {}
+        }
+        const desktopHarnessUrl = url => url
+        const shouldLoadHarnessUrl = () => true
+        const clearStaleHarnessAuthCookies = () => cleanup
+        const clearProfileBootConfirmation = () => {}
+        const desktopResourcePath = name => name
+        const markHarnessRendered = () => {}
+        const syncNativeTheme = async () => {}
+        const raiseWindowWithoutStealingFocus = () => {}
+        const isAbortedNavigationError = () => false
+        const app = { isActive: () => false }
+        ${harnessFunction}
+        ${loginFunction}
+        const oldNavigation = openHarness('http://localhost:1234')
+        await showLoginPage()
+        finishCookieCleanup(0)
+        await oldNavigation
+        return { destination, stops }
+      })()
+    `, { compilerOptions: { target: ScriptTarget.ES2022 } }).outputText
+
+    await expect(runInNewContext(program, { process: { platform: 'win32' } }))
+      .resolves.toEqual({ destination: 'login', stops: 2 })
+  })
+
   it('does not start a shared Harness when account restoration returns no session', async () => {
     const source = await readFile(mainEntry, 'utf8')
     const bootstrap = source.slice(source.indexOf('async function bootstrap(): Promise<void>'))
