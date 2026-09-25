@@ -14,9 +14,9 @@
     },
     {
       "name": "@nanmicoder/dsh-agent-teams",
-      "version": "0.1.8-opc-desktop.5",
-      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz",
-      "sha256": "df7d6013a8cdc6ad9c4b274bfde4cce713fb35429e197f3144ce2899d74e2e29"
+      "version": "0.1.8-opc-desktop.6",
+      "artifact": "plugins/nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz",
+      "sha256": "067fd27bd502e9dff0386291cdafc2f055ebb56ae3a15004879c99fcde7e74b8"
     },
     {
       "name": "@opc/dsh-assets",
@@ -100,7 +100,7 @@
       "name": "@opc/dsh-viral-chase",
       "version": "0.1.0",
       "artifact": "plugins/opc-dsh-viral-chase-0.1.0.tgz",
-      "sha256": "512a4ef87984a95880e1b7cd8f26682ae5f313d0b15a71f32b75db68f42fdd72"
+      "sha256": "cd22293ba88172ebafeb4de88258e1106224aab3732689c19333636399f7c5d3"
     },
     {
       "name": "@opc/dsh-session-context",

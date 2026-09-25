@@ -67,15 +67,21 @@ async function memberSessionEvents(ctx, memberId) {
         return [];
     const live = ctx.agents.get(memberId)?.session;
     if (live !== undefined)
-        return live.events;
+        return live.snapshotEvents();
     const getService = ctx.get;
     if (typeof getService !== 'function')
         return [];
     const persistence = getService.call(ctx, 'sessionPersistence');
-    if (persistence?.inspect === undefined)
+    if (persistence?.open === undefined)
         return [];
     try {
-        return (await persistence.inspect(memberId)).events;
+        const handle = await persistence.open(memberId, 'read');
+        try {
+            return (await handle.read()).events;
+        }
+        finally {
+            await handle.close();
+        }
     }
     catch (error) {
         ctx.logger.debug(`agent-teams: tool activity unavailable for ${memberId}: ${String(error)}`);

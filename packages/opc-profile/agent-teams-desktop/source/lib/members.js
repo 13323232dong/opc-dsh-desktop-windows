@@ -57,7 +57,9 @@ function syncMemberSessionTitle(ctx, child, team, member) {
 }
 /** Synchronize a persisted member session whenever it becomes locally live. */
 function syncStoredMemberSessionTitle(ctx, child, stateDir) {
-    const suffix = child.session.events.slice(child.session.header.seedLength ?? 0);
+    if (child.session.header.parentSession === undefined)
+        return;
+    const suffix = child.session.ownEvents();
     const descriptor = foldSubagentDescriptor(suffix);
     if (descriptor?.mode !== 'continuable' || !descriptor.label.startsWith(MEMBER_LABEL_PREFIX))
         return;
@@ -197,7 +199,7 @@ export function installMemberSelectionRuntime(ctx, stateDir) {
         const child = childCtx.agent;
         if (child === undefined)
             return () => undefined;
-        const suffix = child.session.events.slice(child.session.header.seedLength ?? 0);
+        const suffix = child.session.ownEvents();
         const descriptor = foldSubagentDescriptor(suffix);
         if (descriptor?.mode !== 'continuable' || !descriptor.label.startsWith(MEMBER_LABEL_PREFIX)) {
             return () => undefined;

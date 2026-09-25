@@ -41,7 +41,7 @@ const PLUGINS = [
 function artifactFor(name) {
   const artifacts = {
     '@opc/dsh-brand': 'opc-dsh-brand-0.1.0-opc-desktop.2.tgz',
-    '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.5.tgz',
+    '@nanmicoder/dsh-agent-teams': 'nanmicoder-dsh-agent-teams-0.1.8-opc-desktop.6.tgz',
     '@opc/dsh-assets': 'opc-dsh-assets-0.1.1.tgz',
     '@opc/dsh-assets-workbench': 'opc-dsh-assets-workbench-0.1.0-opc-desktop.2.tgz',
     '@opc/dsh-file-attachments': 'opc-dsh-file-attachments-0.1.0.tgz',
@@ -62,7 +62,7 @@ function artifactFor(name) {
 }
 
 function versionFor(name) {
-  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.5'
+  if (name === '@nanmicoder/dsh-agent-teams') return '0.1.8-opc-desktop.6'
   if (name === '@opc/dsh-assets' || name === '@opc/dsh-context-retrieval') return '0.1.1'
   if (name === '@omdsh-dev/dsh-genui') return '0.9.1'
   return '0.1.0'
