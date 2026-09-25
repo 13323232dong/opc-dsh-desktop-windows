@@ -41,6 +41,12 @@ if (
 }
 
 const login = await readFile(path.join(resources, 'login.html'), 'utf8')
+if (
+  (await sha256(path.join(resources, 'login.html'))) !==
+  (await sha256(path.join(projectRoot, 'build', 'login.html')))
+) {
+  throw new Error('packaged Windows login page does not match build/login.html')
+}
 if (!login.includes('Evan超级管家')) {
   throw new Error('packaged Windows login page does not contain the approved product name')
 }
