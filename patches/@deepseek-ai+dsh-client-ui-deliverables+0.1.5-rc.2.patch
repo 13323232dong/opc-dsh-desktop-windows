@@ -1,7 +1,7 @@
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js
 --- a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js
-@@ -208,7 +208,7 @@
+@@ -468,7 +468,7 @@
  		*/
  		function producedFileMentions(paths, openFile, label) {
  			return { resolve(value) {
@@ -10,7 +10,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js 
  				if (path === void 0) return void 0;
  				return {
  					open: () => {
-@@ -218,6 +218,21 @@
+@@ -478,6 +478,21 @@
  					title: path
  				};
  			} };
@@ -32,13 +32,11 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js 
  		}
  		/** The single produced path whose basename is exactly `value`, else undefined. */
  		function onlyPathWithBasename(paths, value) {
-@@ -381,8 +396,7 @@
- 			const t = ctx.locale.bind(NS);
- 			ctx.provide("chatFileMentions", { forClosing(owner) {
+@@ -956,7 +971,6 @@
+ 			ctx.provide("chatFileMentions", { forClosing(owner, sessionId) {
  				const paths = selectProducedFiles(owner);
--				if (paths === null) return void 0;
--				return producedFileMentions(paths, owner.openFile, (path) => t("produced.open", { name: path }));
-+				return producedFileMentions(paths ?? [], owner.openFile, (path) => t("produced.open", { name: path }));
- 			} });
- 		}
- 		//#endregion
+ 				const presented = presentedForClosing(owner);
+-				if (paths === null && presented.length === 0) return void 0;
+ 				const deliveries = new Map(presented.map((file) => [file.path, file]));
+ 				return producedFileMentions([...new Set([...paths ?? [], ...deliveries.keys()])], (path) => {
+ 					const file = deliveries.get(path);

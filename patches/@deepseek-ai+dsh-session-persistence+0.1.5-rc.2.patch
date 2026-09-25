@@ -1,0 +1,18 @@
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js b/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
+@@ -264,2 +264,6 @@
+ 	}
++	/** Optional desktop capability: backends must explicitly implement safe deletion. */
++	async delete(id) {
++		throw new Error(`session deletion is unsupported by this persistence backend: "${id}"`);
++	}
+ };
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
+@@ -100,2 +100,4 @@
+     constructor(ctx: Context);
++    /** Delete an unowned stored session. Missing returns false; unsupported backends reject. */
++    delete(id: SessionId): Promise<boolean>;
+     /**

@@ -38,9 +38,7 @@ describe('workspace session unread markers', () => {
 
     expect(patch).toContain('Rows_module_css_default.unreadTitle')
     expect(patch).toContain('StateDot, { state: "done" }')
-    expect(patch).toContain('border: "1.5px solid currentColor"')
-    expect(patch).toContain('background: "transparent"')
-    expect(patch).toContain('boxShadow: "none"')
+    expect(patch).toContain('.Reqcua_unreadMenuIcon{width:10px;height:10px;border:1.5px solid currentColor')
     expect(patch).toContain('children: t("status.unread")')
     expect(patch).toContain('actions.markSessionRead(sessionId)')
     expect(patch).toContain('open(sessionId)')

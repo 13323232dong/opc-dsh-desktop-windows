@@ -1,0 +1,170 @@
+diff --git a/node_modules/@deepseek-ai/dsh-workspace/lib/index.js b/node_modules/@deepseek-ai/dsh-workspace/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-workspace/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-workspace/lib/index.js
+@@ -238,5 +238,6 @@
+ 	workspaceIds: z.array(workspaceId),
+ 	archivedSessionIds: z.array(z.string().transform((value) => brandString(value))).default([]),
+-	pendingMutation: workspacePendingMutation.optional()
++	pendingSessionForget: z.string().transform(value => brandString(value)).optional(),
++    pendingMutation: workspacePendingMutation.optional()
+ });
+ /**
+@@ -341,4 +342,5 @@
+ 		this.state = domain.global.get();
+ 		await this.recoverPendingMutation();
++	    await this.recoverPendingSessionForget();
+ 		this.validateStoredState(this.state);
+ 		if (!this.state.initialized) {
+@@ -454,4 +456,45 @@
+ 			});
+ 		});
++	}
++	/** Remove a permanently deleted Session from Workspace and archive state. */
++	deleteSession(sessionId, removeStored) {
++	    return this.enqueueOperation(async () => {
++	        await this.setState({ ...this.requireState(), pendingSessionForget: sessionId });
++	        const deleted = await removeStored();
++	        await this.forgetSessionCore(sessionId);
++	        return deleted;
++	    });
++	}
++	forgetSession(sessionId) {
++	    return this.enqueueOperation(async () => {
++	        await this.setState({ ...this.requireState(), pendingSessionForget: sessionId });
++	        await this.forgetSessionCore(sessionId);
++	    });
++	}
++	async recoverPendingSessionForget() {
++	    const sessionId = this.requireState().pendingSessionForget;
++	    if (sessionId === undefined) return;
++	    const persistence = this.ctx.get('sessionPersistence');
++	    if (persistence === undefined) throw new Error('cannot recover session deletion without persistence');
++	    const stored = await persistence.stat(sessionId);
++	    if (stored !== undefined || this.ctx.sessions.get(sessionId) !== undefined) {
++	        const { pendingSessionForget: _pending, ...state } = this.requireState();
++	        await this.setState(state);
++	        return;
++	    }
++	    await this.forgetSessionCore(sessionId);
++	}
++	async forgetSessionCore(sessionId) {
++	    for (const [workspaceId, record] of this.requireTable().entries()) {
++	        if (!record.sessionIds.includes(sessionId)) continue;
++	        const entity = this.entities.get(workspaceId);
++	        if (entity !== undefined) await entity.detachSession(sessionId);
++	        else await this.requireTable().update(workspaceId, current => ({ ...current, sessionIds: current.sessionIds.filter(id => id !== sessionId) }));
++	    }
++	    const { pendingSessionForget: _pending, ...state } = this.requireState();
++	    await this.setState({ ...state, archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId) });
++	    this.headers.delete(sessionId);
++	    this.sessionPaths.delete(sessionId);
++	    this.invalidSessionPaths.delete(sessionId);
+ 	}
+ 	/**
+@@ -775,4 +818,5 @@
+ 		const result = this.operationTail.then(async () => {
+ 			await this.recoverPendingMutation();
++	    await this.recoverPendingSessionForget();
+ 			return await operation();
+ 		});
+diff --git a/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.js b/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.js
+--- a/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.js
++++ b/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.js
+@@ -88,4 +88,5 @@
+         this.state = domain.global.get();
+         await this.recoverPendingMutation();
++        await this.recoverPendingSessionForget();
+         this.validateStoredState(this.state);
+         if (!this.state.initialized) {
+@@ -213,4 +214,45 @@
+             await this.setState({ ...state, archivedSessionIds: [...state.archivedSessionIds, sessionId] });
+         });
++    }
++    /** Remove a permanently deleted Session from Workspace and archive state. */
++    deleteSession(sessionId, removeStored) {
++        return this.enqueueOperation(async () => {
++            await this.setState({ ...this.requireState(), pendingSessionForget: sessionId });
++            const deleted = await removeStored();
++            await this.forgetSessionCore(sessionId);
++            return deleted;
++        });
++    }
++    forgetSession(sessionId) {
++        return this.enqueueOperation(async () => {
++            await this.setState({ ...this.requireState(), pendingSessionForget: sessionId });
++            await this.forgetSessionCore(sessionId);
++        });
++    }
++    async recoverPendingSessionForget() {
++        const sessionId = this.requireState().pendingSessionForget;
++        if (sessionId === undefined) return;
++        const persistence = this.ctx.get('sessionPersistence');
++        if (persistence === undefined) throw new Error('cannot recover session deletion without persistence');
++        const stored = await persistence.stat(sessionId);
++        if (stored !== undefined || this.ctx.sessions.get(sessionId) !== undefined) {
++            const { pendingSessionForget: _pending, ...state } = this.requireState();
++            await this.setState(state);
++            return;
++        }
++        await this.forgetSessionCore(sessionId);
++    }
++    async forgetSessionCore(sessionId) {
++        for (const [workspaceId, record] of this.requireTable().entries()) {
++            if (!record.sessionIds.includes(sessionId)) continue;
++            const entity = this.entities.get(workspaceId);
++            if (entity !== undefined) await entity.detachSession(sessionId);
++            else await this.requireTable().update(workspaceId, current => ({ ...current, sessionIds: current.sessionIds.filter(id => id !== sessionId) }));
++        }
++        const { pendingSessionForget: _pending, ...state } = this.requireState();
++        await this.setState({ ...state, archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId) });
++        this.headers.delete(sessionId);
++        this.sessionPaths.delete(sessionId);
++        this.invalidSessionPaths.delete(sessionId);
+     }
+     /**
+@@ -594,4 +636,5 @@
+             // recovery before another create/delete can overwrite that pending operation record.
+             await this.recoverPendingMutation();
++        await this.recoverPendingSessionForget();
+             return await operation();
+         });
+diff --git a/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.js b/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.js
+--- a/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.js
++++ b/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.js
+@@ -44,4 +44,5 @@
+     workspaceIds: z.array(workspaceId),
+     archivedSessionIds: z.array(z.string().transform(value => brandString(value))).default([]),
++    pendingSessionForget: z.string().transform(value => brandString(value)).optional(),
+     pendingMutation: workspacePendingMutation.optional(),
+ });
+diff --git a/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-workspace/lib/types/index.d.ts
+@@ -123,4 +123,10 @@
+      */
+     archiveSession(sessionId: SessionId): Promise<void>;
++    /** Remove a permanently deleted Session from Workspace and archive state. */
++    forgetSession(sessionId: SessionId): Promise<void>;
++    /** Persist intent before deletion and recover only absent logs. */
++    deleteSession(sessionId: SessionId, removeStored: () => Promise<boolean>): Promise<boolean>;
++    private recoverPendingSessionForget;
++    private forgetSessionCore;
+     /**
+      * Whether a session is live, header-indexed, or present in a fresh
+diff --git a/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.d.ts b/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.d.ts
+--- a/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.d.ts
++++ b/node_modules/@deepseek-ai/dsh-workspace/lib/types/spec.d.ts
+@@ -35,4 +35,5 @@
+     workspaceIds: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<WorkspaceId, string>>>;
+     archivedSessionIds: z.ZodDefault<z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<SessionId, string>>>>;
++    pendingSessionForget: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<SessionId, string>>>;
+     pendingMutation: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+         operation: z.ZodLiteral<"create">;
+@@ -59,5 +60,6 @@
+             workspaceIds: z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<WorkspaceId, string>>>;
+             archivedSessionIds: z.ZodDefault<z.ZodArray<z.ZodPipe<z.ZodString, z.ZodTransform<SessionId, string>>>>;
+-            pendingMutation: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
++            pendingSessionForget: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<SessionId, string>>>;
++    pendingMutation: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                 operation: z.ZodLiteral<"create">;
+                 workspaceId: z.ZodPipe<z.ZodString, z.ZodTransform<WorkspaceId, string>>;

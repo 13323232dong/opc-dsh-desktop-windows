@@ -1,0 +1,67 @@
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
+@@ -2410,2 +2410,55 @@
+ 	*/
++	/**
++	* Permanently remove one unowned session, keeping its lock inode and unrelated files.
++	* Delete historical generations durably before the authoritative generation so a
++	* failed deletion can never promote an old log. Callers may safely retry failures.
++	*/
++	async delete(id) {
++		this.tracker.claimWrite(id);
++		let lease;
++		let failure;
++		try {
++			await this.ensureRootEncoding();
++			const observed = await this.findLog(id);
++			if (observed === void 0) return false;
++			const dir = dirname(observed.currentPath);
++			for (const parent of [dirname(dir), dir]) {
++				if (!(await lstat(parent)).isDirectory()) throw new Error(`session "${id}": refusing deletion through a non-directory or symbolic link`);
++			}
++			lease = await this.acquireLease(id, void 0, dir);
++			const selected = await this.findLog(id);
++			if (selected === void 0) return false;
++			if (dirname(selected.currentPath) !== dir) throw new Error(`session "${id}": storage location changed during deletion`);
++			if (await this.readGenerationHeader(selected, id) === void 0) throw new SessionPersistenceCorruptionError(`session "${id}": refusing deletion of a malformed header`);
++			const generations = [];
++			for (const entry of await readdir(dir, { withFileTypes: true })) {
++				const version = parseGenerationLogFilename(entry.name, this.compression);
++				if (version === void 0) continue;
++				if (!entry.isFile() || version > selected.sourceVersion) throw new Error(`session "${id}": generation changed during deletion`);
++				generations.push({ path: join(dir, entry.name), version });
++			}
++			for (const generation of generations.sort((a, b) => a.version - b.version)) {
++				if (generation.path !== selected.sourcePath) await rm(generation.path);
++			}
++			if (process.platform !== "win32") await this.syncDirPosix(dir);
++			await rm(selected.sourcePath);
++			if (process.platform !== "win32") await this.syncDirPosix(dir);
++			return true;
++		} catch (error) {
++			failure = error;
++			throw error;
++		} finally {
++			this.coldLogMemo.delete(id);
++			this.migrationPreparations.get(id)?.controller.abort();
++			this.migrationPreparations.delete(id);
++			try {
++				await lease?.release();
++			} catch (error) {
++				if (failure !== void 0) throw new AggregateError([failure, error], `session "${id}": deletion and lock release failed`);
++				throw error;
++			} finally {
++				this.tracker.releaseClaim(id);
++			}
++		}
++	}
+ 	flush() {
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
+@@ -99,2 +99,4 @@
+     open(id: SessionId, access: SessionAccess, options?: SessionPersistenceOpenOptions): Promise<SessionHandle>;
++    /** Delete all generations under exclusive write ownership; retain the stable lock file. */
++    delete(id: SessionId): Promise<boolean>;
+     /**

@@ -204,7 +204,7 @@ describe('agent preset package transfer', () => {
         format: 'dsh-preset',
         version: 1,
         id: sourceId,
-        sourceDshVersion: '0.1.2-rc.1'
+        sourceDshVersion: '0.1.5-rc.2'
       })
       expect(exportedManifest.exportedAt).toEqual(expect.any(String))
       expect(exportedManifest.dshVersion).toBeUndefined()
@@ -454,28 +454,27 @@ describe('agent preset package transfer', () => {
     expect(patch).toContain('https://www.dshdesktop.com/preset/')
     expect(patch).toContain('"_blank", "noopener,noreferrer"')
     expect(patch).toContain('AgentPresetSection_module_css_default.sectionActions')
-    expect(patch).toContain('.rtSEdW_sectionHead{align-items:center;gap:16px;display:flex}')
+    expect(patch).toContain('.AQxZna_sectionHead{align-items:center;gap:16px;display:flex}')
     expect(patch).toContain('justify-content:flex-end')
     expect(patch).toContain('margin-left:auto')
-    expect(patch).toContain('.rtSEdW_hiddenInput{display:none}')
+    expect(patch).toContain('.AQxZna_hiddenInput{display:none}')
   })
 
-  it('keeps the rc.1 preset page class map aligned with the CSS emitted by rc.1', async () => {
+  it('keeps the rc.2 preset page class map aligned with the CSS emitted by rc.2', async () => {
     const patch = await readFile(
       patchPath('@deepseek-ai/dsh-client-ui-agent-preset'),
       'utf8'
     )
+    const installed = await readFile(path.join(projectRoot, 'node_modules/@deepseek-ai/dsh-client-ui-agent-preset/lib/client.js'), 'utf8')
 
-    // rc.1 renamed the upstream CSS-module hash to aThYWW.  The preceding
-    // version of this patch carried its old eWkxHa map forward, so the page
-    // rendered with classes that had no matching selectors at all.
+    // Preserve the current CSS-module hash in both class map and emitted selectors.
     expect(patch).not.toContain('eWkxHa_')
-    expect(patch).toContain('"section": "aThYWW_section"')
-    expect(patch).toContain('"card": "aThYWW_card"')
-    expect(patch).toContain('"dialog": "aThYWW_dialog"')
-    expect(patch).toContain('.rtSEdW_importSecurity{')
-    expect(patch).toContain('.rtSEdW_importSummary{')
-    expect(patch).toContain('.rtSEdW_importWarnings{')
+    expect(installed).toContain('"section": "AQxZna_section"')
+    expect(installed).toContain('"card": "AQxZna_card"')
+    expect(installed).toContain('"dialog": "AQxZna_dialog"')
+    expect(patch).toContain('.AQxZna_importSecurity{')
+    expect(patch).toContain('.AQxZna_importSummary{')
+    expect(patch).toContain('.AQxZna_importWarnings{')
   })
 
   it('keeps a large mode roster searchable, grouped, compact, and connected to Awesome Presets', async () => {

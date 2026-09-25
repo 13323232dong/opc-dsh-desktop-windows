@@ -1,0 +1,202 @@
+diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
+--- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
++++ b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
+@@ -14655,10 +14655,11 @@
+ 			const tag = document.createElement("style");
+ 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+ 			tag.dataset.pluginCss = tagId$4;
+-			tag.textContent = css$4;
++			tag.textContent = css$4 + ".JVFcLa_heroWorkspaceRow [data-slot=conversation\\.hero\\.agentPreset]>span{width:max-content!important;min-width:0!important;max-width:240px;flex:none}.JVFcLa_heroModeCluster{width:max-content;max-width:100%;flex:none;align-items:center;gap:2px;display:flex}.JVFcLa_heroModeCluster button{box-sizing:border-box;height:28px;padding:0 8px!important;border:0!important;border-radius:8px!important;background:transparent!important;color:var(--dsw-alias-label-primary)!important;font:inherit;font-size:13px;font-weight:500;line-height:20px;gap:6px;cursor:pointer;transition:background-color .12s ease,color .12s ease,transform .12s ease}.JVFcLa_heroModeCluster button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)!important;color:var(--dsw-alias-label-primary)!important}.JVFcLa_heroModeCluster button[data-selected=true]{background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 10%,transparent)!important;color:var(--dsw-alias-state-business-primary)!important}.JVFcLa_heroModeCluster button:active:not(:disabled){transform:scale(.98)}.JVFcLa_heroModeCluster button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.JVFcLa_heroWorkspaceRow{padding-right:20px;box-sizing:border-box}";
+ 			document.head.appendChild(tag);
+ 		}
+ 		var ConversationRoot_module_css_default = {
++			"heroModeCluster": "JVFcLa_heroModeCluster",
+ 			"body": "JVFcLa_body",
+ 			"composerHero": "JVFcLa_composerHero",
+ 			"composerSeat": "JVFcLa_composerSeat",
+@@ -14898,12 +14899,17 @@
+ 							setPickerOpen(false);
+ 						}
+ 					}),
+-					renderSlot("conversation.hero.agentPreset", {})
++					renderSlot("conversation.hero.agentPreset", {}),
++					(0, react_jsx_runtime.jsx)("div", {
++						className: ConversationRoot_module_css_default.heroModeCluster,
++						children: zone !== void 0 && renderSlot("conversation.hero.modeActions", zone)
++					})
+ 				]
+ 			});
+ 			const inert = sessionId === void 0 || hero && chipTitle === void 0;
+ 			const inputBar = renderSlot("conversation.composer.bar", {
+ 				variant: hero ? "hero" : "composer",
++				extensionZone: zone,
+ 				...inert ? {
+ 					disabled: true,
+ 					placeholder: t("placeholder.workspace"),
+@@ -15760,10 +15766,11 @@
+ 			const tag = document.createElement("style");
+ 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-conversation";
+ 			tag.dataset.pluginCss = tagId$1;
+-			tag.textContent = css$1;
++			tag.textContent = css$1 + ".Dy5aFq_promptRow{display:contents}.Dy5aFq_promptRow:has(.Dy5aFq_accessory [data-slot=conversation\\.input\\.accessory]:not(:empty)){align-items:flex-start;gap:12px;min-width:0;display:flex}.Dy5aFq_accessory{align-items:flex-start;flex:0 0 auto;min-width:0;padding-left:16px;display:none}.Dy5aFq_accessory:has([data-slot=conversation\\.input\\.accessory]:not(:empty)){display:flex}.Dy5aFq_promptRow:has(.Dy5aFq_accessory [data-slot=conversation\\.input\\.accessory]:not(:empty))>.Dy5aFq_scroll{flex:1 1 auto;min-width:0}.Dy5aFq_promptRow:has(.Dy5aFq_accessory [data-slot=conversation\\.input\\.accessory]:not(:empty))>.Dy5aFq_scroll .Dy5aFq_input{padding-left:0}.Dy5aFq_promptRow:has(.Dy5aFq_accessory [data-slot=conversation\\.input\\.accessory]:not(:empty))>.Dy5aFq_scroll .Dy5aFq_placeholder{left:0}";
+ 			document.head.appendChild(tag);
+ 		}
+ 		var InputBar_module_css_default = {
++			"promptRow": "Dy5aFq_promptRow",
+ 			"accessory": "Dy5aFq_accessory",
+ 			"add": "Dy5aFq_add",
+ 			"card": "Dy5aFq_card",
+@@ -15803,7 +15810,7 @@
+ 		* The no-session state renders the SAME div inert as the Workspace-picker
+ 		* trigger instead of a parallel tree.
+ 		*/
+-		const InputBar = (0, react.memo)(function InputBar({ useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments, retryFileUpload, toggleCommandMenu, stop, command, t, renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useProjection, sessionId, variant, disabled: inert = false, blocked, workspacePickerOpen = false, onRequestWorkspace, placeholder, accessory }) {
++		const InputBar = (0, react.memo)(function InputBar({ useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments, retryFileUpload, toggleCommandMenu, stop, command, t, renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useProjection, sessionId, variant, disabled: inert = false, blocked, workspacePickerOpen = false, onRequestWorkspace, placeholder, accessory, extensionZone }) {
+ 			const input = useInput((s) => s);
+ 			const notice = useNotices((s) => s);
+ 			const busyEnter = useBusyEnter((s) => s);
+@@ -16075,10 +16082,6 @@
+ 								className: InputBar_module_css_default.overlayAnchor,
+ 								children: renderSlot("conversation.input.overlay", {})
+ 							}),
+-							accessory !== void 0 && (0, react_jsx_runtime.jsx)("div", {
+-								className: InputBar_module_css_default.accessory,
+-								children: accessory
+-							}),
+ 							renderSlot("conversation.input.attachments", {
+ 								attachments,
+ 								canAcceptDrop,
+@@ -16095,13 +16098,19 @@
+ 									size: imageSizeText(imageLimits.maxImageBytes)
+ 								}
+ 							}),
+-							(0, react_jsx_runtime.jsx)("div", {
+-								ref: scrollRef,
+-								className: InputBar_module_css_default.scroll,
+-								"data-input-scroll": true,
+-								children: (0, react_jsx_runtime.jsxs)("div", {
+-									className: InputBar_module_css_default.grow,
+-									children: [
++							(0, react_jsx_runtime.jsxs)("div", {
++								className: InputBar_module_css_default.promptRow,
++								"data-input-prompt-row": true,
++								children: [(accessory !== void 0 || extensionZone !== void 0) && (0, react_jsx_runtime.jsx)("div", {
++									className: InputBar_module_css_default.accessory,
++									children: accessory ?? renderSlot("conversation.input.accessory", extensionZone)
++								}), (0, react_jsx_runtime.jsx)("div", {
++									ref: scrollRef,
++									className: InputBar_module_css_default.scroll,
++									"data-input-scroll": true,
++									children: (0, react_jsx_runtime.jsxs)("div", {
++										className: InputBar_module_css_default.grow,
++										children: [
+ 										(0, react_jsx_runtime.jsx)(ComposerContentEditable, {
+ 											editor: workspaceTrigger ? null : editor,
+ 											editable,
+@@ -16123,8 +16132,9 @@
+ 											children: placeholderText
+ 										}),
+ 										(0, react_jsx_runtime.jsx)(DecoratorPortals, { editor: workspaceTrigger ? null : editor })
+-									]
+-								})
++										]
++									})
++								})]
+ 							}),
+ 							(0, react_jsx_runtime.jsxs)("div", {
+ 								className: InputBar_module_css_default.row,
+@@ -16256,7 +16266,7 @@
+ 							})
+ 						]
+ 					}),
+-					variant === "composer" && input !== void 0 && sessionId !== void 0 ? renderSlot("conversation.composer.dock", {}) : null
++					extensionZone !== void 0 ? renderSlot("conversation.composer.dock", extensionZone) : null
+ 				]
+ 			});
+ 		});
+@@ -16641,6 +16651,10 @@
+ 					"conversation.hero.agentPreset": {
+ 						kind: "single",
+ 						scope: "root"
++					},
++					"conversation.hero.modeActions": {
++						kind: "list",
++						scope: "session"
+ 					}
+ 				},
+ 				inject: (sessionId) => ({
+@@ -16722,6 +16736,10 @@
+ 						scope: "session-maybe"
+ 					},
+ 					"conversation.input.overlay": {
++						kind: "list",
++						scope: "session"
++					},
++					"conversation.input.accessory": {
+ 						kind: "list",
+ 						scope: "session"
+ 					},
+diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
+--- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
++++ b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
+@@ -183,6 +183,12 @@
+             scope: 'root';
+             owner: HeroAgentPresetOwnerProps;
+         };
++        /** Product-mode controls beside the blank-session agent preset. */
++        'conversation.hero.modeActions': {
++            kind: 'list';
++            scope: 'session';
++            owner: InputZone;
++        };
+         /** Full-width entries above the composer card. */
+         'conversation.input.dock': {
+             kind: 'list';
+@@ -194,10 +200,17 @@
+             kind: 'list';
+             scope: 'session';
+         };
++        /** Compact template and reference material rendered before the editable prompt. */
++        'conversation.input.accessory': {
++            kind: 'list';
++            scope: 'session';
++            owner: InputZone;
++        };
+         /** Ambient entries below the composer card. */
+         'conversation.composer.dock': {
+             kind: 'list';
+             scope: 'session';
++            owner: InputZone;
+         };
+         /** Compact controls at the left of the composer tool row. */
+         'conversation.input.left': {
+@@ -341,8 +354,10 @@
+     /** Open the Workspace picker from the inert composer surface. */
+     onRequestWorkspace?: () => void;
+     placeholder?: string;
+-    /** Optional content rendered above the composer surface. */
++    /** Optional compact content rendered before the editable prompt. */
+     accessory?: ReactNode;
++    /** Point-in-time Session and input state supplied to Composer extension slots. */
++    extensionZone?: InputZone;
+ }
+ /** Package-private operations injected into the resident composer bar. */
+ export interface ComposerBarInjected {
+@@ -374,7 +389,7 @@
+     locked: boolean;
+ }
+ /** Full props of the resident composer bar. */
+-export type ComposerBarProps = PropsRuntime<'conversation.composer.bar'> & PropsRenderSlots<'conversation.input.attachments' | 'conversation.input.overlay' | 'conversation.input.left' | 'conversation.input.plan' | 'conversation.input.right' | 'conversation.input.model' | 'conversation.composer.dock'> & InjectFace<ComposerBarInjected> & PropsLocale<'conversation'>;
++export type ComposerBarProps = PropsRuntime<'conversation.composer.bar'> & PropsRenderSlots<'conversation.input.attachments' | 'conversation.input.overlay' | 'conversation.input.accessory' | 'conversation.input.left' | 'conversation.input.plan' | 'conversation.input.right' | 'conversation.input.model' | 'conversation.composer.dock'> & InjectFace<ComposerBarInjected> & PropsLocale<'conversation'>;
+ /** Owner values used to elect a composer takeover. */
+ export interface ComposerChainProps {
+     /** Current Session identity used by temporary business-owned entries. */
+@@ -392,7 +407,7 @@
+     className?: string | undefined;
+ }
+ /** Full props of the resident optional-Session Conversation shell. */
+-export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
++export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset' | 'conversation.hero.modeActions'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
+ /** Shared target-neutral Conversation store handle. */
+ export type ConversationStore = ReturnType<typeof createConversationStore>;
+ /** Full props of the strict Session body. */

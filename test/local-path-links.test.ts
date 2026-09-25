@@ -13,6 +13,6 @@ describe('assistant local path links', () => {
     expect(patch).toContain('paths ?? []')
     expect(patch).toContain('#L\\d+')
     expect(patch).toContain('[A-Za-z]:[\\\\/]')
-    expect(patch).toContain('owner.openFile')
+    expect(patch).toContain('producedFileMentions(paths, openFile, label)')
   })
 })

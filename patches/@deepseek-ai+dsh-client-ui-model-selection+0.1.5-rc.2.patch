@@ -1,7 +1,7 @@
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js
 --- a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js
-@@ -397,15 +397,71 @@
+@@ -405,10 +405,66 @@
  		* store/verbs) + the standard locale seat.
  		* @returns the trigger and, while open, the two-level menu.
  		*/
@@ -64,16 +64,11 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  			const [open, setOpen] = (0, react.useState)(false);
  			const [pane, setPane] = (0, react.useState)("root");
 +			const [modelQuery, setModelQuery] = (0, react.useState)("");
++			const searchRef = (0, react.useRef)(null);
  			const lastActionRef = (0, react.useRef)("load");
  			const [toast, setToast] = (0, react.useState)(null);
  			const toastSeq = (0, react.useRef)(0);
- 			const rootRef = (0, react.useRef)(null);
- 			const triggerRef = (0, react.useRef)(null);
-+			const searchRef = (0, react.useRef)(null);
- 			const itemRefs = (0, react.useRef)([]);
- 			const id = (0, react.useId)();
- 			const choices = (0, react.useMemo)(() => state.groups.flatMap((group) => group.models.map((model) => ({
-@@ -417,6 +473,7 @@
+@@ -427,6 +483,7 @@
  					...model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }
  				}
  			}))), [state.groups]);
@@ -81,10 +76,10 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  			const currentChoice = choices[state.current === null ? -1 : choices.findIndex((c) => c.selection.provider === state.current?.provider && c.selection.model === state.current.model)];
  			const reasoning = currentChoice?.model.reasoning;
  			const effectiveEffort = state.current?.reasoningEffort ?? reasoning?.defaultEffort;
-@@ -445,15 +502,20 @@
- 					document.removeEventListener("mousedown", closeOutside);
- 				};
- 			}, [open]);
+@@ -490,15 +547,20 @@
+ 				pane,
+ 				state
+ 			]);
 +			(0, react.useEffect)(() => {
 +				if (open && pane === "model") searchRef.current?.focus();
 +			}, [open, pane]);
@@ -102,7 +97,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  				if (restoreFocus) queueMicrotask(() => {
  					triggerRef.current?.focus();
  				});
-@@ -462,12 +524,16 @@
+@@ -507,12 +569,17 @@
  				const items = itemRefs.current.filter((item) => item !== null);
  				if (items.length === 0) return;
  				const active = items.findIndex((item) => item === document.activeElement);
@@ -116,12 +111,13 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
 -					if (pane !== "root") setPane("root");
 +					if (pane !== "root") {
 +						setPane("root");
++				setModelQuery("");
 +						setModelQuery("");
 +					}
  					else close(true);
  					return;
  				}
-@@ -577,6 +643,7 @@
+@@ -628,6 +695,7 @@
  								role: "menuitem",
  								className: ModelSelect_module_css_default.cell,
  								onClick: () => {
@@ -129,7 +125,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  									setPane("model");
  								},
  								children: [
-@@ -611,6 +678,23 @@
+@@ -662,6 +730,23 @@
  								]
  							})] }),
  							pane === "model" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
@@ -153,7 +149,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  								state.status === "loading" && (0, react_jsx_runtime.jsx)("div", {
  									className: ModelSelect_module_css_default.status,
  									children: t("status.loading")
-@@ -638,7 +722,7 @@
+@@ -689,7 +774,7 @@
  								}, failure.id)),
  								(0, react_jsx_runtime.jsx)("div", {
  									className: clsx(ModelSelect_module_css_default.groups, "scrollable"),
@@ -162,7 +158,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  										const headingId = `${id}-${group.id}`;
  										return (0, react_jsx_runtime.jsxs)("section", {
  											role: "group",
-@@ -682,6 +766,10 @@
+@@ -733,6 +818,10 @@
  								state.status === "ready" && choices.length === 0 && (0, react_jsx_runtime.jsx)("div", {
  									className: ModelSelect_module_css_default.empty,
  									children: t("empty.models")
@@ -173,7 +169,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  								})
  							] }),
  							pane === "effort" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [state.error !== null && lastActionRef.current === "load" && (0, react_jsx_runtime.jsxs)("div", {
-@@ -752,12 +840,15 @@
+@@ -805,12 +894,15 @@
  			"menu.aria": "模型与推理等级",
  			"menu.model": "模型",
  			"menu.effort": "推理等级",
@@ -189,7 +185,7 @@ diff --git a/node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.
  			"blocked.composer": "当前模型不可用，请先选择模型",
  			"empty.efforts": "当前模型未提供推理等级。"
  		};
-@@ -773,12 +864,15 @@
+@@ -828,12 +920,15 @@
  			"menu.aria": "Model and reasoning effort",
  			"menu.model": "Model",
  			"menu.effort": "Effort",

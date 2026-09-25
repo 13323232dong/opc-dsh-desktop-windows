@@ -14,7 +14,7 @@ const cleanups = []
 beforeAll(async () => {
   // Test the distributable archive, with ordinary dependency resolution from node_modules.
   packageRoot = await mkdtemp(path.resolve('node_modules/.ppt-validation-'))
-  execFileSync('tar', ['-xzf', 'packages/ppt-bundles/dsh-ppt-0.1.1-rc.2-desktop-20260906.tgz', '-C', packageRoot, '--strip-components=1'])
+  execFileSync('tar', ['-xzf', 'packages/ppt-bundles/dsh-ppt-0.1.1-rc.3-desktop-20260925.tgz', '-C', packageRoot, '--strip-components=1'])
   ;({ apply } = await import(pathToFileURL(path.join(packageRoot, 'lib/index.js'))))
   cli = path.join(packageRoot, 'lib/bin.js')
 })

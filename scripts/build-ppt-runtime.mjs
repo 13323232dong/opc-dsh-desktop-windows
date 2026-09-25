@@ -67,7 +67,7 @@ try {
         }
         const { stdout } = await run('npm', ['pack', stage, '--ignore-scripts', '--json', '--pack-destination', scratch]);
         const packed = JSON.parse(stdout)[0];
-        const file = kind === 'core' ? 'dsh-ppt-0.1.1-rc.2-desktop-20260906.tgz' : 'dsh-ppt-composer-0.1.1-rc.2-desktop-20260906.tgz';
+        const file = kind === 'core' ? 'dsh-ppt-0.1.1-rc.3-desktop-20260925.tgz' : 'dsh-ppt-composer-0.1.1-rc.3-desktop-20260925.tgz';
         const bytes = await fs.readFile(scratch + '/' + packed.filename);
         await fs.writeFile(dest + '/' + file, bytes);
         artifacts[kind] = { file, sha256: crypto.createHash('sha256').update(bytes).digest('hex'), integrity: 'sha512-' + crypto.createHash('sha512').update(bytes).digest('base64') };

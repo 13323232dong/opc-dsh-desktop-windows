@@ -1,0 +1,740 @@
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.js
+@@ -166,4 +166,6 @@
+     resumes = new Map();
+     creations = new Map();
++    deleting = new Set();
++    handles = new Map();
+     selections = new WeakMap();
+     imageAdmissionChains = new WeakMap();
+@@ -171,4 +173,5 @@
+     constructor(ctx) {
+         this.ctx = ctx;
++        ctx.on('session/disposed', (session) => { this.handles.delete(session.id); });
+         ctx.typert.lookups.configure('agent', async (sessionId) => {
+             const found = await this.resolveAgent(sessionId);
+@@ -206,5 +209,32 @@
+         return this.resolve(observation.header.id, observation);
+     }
++    /** Retain the teardown capability for an Agent created outside the normal create path. */
++    isDeleting(sessionId) { return this.deleting.has(sessionId); }
++    assertAvailable(sessionId) {
++        if (this.isDeleting(sessionId)) throw new RemoteError('session/agent-busy', `session "${sessionId}" is being deleted`, { reason: 'session deletion in progress' });
++    }
++    beginDelete(sessionId) {
++        this.assertAvailable(sessionId);
++        if (this.resumes.has(sessionId) || this.creations.has(sessionId)) throw new RemoteError('session/agent-busy', `session "${sessionId}" is activating`, { reason: 'session activation in progress' });
++        this.deleting.add(sessionId);
++        return () => this.deleting.delete(sessionId);
++    }
++    retainHandle(handle) {
++        this.handles.set(handle.agent.id, handle);
++        return handle.agent;
++    }
++    /** Dispose an ordinary Agent owned by this controller, waiting for in-flight activation first. */
++    async disposeOwned(sessionId) {
++        const live = this.ctx.agents.get(sessionId);
++        if (live?.status === 'running') throw new RemoteError('session/agent-busy', `session "${sessionId}" is running`, { reason: 'stop the running session before deleting it' });
++        const handle = this.handles.get(sessionId);
++        if (handle === undefined) return false;
++        if (live !== undefined && handle.agent !== live) return false;
++        await handle.dispose();
++        this.handles.delete(sessionId);
++        return true;
++    }
+     async resolve(sessionId, observation) {
++        if (this.isDeleting(sessionId)) return { error: new RemoteError('session/agent-busy', `session "${sessionId}" is being deleted`, { reason: 'session deletion in progress' }) };
+         const live = this.liveAgent(sessionId);
+         if (live !== undefined)
+@@ -250,4 +280,5 @@
+      */
+     async ensureSession(sessionId, cwd, checkPersistedIdentity, presetId) {
++        this.assertAvailable(sessionId);
+         let creation = this.creations.get(sessionId);
+         if (creation === undefined) {
+@@ -439,9 +470,9 @@
+             throw new ApiSessionSubagentOwnership(sessionId);
+         }
+-        return (await this.ctx.agents.resume({
++        return this.retainHandle(await this.ctx.agents.resume({
+             resumeSessionId: sessionId,
+             agentOptions: this.agentOptions(),
+             setup: composition.setup,
+-        })).agent;
++        }));
+     }
+     async createOrAdopt(sessionId, cwd, checkPersistedIdentity, presetId) {
+@@ -467,9 +498,9 @@
+                     this.assertPresetUnchanged(sessionId, presetId, storedPreset);
+                     const composition = await this.composeAgent(storedPreset);
+-                    return (await this.ctx.agents.resume({
++                    return this.retainHandle(await this.ctx.agents.resume({
+                         resumeSessionId: sessionId,
+                         agentOptions: this.agentOptions(),
+                         setup: composition.setup,
+-                    })).agent;
++                    }));
+                 }
+                 catch (e_3) {
+@@ -494,5 +525,5 @@
+         }
+         const composition = await this.composeAgent(presetId);
+-        return (await this.ctx.agents.create({
++        return this.retainHandle(await this.ctx.agents.create({
+             sessionId,
+             agentOptions: this.agentOptions(),
+@@ -502,5 +533,5 @@
+             },
+             setup: composition.setup,
+-        })).agent;
++        }));
+     }
+     agentOptions() {
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/client.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/client.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/client.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/client.js
+@@ -2596,4 +2596,13 @@
+ 				return result;
+ 			}
++			/** Contract session.delete; remove the row immediately after Host commit. */
++			async delete(sessionId) {
++				const result = await this.remote.session.delete({ sessionId });
++				if (result.ok) this.recordMutation({
++					kind: "remove",
++					sessionId
++				});
++				return result;
++			}
+ 			/**
+ 			* Contract session.fork; on success merge the child into summaries
+@@ -2990,4 +2999,15 @@
+ 			}
+ 		};
++		/** Structured permanent Session-deletion failure. */
++		var SessionDeleteError = class extends Error {
++			rpcError;
++			sessionId;
++			name = "SessionDeleteError";
++			constructor(rpcError, sessionId) {
++				super(`session delete failed: ${rpcError.code}: ${rpcError.message}`);
++				this.rpcError = rpcError;
++				this.sessionId = sessionId;
++			}
++		};
+ 		/**
+ 		* Display title projection: durable title, project directory basename, then
+@@ -3214,4 +3234,14 @@
+ 				this.projectList();
+ 				return result.value.sessionId;
++			}
++			/** Permanently delete one ordinary Session and clear its selected stage. */
++			async delete(sessionId) {
++				const deletingCurrent = this.list.getSnapshot().current === sessionId;
++				const result = await this.manager.delete(sessionId);
++				if (!result.ok) throw new SessionDeleteError(result.error, sessionId);
++				const current = this.list.getSnapshot().current;
++				if (deletingCurrent && (current === void 0 || current === sessionId)) this.clear();
++				if (this.watched === sessionId) this.watched = void 0;
++				this.projectList();
+ 			}
+ 			/**
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.js
+@@ -180,4 +180,28 @@
+         }
+     }
++    /** Permanently delete one ordinary Session while retaining its Workspace files. */
++    async delete(request) {
++        const release = this.agents.beginDelete(request.sessionId);
++        try {
++            const persistence = this.ctx.get('sessionPersistence');
++            if (persistence === undefined || typeof persistence.delete !== 'function') throw new RemoteError('gateway/internal', 'session deletion is unavailable: persistence does not support deletion', {});
++            const live = this.ctx.agents.get(request.sessionId);
++            const attached = this.ctx.sessions.get(request.sessionId);
++            const header = attached?.header ?? (await persistence.stat(request.sessionId))?.header;
++            if (header !== undefined && hasApiSessionSubagentOwner(this.ctx, { header }, live)) throw apiSessionSubagentOwnershipError(request.sessionId);
++            if (live?.status === 'running') throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is running`, { reason: 'stop the running session before deleting it' });
++            if ((live !== undefined || attached !== undefined) && !await this.agents.disposeOwned(request.sessionId)) throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is owned by another capability`, { reason: 'the live Agent is owned by another capability' });
++            if (this.ctx.agents.get(request.sessionId) !== undefined || this.ctx.sessions.get(request.sessionId) !== undefined) throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is still active`, { reason: 'session teardown is incomplete' });
++            await this.ctx.workspaceRegistry.deleteSession(request.sessionId, () => persistence.delete(request.sessionId));
++            this.ctx.emit('api-session/removed', request.sessionId);
++            return { deleted: true };
++        } catch (error) {
++            if (remoteErrorOf(error) !== undefined) throw error;
++            if (error?.name === 'SessionAlreadyOwnedError') throw new RemoteError('session/agent-busy', `session "${request.sessionId}" has a write owner`, { reason: 'session write ownership is active' });
++            throw new RemoteError('gateway/internal', `failed to delete session "${request.sessionId}": ${String(error)}`, {});
++        } finally {
++            release();
++        }
++    }
+     /**
+      * Create a new ordinary Session from one completed-turn prefix.
+@@ -237,5 +261,5 @@
+             try {
+                 const { provider, model } = this.ctx.agentDefaultModel.currentSelection();
+-                await this.ctx.agents.create({
++                const handle = await this.ctx.agents.create({
+                     sessionId: childId,
+                     seed: source.events.slice(0, cut),
+@@ -252,4 +276,5 @@
+                     setup: composition.setup,
+                 });
++                this.agents.retainHandle(handle);
+             }
+             catch (error) {
+@@ -319,5 +344,6 @@
+                         throw new RemoteError('session/not-found', `session "${agent.id}" was disposed during prompt admission`, { sessionId: agent.id });
+                     }
+-                    const binding = __addDisposableResource(env_2, this.ctx.fileUploads.bindPrompt(agent, admission.receiptIds, request.requestId), false);
++                    this.agents.assertAvailable(request.sessionId);
++const binding = __addDisposableResource(env_2, this.ctx.fileUploads.bindPrompt(agent, admission.receiptIds, request.requestId), false);
+                     if (request.mode === 'steer')
+                         agent.steer(message);
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js
+@@ -178,4 +178,6 @@
+ 	resumes = /* @__PURE__ */ new Map();
+ 	creations = /* @__PURE__ */ new Map();
++	deleting = new Set();
++	handles = /* @__PURE__ */ new Map();
+ 	selections = /* @__PURE__ */ new WeakMap();
+ 	imageAdmissionChains = /* @__PURE__ */ new WeakMap();
+@@ -183,4 +185,7 @@
+ 	constructor(ctx) {
+ 		this.ctx = ctx;
++		ctx.on("session/disposed", (session) => {
++			this.handles.delete(session.id);
++		});
+ 		ctx.typert.lookups.configure("agent", async (sessionId) => {
+ 			const found = await this.resolveAgent(sessionId);
+@@ -215,5 +220,32 @@
+ 		return this.resolve(observation.header.id, observation);
+ 	}
++	/** Retain the teardown capability for an Agent created outside the normal create path. */
++	isDeleting(sessionId) { return this.deleting.has(sessionId); }
++	assertAvailable(sessionId) {
++	    if (this.isDeleting(sessionId)) throw new RemoteError('session/agent-busy', `session "${sessionId}" is being deleted`, { reason: 'session deletion in progress' });
++	}
++	beginDelete(sessionId) {
++	    this.assertAvailable(sessionId);
++	    if (this.resumes.has(sessionId) || this.creations.has(sessionId)) throw new RemoteError('session/agent-busy', `session "${sessionId}" is activating`, { reason: 'session activation in progress' });
++	    this.deleting.add(sessionId);
++	    return () => this.deleting.delete(sessionId);
++	}
++	retainHandle(handle) {
++		this.handles.set(handle.agent.id, handle);
++		return handle.agent;
++	}
++	/** Dispose an ordinary Agent owned by this controller, waiting for in-flight activation first. */
++	async disposeOwned(sessionId) {
++	    const live = this.ctx.agents.get(sessionId);
++	    if (live?.status === 'running') throw new RemoteError('session/agent-busy', `session "${sessionId}" is running`, { reason: 'stop the running session before deleting it' });
++	    const handle = this.handles.get(sessionId);
++	    if (handle === undefined) return false;
++	    if (live !== undefined && handle.agent !== live) return false;
++	    await handle.dispose();
++	    this.handles.delete(sessionId);
++	    return true;
++	}
+ 	async resolve(sessionId, observation) {
++	    if (this.isDeleting(sessionId)) return { error: new RemoteError('session/agent-busy', `session "${sessionId}" is being deleted`, { reason: 'session deletion in progress' }) };
+ 		const live = this.liveAgent(sessionId);
+ 		if (live !== void 0) return live;
+@@ -248,4 +280,5 @@
+ 	*/
+ 	async ensureSession(sessionId, cwd, checkPersistedIdentity, presetId) {
++	    this.assertAvailable(sessionId);
+ 		let creation = this.creations.get(sessionId);
+ 		if (creation === void 0) {
+@@ -400,9 +433,9 @@
+ 		const live = this.ctx.agents.get(sessionId);
+ 		if (published !== void 0 && hasApiSessionSubagentOwner(this.ctx, published, live)) throw new ApiSessionSubagentOwnership(sessionId);
+-		return (await this.ctx.agents.resume({
++		return this.retainHandle(await this.ctx.agents.resume({
+ 			resumeSessionId: sessionId,
+ 			agentOptions: this.agentOptions(),
+ 			setup: composition.setup
+-		})).agent;
++		}));
+ 	}
+ 	async createOrAdopt(sessionId, cwd, checkPersistedIdentity, presetId) {
+@@ -424,9 +457,9 @@
+ 				this.assertPresetUnchanged(sessionId, presetId, storedPreset);
+ 				const composition = await this.composeAgent(storedPreset);
+-				return (await this.ctx.agents.resume({
++				return this.retainHandle(await this.ctx.agents.resume({
+ 					resumeSessionId: sessionId,
+ 					agentOptions: this.agentOptions(),
+ 					setup: composition.setup
+-				})).agent;
++				}));
+ 			} catch (e_3) {
+ 				env_3.error = e_3;
+@@ -444,5 +477,5 @@
+ 		}
+ 		const composition = await this.composeAgent(presetId);
+-		return (await this.ctx.agents.create({
++		return this.retainHandle(await this.ctx.agents.create({
+ 			sessionId,
+ 			agentOptions: this.agentOptions(),
+@@ -452,5 +485,5 @@
+ 			},
+ 			setup: composition.setup
+-		})).agent;
++		}));
+ 	}
+ 	agentOptions() {
+@@ -653,4 +686,28 @@
+ 		}
+ 	}
++	/** Permanently delete one ordinary Session while retaining its Workspace files. */
++	async delete(request) {
++	    const release = this.agents.beginDelete(request.sessionId);
++	    try {
++	        const persistence = this.ctx.get('sessionPersistence');
++	        if (persistence === undefined || typeof persistence.delete !== 'function') throw new RemoteError('gateway/internal', 'session deletion is unavailable: persistence does not support deletion', {});
++	        const live = this.ctx.agents.get(request.sessionId);
++	        const attached = this.ctx.sessions.get(request.sessionId);
++	        const header = attached?.header ?? (await persistence.stat(request.sessionId))?.header;
++	        if (header !== undefined && hasApiSessionSubagentOwner(this.ctx, { header }, live)) throw apiSessionSubagentOwnershipError(request.sessionId);
++	        if (live?.status === 'running') throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is running`, { reason: 'stop the running session before deleting it' });
++	        if ((live !== undefined || attached !== undefined) && !await this.agents.disposeOwned(request.sessionId)) throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is owned by another capability`, { reason: 'the live Agent is owned by another capability' });
++	        if (this.ctx.agents.get(request.sessionId) !== undefined || this.ctx.sessions.get(request.sessionId) !== undefined) throw new RemoteError('session/agent-busy', `session "${request.sessionId}" is still active`, { reason: 'session teardown is incomplete' });
++	        await this.ctx.workspaceRegistry.deleteSession(request.sessionId, () => persistence.delete(request.sessionId));
++	        this.ctx.emit('api-session/removed', request.sessionId);
++	        return { deleted: true };
++	    } catch (error) {
++	        if (remoteErrorOf(error) !== undefined) throw error;
++	        if (error?.name === 'SessionAlreadyOwnedError') throw new RemoteError('session/agent-busy', `session "${request.sessionId}" has a write owner`, { reason: 'session write ownership is active' });
++	        throw new RemoteError('gateway/internal', `failed to delete session "${request.sessionId}": ${String(error)}`, {});
++	    } finally {
++	        release();
++	    }
++	}
+ 	/**
+ 	* Create a new ordinary Session from one completed-turn prefix.
+@@ -694,5 +751,5 @@
+ 			try {
+ 				const { provider, model } = this.ctx.agentDefaultModel.currentSelection();
+-				await this.ctx.agents.create({
++				const handle = await this.ctx.agents.create({
+ 					sessionId: childId,
+ 					seed: source.events.slice(0, cut),
+@@ -710,4 +767,5 @@
+ 					setup: composition.setup
+ 				});
++				this.agents.retainHandle(handle);
+ 			} catch (error) {
+ 				throw new RemoteError("gateway/internal", `failed to fork session "${request.sessionId}": ${String(error)}`, {});
+@@ -770,5 +828,6 @@
+ 					});
+ 					if (this.ctx.agents.get(agent.id) !== agent) throw new RemoteError("session/not-found", `session "${agent.id}" was disposed during prompt admission`, { sessionId: agent.id });
+-					const binding = __addDisposableResource$3(env_2, this.ctx.fileUploads.bindPrompt(agent, admission.receiptIds, request.requestId), false);
++					this.agents.assertAvailable(request.sessionId);
++const binding = __addDisposableResource$3(env_2, this.ctx.fileUploads.bindPrompt(agent, admission.receiptIds, request.requestId), false);
+ 					if (request.mode === "steer") agent.steer(message);
+ 					else agent.followup(message);
+@@ -2486,4 +2545,5 @@
+ 	let _openWorkspacePath_decorators;
+ 	let _rename_decorators;
++	let _delete_decorators;
+ 	let _fork_decorators;
+ 	let _prompt_decorators;
+@@ -2505,4 +2565,5 @@
+ 			_openWorkspacePath_decorators = [Remote("openWorkspacePath")];
+ 			_rename_decorators = [Remote("rename")];
++			_delete_decorators = [Remote("delete")];
+ 			_fork_decorators = [Remote("fork")];
+ 			_prompt_decorators = [Remote("prompt")];
+@@ -2598,4 +2659,15 @@
+ 					has: (obj) => "rename" in obj,
+ 					get: (obj) => obj.rename
++				},
++				metadata: _metadata
++			}, null, _instanceExtraInitializers);
++			__esDecorate(this, null, _delete_decorators, {
++				kind: "method",
++				name: "delete",
++				static: false,
++				private: false,
++				access: {
++					has: (obj) => "delete" in obj,
++					get: (obj) => obj.delete
+ 				},
+ 				metadata: _metadata
+@@ -2748,8 +2820,9 @@
+ 			ctx.plugin(SessionSkillCatalog);
+ 			ctx.on("session/created", (session) => {
+-				ctx.emit("api-session/added", this.listState.summaryFor(session));
++				const { projections: _projections, ...remoteSummary } = this.listState.summaryFor(session);
++                ctx.emit("api-session/added", remoteSummary);
+ 			});
+ 			ctx.on("session/disposed", (session) => {
+-				ctx.emit("api-session/removed", session.id);
++				if (!this.agents.isDeleting(session.id)) ctx.emit("api-session/removed", session.id);
+ 			});
+ 			ctx.on("agent/status", ({ agent, status }) => {
+@@ -2904,4 +2977,8 @@
+ 			return this.commands.rename(request);
+ 		}
++		/** Permanently delete one ordinary Session while retaining Workspace files. */
++		delete(request) {
++			return this.commands.delete(request);
++		}
+ 		/**
+ 		* Fork one cold-readable completed-turn prefix into a new Session.
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.js
+@@ -116,4 +116,5 @@
+     let _openWorkspacePath_decorators;
+     let _rename_decorators;
++    let _delete_decorators;
+     let _fork_decorators;
+     let _prompt_decorators;
+@@ -135,4 +136,5 @@
+             _openWorkspacePath_decorators = [Remote('openWorkspacePath')];
+             _rename_decorators = [Remote('rename')];
++            _delete_decorators = [Remote('delete')];
+             _fork_decorators = [Remote('fork')];
+             _prompt_decorators = [Remote('prompt')];
+@@ -151,4 +153,5 @@
+             __esDecorate(this, null, _openWorkspacePath_decorators, { kind: "method", name: "openWorkspacePath", static: false, private: false, access: { has: obj => "openWorkspacePath" in obj, get: obj => obj.openWorkspacePath }, metadata: _metadata }, null, _instanceExtraInitializers);
+             __esDecorate(this, null, _rename_decorators, { kind: "method", name: "rename", static: false, private: false, access: { has: obj => "rename" in obj, get: obj => obj.rename }, metadata: _metadata }, null, _instanceExtraInitializers);
++            __esDecorate(this, null, _delete_decorators, { kind: "method", name: "delete", static: false, private: false, access: { has: obj => "delete" in obj, get: obj => obj.delete }, metadata: _metadata }, null, _instanceExtraInitializers);
+             __esDecorate(this, null, _fork_decorators, { kind: "method", name: "fork", static: false, private: false, access: { has: obj => "fork" in obj, get: obj => obj.fork }, metadata: _metadata }, null, _instanceExtraInitializers);
+             __esDecorate(this, null, _prompt_decorators, { kind: "method", name: "prompt", static: false, private: false, access: { has: obj => "prompt" in obj, get: obj => obj.prompt }, metadata: _metadata }, null, _instanceExtraInitializers);
+@@ -217,8 +220,9 @@
+             ctx.plugin(SessionSkillCatalog);
+             ctx.on('session/created', (session) => {
+-                ctx.emit('api-session/added', this.listState.summaryFor(session));
++                const { projections: _projections, ...remoteSummary } = this.listState.summaryFor(session);
++                ctx.emit('api-session/added', remoteSummary);
+             });
+             ctx.on('session/disposed', (session) => {
+-                ctx.emit('api-session/removed', session.id);
++                if (!this.agents.isDeleting(session.id)) ctx.emit('api-session/removed', session.id);
+             });
+             ctx.on('agent/status', ({ agent, status }) => {
+@@ -376,4 +380,8 @@
+             return this.commands.rename(request);
+         }
++        /** Permanently delete one ordinary Session while retaining Workspace files. */
++        delete(request) {
++            return this.commands.delete(request);
++        }
+         /**
+          * Fork one cold-readable completed-turn prefix into a new Session.
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.js
+@@ -485,4 +485,11 @@
+         return result;
+     }
++    /** Contract session.delete; remove the row immediately after Host commit. */
++    async delete(sessionId) {
++        const result = await this.remote.session.delete({ sessionId });
++        if (result.ok)
++            this.recordMutation({ kind: 'remove', sessionId });
++        return result;
++    }
+     /**
+      * Contract session.fork; on success merge the child into summaries
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.js
+@@ -33,4 +33,15 @@
+         this.rpcError = rpcError;
+         this.sourceSessionId = sourceSessionId;
++    }
++}
++/** Structured permanent Session-deletion failure. */
++export class SessionDeleteError extends Error {
++    rpcError;
++    sessionId;
++    name = 'SessionDeleteError';
++    constructor(rpcError, sessionId) {
++        super(`session delete failed: ${rpcError.code}: ${rpcError.message}`);
++        this.rpcError = rpcError;
++        this.sessionId = sessionId;
+     }
+ }
+@@ -275,4 +286,17 @@
+         return result.value.sessionId;
+     }
++    /** Permanently delete one ordinary Session and clear its selected stage. */
++    async delete(sessionId) {
++        const deletingCurrent = this.list.getSnapshot().current === sessionId;
++        const result = await this.manager.delete(sessionId);
++        if (!result.ok)
++            throw new SessionDeleteError(result.error, sessionId);
++        const current = this.list.getSnapshot().current;
++        if (deletingCurrent && (current === undefined || current === sessionId))
++            this.clear();
++        if (this.watched === sessionId)
++            this.watched = undefined;
++        this.projectList();
++    }
+     /**
+      * Fork a session from a completed-turn prefix of the source (same
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.host.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.host.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.host.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.host.js
+@@ -223,4 +223,10 @@
+   'sessionId': z.intersection(z.string(), z.unknown()).readonly(),
+   'agentPreset': z.string().readonly().optional(),
++})
++const _deepseek_ai_dsh_api_session_controller_session_delete_parameter_0$schema = z.object({
++  'sessionId': z.intersection(z.string(), z.unknown()).readonly(),
++})
++const _deepseek_ai_dsh_api_session_controller_session_delete_result$schema = z.object({
++  'deleted': z.literal(true).readonly(),
+ })
+ const _deepseek_ai_dsh_api_session_controller_session_follow_parameter_0$schema = z.object({
+@@ -842,4 +848,29 @@
+     },
+     {
++      id: '@deepseek-ai/dsh-api-session-controller#session/delete',
++      service: 'sessionController',
++      namespace: 'session',
++      method: 'delete',
++      invocation: { kind: 'direct' },
++      parameters: [
++        {
++          name: 'request',
++          wire: 'request',
++          source: 'json',
++          codec: {
++            mode: 'strict',
++            typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionDeleteRequest',
++            schema: _deepseek_ai_dsh_api_session_controller_session_delete_parameter_0$schema,
++          },
++        },
++      ],
++      result: {
++        mode: 'strict',
++        typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionDeleteValue',
++        schema: _deepseek_ai_dsh_api_session_controller_session_delete_result$schema,
++      },
++      sourceLocation: {"file":"packages/api/session-controller/src/index.ts","line":312,"column":3},
++    },
++    {
+       id: '@deepseek-ai/dsh-api-session-controller#session/follow',
+       service: 'sessionController',
+@@ -1229,4 +1260,11 @@
+           {
+             "kind": "method",
++            "name": "delete",
++            "signature": "@Remote('delete') delete(request: SessionDeleteRequest): Promise<SessionDeleteValue>",
++            "summary": "Permanently delete one ordinary Session while retaining Workspace files.",
++            "jsDoc": "/** Permanently delete one ordinary Session while retaining Workspace files. */"
++          },
++          {
++            "kind": "method",
+             "name": "fork",
+             "signature": "@Remote('fork') fork(request: SessionForkRequest): Promise<SessionForkValue>",
+@@ -1704,4 +1742,12 @@
+             "name": "SessionCreateValue",
+             "declaration": "export interface SessionCreateValue {\n    readonly sessionId: SessionId;\n    readonly agentPreset?: string;\n}"
++          },
++          {
++            "name": "SessionDeleteRequest",
++            "declaration": "export interface SessionDeleteRequest {\n    readonly sessionId: SessionId;\n}"
++          },
++          {
++            "name": "SessionDeleteValue",
++            "declaration": "export interface SessionDeleteValue {\n    readonly deleted: true;\n}"
+           },
+           {
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.js b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.js
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.js
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.js
+@@ -223,4 +223,10 @@
+   'sessionId': z.intersection(z.string(), z.unknown()).readonly(),
+   'agentPreset': z.string().readonly().optional(),
++})
++const _deepseek_ai_dsh_api_session_controller_session_delete_parameter_0$schema = z.object({
++  'sessionId': z.intersection(z.string(), z.unknown()).readonly(),
++})
++const _deepseek_ai_dsh_api_session_controller_session_delete_result$schema = z.object({
++  'deleted': z.literal(true).readonly(),
+ })
+ const _deepseek_ai_dsh_api_session_controller_session_follow_parameter_0$schema = z.object({
+@@ -839,4 +845,29 @@
+     },
+     {
++      id: '@deepseek-ai/dsh-api-session-controller#session/delete',
++      service: 'sessionController',
++      namespace: 'session',
++      method: 'delete',
++      invocation: { kind: 'direct' },
++      parameters: [
++        {
++          name: 'request',
++          wire: 'request',
++          source: 'json',
++          codec: {
++            mode: 'strict',
++            typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionDeleteRequest',
++            schema: _deepseek_ai_dsh_api_session_controller_session_delete_parameter_0$schema,
++          },
++        },
++      ],
++      result: {
++        mode: 'strict',
++        typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionDeleteValue',
++        schema: _deepseek_ai_dsh_api_session_controller_session_delete_result$schema,
++      },
++      sourceLocation: {"file":"packages/api/session-controller/src/index.ts","line":312,"column":3},
++    },
++    {
+       id: '@deepseek-ai/dsh-api-session-controller#session/follow',
+       service: 'sessionController',
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/agent.d.ts
+@@ -1,5 +1,5 @@
+ /** Agent activation, composition, and model-selection policy owned by API Session. */
+ import type { Context } from '@deepseek-ai/cordis';
+-import type { Agent, AgentSetup, ModelSelection as AgentModelSelection, ModelSelectionRef } from '@deepseek-ai/dsh-agent';
++import type { Agent, AgentHandle, AgentSetup, ModelSelection as AgentModelSelection, ModelSelectionRef } from '@deepseek-ai/dsh-agent';
+ import type { Session, SessionId } from '@deepseek-ai/dsh-session';
+ import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence';
+@@ -68,4 +68,6 @@
+     private readonly resumes;
+     private readonly creations;
++    private readonly deleting;
++    private readonly handles;
+     private readonly selections;
+     private readonly imageAdmissionChains;
+@@ -84,4 +86,11 @@
+      */
+     resolveObservedAgent(observation: SessionObservation): Promise<ApiSessionAgentResult>;
++    /** Retain the teardown capability for an Agent created outside the normal create path. */
++    isDeleting(sessionId: SessionId): boolean;
++    assertAvailable(sessionId: SessionId): void;
++    beginDelete(sessionId: SessionId): () => void;
++    retainHandle(handle: AgentHandle): Agent;
++    /** Dispose an ordinary Agent owned by this controller, waiting for in-flight activation first. */
++    disposeOwned(sessionId: SessionId): Promise<boolean>;
+     private resolve;
+     /**
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/commands.d.ts
+@@ -2,5 +2,5 @@
+ import type { Context } from '@deepseek-ai/cordis';
+ import { ApiSessionAgentController } from './agent.ts';
+-import type { SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionCreateRequest, SessionCreateValue, SessionForkRequest, SessionForkValue, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue } from './types.ts';
++import type { SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionCreateRequest, SessionCreateValue, SessionDeleteRequest, SessionDeleteValue, SessionForkRequest, SessionForkValue, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue } from './types.ts';
+ /** Implements Session business commands delegated by the Session Controller Remote service. */
+ export declare class SessionCommandController {
+@@ -32,4 +32,6 @@
+      */
+     rename(request: SessionRenameRequest): Promise<SessionRenameValue>;
++    /** Permanently delete one ordinary Session while retaining its Workspace files. */
++    delete(request: SessionDeleteRequest): Promise<SessionDeleteValue>;
+     /**
+      * Create a new ordinary Session from one completed-turn prefix.
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/index.d.ts
+@@ -7,5 +7,5 @@
+ import { type ApiSessionAgentResult } from './agent.ts';
+ import { buildModelCatalog } from './catalog.ts';
+-import type { ModelCatalog, SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionControlFrame, SessionCreateRequest, SessionCreateValue, SessionFollowFrame, SessionFollowRequest, SessionForkRequest, SessionForkValue, SessionListRequest, SessionListValue, SessionOpenWorkspacePathRequest, SessionOpenWorkspacePathValue, SessionPage, SessionPageRequest, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSearchRequest, SessionSearchValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue } from './types.ts';
++import type { ModelCatalog, SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionControlFrame, SessionCreateRequest, SessionCreateValue, SessionDeleteRequest, SessionDeleteValue, SessionFollowFrame, SessionFollowRequest, SessionForkRequest, SessionForkValue, SessionListRequest, SessionListValue, SessionOpenWorkspacePathRequest, SessionOpenWorkspacePathValue, SessionPage, SessionPageRequest, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSearchRequest, SessionSearchValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue } from './types.ts';
+ export type * from './types.ts';
+ export { ApiSessionNotFound } from './agent.ts';
+@@ -124,4 +124,6 @@
+      */
+     rename(request: SessionRenameRequest): Promise<SessionRenameValue>;
++    /** Permanently delete one ordinary Session while retaining Workspace files. */
++    delete(request: SessionDeleteRequest): Promise<SessionDeleteValue>;
+     /**
+      * Fork one cold-readable completed-turn prefix into a new Session.
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/manager.d.ts
+@@ -183,4 +183,8 @@
+         sessionId: SessionId;
+     }>>;
++    /** Contract session.delete; remove the row immediately after Host commit. */
++    delete(sessionId: SessionId): Promise<RemoteResult<{
++        deleted: true;
++    }>>;
+     /**
+      * Contract session.fork; on success merge the child into summaries
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/sessions/service.d.ts
+@@ -100,4 +100,11 @@
+     constructor(rpcError: RemoteFailure, sourceSessionId: SessionId);
+ }
++/** Structured permanent Session-deletion failure. */
++export declare class SessionDeleteError extends Error {
++    readonly rpcError: RemoteFailure;
++    readonly sessionId: SessionId;
++    readonly name = "SessionDeleteError";
++    constructor(rpcError: RemoteFailure, sessionId: SessionId);
++}
+ /** Identity-stable logical binding for one materialized Client Session. */
+ export interface SessionBinding {
+@@ -250,4 +257,6 @@
+         sessionId?: SessionId;
+     }): Promise<SessionId>;
++    /** Permanently delete one ordinary Session and clear its selected stage. */
++    delete(sessionId: SessionId): Promise<void>;
+     /**
+      * Fork a session from a completed-turn prefix of the source (same
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/contract/sessions.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/contract/sessions.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/contract/sessions.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/client/contract/sessions.d.ts
+@@ -36,4 +36,6 @@
+         sessionId?: SessionId;
+     }): Promise<SessionId>;
++    /** Permanently delete one ordinary Session while retaining Workspace files. */
++    delete(sessionId: SessionId): Promise<void>;
+     /**
+      * Select a session as current.
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/typert.remote-client.d.ts
+@@ -4,5 +4,5 @@
+   TypertRemoteContribution,
+ } from '@deepseek-ai/dsh-typert-protocol'
+-import type { ModelCatalog, SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionControlFrame, SessionCreateRequest, SessionCreateValue, SessionFollowFrame, SessionFollowRequest, SessionForkRequest, SessionForkValue, SessionListRequest, SessionListValue, SessionOpenWorkspacePathRequest, SessionOpenWorkspacePathValue, SessionPage, SessionPageRequest, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSearchRequest, SessionSearchValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue, SkillListRequest, SkillListValue } from '@deepseek-ai/dsh-api-session-controller/types'
++import type { ModelCatalog, SessionAttachmentRequest, SessionAttachmentValue, SessionCancelRequest, SessionCancelValue, SessionControlFrame, SessionCreateRequest, SessionCreateValue, SessionDeleteRequest, SessionDeleteValue, SessionFollowFrame, SessionFollowRequest, SessionForkRequest, SessionForkValue, SessionListRequest, SessionListValue, SessionOpenWorkspacePathRequest, SessionOpenWorkspacePathValue, SessionPage, SessionPageRequest, SessionPromptRequest, SessionPromptValue, SessionRenameRequest, SessionRenameValue, SessionSearchRequest, SessionSearchValue, SessionSelectModelRequest, SessionSelectModelValue, SessionUpdateQueueRequest, SessionUpdateQueueValue, SkillListRequest, SkillListValue } from '@deepseek-ai/dsh-api-session-controller/types'
+ import type { FileReferenceCandidate } from '@deepseek-ai/dsh-file-reference/types'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+@@ -18,4 +18,5 @@
+     control: (signal?: AbortSignal) => AsyncIterable<SessionControlFrame>
+     create: (request: SessionCreateRequest) => Promise<RemoteResult<SessionCreateValue>>
++    delete: (request: SessionDeleteRequest) => Promise<RemoteResult<SessionDeleteValue>>
+     follow: (request: SessionFollowRequest, signal?: AbortSignal) => AsyncIterable<SessionFollowFrame>
+     fork: (request: SessionForkRequest) => Promise<RemoteResult<SessionForkValue>>
+@@ -40,4 +41,5 @@
+     'session/control': (signal?: AbortSignal) => AsyncIterable<SessionControlFrame>
+     'session/create': (request: SessionCreateRequest) => Promise<RemoteResult<SessionCreateValue>>
++    'session/delete': (request: SessionDeleteRequest) => Promise<RemoteResult<SessionDeleteValue>>
+     'session/follow': (request: SessionFollowRequest, signal?: AbortSignal) => AsyncIterable<SessionFollowFrame>
+     'session/fork': (request: SessionForkRequest) => Promise<RemoteResult<SessionForkValue>>
+diff --git a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/types.d.ts b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/types.d.ts
+--- a/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/types.d.ts
++++ b/node_modules/@deepseek-ai/dsh-api-session-controller/lib/types/types.d.ts
+@@ -279,4 +279,12 @@
+     readonly title: string;
+     readonly seq: number;
++}
++/** Session permanent-deletion request. */
++export interface SessionDeleteRequest {
++    readonly sessionId: SessionId;
++}
++/** Session permanent-deletion response. */
++export interface SessionDeleteValue {
++    readonly deleted: true;
+ }
+ /** Session fork request. */
