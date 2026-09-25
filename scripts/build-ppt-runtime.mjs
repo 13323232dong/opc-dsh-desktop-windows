@@ -7,6 +7,10 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 const run = promisify(execFile);
+// Compatibility-only builds validate the same sources and reuse their reviewed JPGs.
+const reusePreviews = process.argv.includes('--reuse-previews');
+if (process.argv.slice(2).some(arg => arg !== '--reuse-previews'))
+    throw Error('Unknown build option; supported: --reuse-previews');
 const root = path.resolve('packages/ppt-runtime');
 const dest = path.resolve('packages/ppt-bundles');
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'dsh-ppt-build-'));
@@ -28,7 +32,7 @@ try {
         if (check.errorCount)
             throw Error(definition.id + ': ' + stdout);
         checks.push({ id: definition.id, ...check });
-        {
+        if (!reusePreviews) {
             const pngDir = scratch + '/' + definition.id;
             await run(process.execPath, [root + '/core/lib/bin.js', 'screenshot', dir + '/source', '-o', pngDir, '--scale', '1.3333333333', '--json']);
             const pngs = JSON.parse(await fs.readFile(pngDir + '/index.json', 'utf8')).pages.map(p => p.file);
@@ -38,13 +42,20 @@ try {
             for (const [i, f] of pngs.entries())
                 await sharp(pngDir + '/' + f).jpeg({ quality: 87 }).toFile(dir + '/pages/' + String(i + 1).padStart(2, '0') + '.jpg');
         }
-        previews[definition.id] = await Promise.all(definition.previewSlides.map(async number => {
+        const existingPages = (await fs.readdir(dir + '/pages')).filter(name => /^\d{2}\.jpg$/.test(name));
+        if (existingPages.length !== definition.referencePageCount)
+            throw Error('Incomplete preview set: ' + definition.id);
+        for (let page = 1; page <= definition.referencePageCount; page += 1)
+            await fs.access(dir + '/pages/' + String(page).padStart(2, '0') + '.jpg');
+        const slidePreviews = await Promise.all(definition.previewSlides.map(async number => {
             const relative = definition.referenceDirectory + '/pages/' + String(number).padStart(2, '0') + '.jpg';
             const bytes = await fs.readFile(root + '/templates/' + relative);
             const hash = crypto.createHash('sha256').update(bytes).digest('hex');
-            previewFiles[hash] = relative;
-            return '/dsh-ppt/previews/' + hash + '.jpg';
+            return { hash, relative, url: '/dsh-ppt/previews/' + hash + '.jpg' };
         }));
+        // Keep manifest insertion order independent of concurrent read completion.
+        for (const preview of slidePreviews) previewFiles[preview.hash] = preview.relative;
+        previews[definition.id] = slidePreviews.map(preview => preview.url);
     }
     const artifacts = {};
     for (const kind of ['core', 'adapter']) {
@@ -67,9 +78,15 @@ try {
         }
         const { stdout } = await run('npm', ['pack', stage, '--ignore-scripts', '--json', '--pack-destination', scratch]);
         const packed = JSON.parse(stdout)[0];
-        const file = kind === 'core' ? 'dsh-ppt-0.1.1-rc.2-desktop-20260906.tgz' : 'dsh-ppt-composer-0.1.1-rc.2-desktop-20260906.tgz';
+        const file = `${packed.name}-${packed.version}-desktop.tgz`;
         const bytes = await fs.readFile(scratch + '/' + packed.filename);
-        await fs.writeFile(dest + '/' + file, bytes);
+        try {
+            await fs.writeFile(dest + '/' + file, bytes, { flag: 'wx' });
+        } catch (error) {
+            if (error.code !== 'EEXIST') throw error;
+            if (!(await fs.readFile(dest + '/' + file)).equals(bytes))
+                throw Error(`Artifact ${file} already has different bytes; increment the plugin version.`);
+        }
         artifacts[kind] = { file, sha256: crypto.createHash('sha256').update(bytes).digest('hex'), integrity: 'sha512-' + crypto.createHash('sha512').update(bytes).digest('base64') };
     }
     await fs.writeFile(root + '/artifacts.json', JSON.stringify(artifacts, null, 2) + '\n');

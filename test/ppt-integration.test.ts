@@ -165,7 +165,7 @@ describe('DSH PPT built-in plugin', () => {
       'client.js'
     ), 'utf8')
     const cluster = client.indexOf('className: ConversationRoot_module_css_default.heroModeCluster')
-    const agentPreset = client.indexOf('renderSlot("conversation.hero.agentPreset", {})', cluster)
+    const agentPreset = client.indexOf('renderSlot("conversation.hero.agentPreset", {})')
     const modeActions = client.indexOf(
       'zone !== void 0 && renderSlot("conversation.hero.modeActions", zone)',
       agentPreset
@@ -178,7 +178,9 @@ describe('DSH PPT built-in plugin', () => {
     )
 
     expect(cluster).toBeGreaterThan(-1)
-    expect(modeActions).toBeGreaterThan(agentPreset)
+    expect(agentPreset).toBeGreaterThan(-1)
+    expect(cluster).toBeGreaterThan(agentPreset)
+    expect(modeActions).toBeGreaterThan(cluster)
     expect(owner).toBeGreaterThan(-1)
     expect(input).toBeGreaterThan(owner)
     expect(catalog).toBeGreaterThan(input)
@@ -188,15 +190,15 @@ describe('DSH PPT built-in plugin', () => {
     const patch = await readFile(path.join(
       projectRoot,
       'patches',
-      '@deepseek-ai+dsh-client-ui-conversation+0.1.2-rc.1.patch'
+      '@deepseek-ai+dsh-client-ui-conversation+0.1.5-rc.2.patch'
     ), 'utf8')
 
     expect(patch).toContain(
       '[data-slot=conversation\\\\.hero\\\\.agentPreset]>span{width:max-content!important;min-width:0!important',
     )
-    expect(patch).toContain('._8JRpoa_heroModeCluster{width:max-content')
-    expect(patch).not.toContain('._8JRpoa_heroModeCluster{margin-left:auto')
-    expect(patch).toContain('._8JRpoa_heroModeCluster button{')
+    expect(patch).toContain('.JVFcLa_heroModeCluster{width:max-content')
+    expect(patch).not.toContain('.JVFcLa_heroModeCluster{margin-left:auto')
+    expect(patch).toContain('.JVFcLa_heroModeCluster button{')
     expect(patch).toContain('height:28px')
     expect(patch).toContain('border:0!important')
     expect(patch).toContain('color:var(--dsw-alias-label-primary)!important')

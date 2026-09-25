@@ -204,7 +204,7 @@ describe('agent preset package transfer', () => {
         format: 'dsh-preset',
         version: 1,
         id: sourceId,
-        sourceDshVersion: '0.1.2-rc.1'
+        sourceDshVersion: '0.1.5-rc.2'
       })
       expect(exportedManifest.exportedAt).toEqual(expect.any(String))
       expect(exportedManifest.dshVersion).toBeUndefined()
@@ -460,19 +460,24 @@ describe('agent preset package transfer', () => {
     expect(patch).toContain('.rtSEdW_hiddenInput{display:none}')
   })
 
-  it('keeps the rc.1 preset page class map aligned with the CSS emitted by rc.1', async () => {
+  it('keeps the candidate preset page class map aligned with its emitted CSS', async () => {
     const patch = await readFile(
       patchPath('@deepseek-ai/dsh-client-ui-agent-preset'),
       'utf8'
     )
-
-    // rc.1 renamed the upstream CSS-module hash to aThYWW.  The preceding
-    // version of this patch carried its old eWkxHa map forward, so the page
-    // rendered with classes that had no matching selectors at all.
+    const client = await readFile(path.join(projectRoot,
+      'node_modules/@deepseek-ai/dsh-client-ui-agent-preset/lib/client.js'), 'utf8')
+    const classMap = client.match(/var AgentPresetSection_module_css_default = \{([\s\S]*?)\n\t\t\};/)?.[1]
+    expect(classMap).toBeDefined()
+    // Check the composed candidate map: unchanged upstream classes need not
+    // appear in the patch, but every class used by the view must have CSS.
+    for (const key of ['section', 'card', 'dialog', 'importSecurity', 'importSummary', 'importWarnings']) {
+      const value = classMap!.match(new RegExp(`"${key}": "([^"\n]+)"`))?.[1]
+      expect(value).toBeDefined()
+      expect(client).toContain(`.${value}{`)
+    }
     expect(patch).not.toContain('eWkxHa_')
-    expect(patch).toContain('"section": "aThYWW_section"')
-    expect(patch).toContain('"card": "aThYWW_card"')
-    expect(patch).toContain('"dialog": "aThYWW_dialog"')
+    expect(patch).not.toContain('aThYWW_')
     expect(patch).toContain('.rtSEdW_importSecurity{')
     expect(patch).toContain('.rtSEdW_importSummary{')
     expect(patch).toContain('.rtSEdW_importWarnings{')

@@ -1,0 +1,40 @@
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js b/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-session-persistence/lib/index.js
+@@ -261,6 +261,10 @@
+ var SessionPersistence = class extends Service {
+ 	constructor(ctx) {
+ 		super(ctx, "sessionPersistence");
++	}
++	/** Delete one cold identity when supported; caller-owned write handles must first close. */
++	delete(_id) {
++		return Promise.reject(new Error("this session persistence backend does not support deletion"));
+ 	}
+ };
+ //#endregion
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-session-persistence/lib/types/index.d.ts
+@@ -99,6 +99,15 @@
+ export declare abstract class SessionPersistence extends Service {
+     constructor(ctx: Context);
+     /**
++     * Delete one cold stored identity when supported by the backend. Active
++     * writers (including pending creators) must close through their owner first.
++     * Returns false only when no artifact exists. Existing detached read results
++     * remain valid snapshots; opens started after deletion cannot find the old
++     * identity. This does not delete Workspace files or reserve the id forever.
++     * A failure may have pruned older generations; callers must not report success.
++     */
++    delete(id: SessionId): Promise<boolean>;
++    /**
+      * Create a new stored session and take its write ownership.
+      * @param header - the immutable header (id, version, cwd, lineage) to store.
+      * @param options - optional cancellation.
+@@ -155,4 +164,4 @@
+     abstract list(options?: SessionPersistenceListOptions): Promise<readonly SessionPersistenceSnapshot[]>;
+ }
+ export default SessionPersistence;
+-//# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=index.d.ts.map

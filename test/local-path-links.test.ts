@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { patchPath, projectRoot } from './patch-path'
 
@@ -13,6 +14,10 @@ describe('assistant local path links', () => {
     expect(patch).toContain('paths ?? []')
     expect(patch).toContain('#L\\d+')
     expect(patch).toContain('[A-Za-z]:[\\\\/]')
-    expect(patch).toContain('owner.openFile')
+    const installed = await readFile(path.join(
+      projectRoot, 'node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/client.js'
+    ), 'utf8')
+    expect(installed).toContain('if (file === void 0) owner.openFile(path);')
+    expect(installed).toContain('else opener.open(sessionId, file.seq, file.index);')
   })
 })

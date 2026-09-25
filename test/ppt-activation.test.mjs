@@ -9,7 +9,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { SkillRegistry, isModelInvocable, isUserInvocable } from '@deepseek-ai/dsh-skill'
-import { SystemPrompt, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
+import { PERSONA_PREFIX_SECTION, PERSONA_SUFFIX_SECTION, SystemPrompt, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import { apply } from 'dsh-ppt'
 
 const cleanups = []
@@ -19,11 +19,11 @@ afterEach(async () => {
 
 // Exercise the installed, patched plugin, its actual disk-backed RPC state,
 // and Harness prompt/skill/session services; no model or network is needed.
-async function fixture(existingRoot) {
+async function fixture(existingRoot, { personaSuffix = '' } = {}) {
   const root = existingRoot ?? await mkdtemp(path.join(os.tmpdir(), 'dsh-ppt-activation-'))
   if (!existingRoot) cleanups.push(() => rm(root, { recursive: true, force: true }))
   const ctx = new Context()
-  const prompt = ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, persona: 'Default persona.' })
+  const prompt = ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, personaPrefix: 'Default persona.', personaSuffix })
   await prompt
   cleanups.push(() => prompt.dispose())
   const skills = ctx.plugin(SkillRegistry)
@@ -48,7 +48,7 @@ async function fixture(existingRoot) {
   await plugin
   cleanups.push(() => plugin.dispose())
 
-  async function agent({ id = randomUUID(), seed, complete = false } = {}) {
+  async function agent({ id = randomUUID(), seed, complete = false, suffix = '' } = {}) {
     const instance = { id, session: Session.create(SessionId(id), seed) }
     const scope = createScope(ctx, instance)
     instance.ctx = scope.ctx
@@ -56,7 +56,8 @@ async function fixture(existingRoot) {
     await scope.ctx.plugin({
       inject: ['systemPrompt'],
       apply(c) {
-        c.systemPrompt.section({ name: 'deployment:persona', order: 0, text: 'My custom preset.', complete })
+        c.systemPrompt.section({ name: PERSONA_PREFIX_SECTION, order: c.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX'), text: 'My custom preset.', complete })
+        c.systemPrompt.section({ name: PERSONA_SUFFIX_SECTION, order: c.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_SUFFIX'), text: suffix })
       }
     })
     return instance
@@ -132,6 +133,13 @@ describe('PPT instructions follow the session composer button', () => {
     expect(agent.session.deriveMessages().find(m => m.id === user.id)).toEqual(user)
     // Replacements change only the model surface; the original audit log survives.
     expect(agent.session.snapshotEvents().slice(0, original.length)).toEqual(original)
+    const replacements = agent.session.snapshotEvents().slice(original.length)
+    expect(replacements).toHaveLength(2)
+    for (const replacement of replacements) {
+      const [sourceSeq] = replacement.sourceEventSeqs
+      expect(replacement.surfaceOp).toEqual({ op: 'replace', startSeq: sourceSeq, endSeq: sourceSeq })
+      expect(original[sourceSeq].data.source.kind).toBe('plugin')
+    }
     const count = agent.session.seq
     await f.preStep(agent)
     expect(agent.session.seq).toBe(count)
@@ -160,6 +168,23 @@ describe('PPT instructions follow the session composer button', () => {
     const agent = await f.agent({ complete: true })
     await f.toggle(agent, true)
     expect(renderPrompt(await f.assemble(agent))).toBe('My custom preset.')
+  })
+
+  it('preserves scoped Persona prefix and suffix around PPT guidance without leaking deployment defaults', async () => {
+    const f = await fixture(undefined, { personaSuffix: 'Default suffix.' })
+    const agent = await f.agent({ suffix: 'My custom suffix.' })
+    expect(renderPrompt(await f.assemble())).toBe('Default persona.\n\nDefault suffix.')
+    await f.toggle(agent, true)
+    const active = renderPrompt(await f.assemble(agent))
+    expect(active.startsWith('My custom preset.')).toBe(true)
+    expect(active).toContain('Use the bounded pptd_* tools')
+    expect(active.endsWith('My custom suffix.')).toBe(true)
+    expect(active).not.toContain('Default')
+    await f.toggle(agent, false)
+    expect(renderPrompt(await f.assemble(agent))).toBe('My custom preset.\n\nMy custom suffix.')
+    const complete = await f.agent({ complete: true, suffix: 'Hidden suffix.' })
+    await f.toggle(complete, true)
+    expect(renderPrompt(await f.assemble(complete))).toBe('My custom preset.')
   })
 
   it('keeps the bundled Skill host-managed, excluding generic model and slash-command invocation', async () => {

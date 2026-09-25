@@ -1,0 +1,135 @@
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
+--- a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/index.js
+@@ -2334,8 +2334,104 @@
+ 			materialized: false,
+ 			inheritedEventCount
+ 		}));
++	}
++	/**
++	* Delete only a cold identity's validated generation files. The same in-process
++	* claim and kernel lease as write-open exclude pending/local/foreign writers.
++	* Keep the lock inode, directories and unknown artifacts. Existing detached
++	* read results (and historical handles' primed snapshots) remain snapshots;
++	* fresh opens always resolve disk and cannot resurrect a removed generation.
++	*/
++	async delete(id) {
++		await this.ensureRootEncoding();
++		this.tracker.claimWrite(id);
++		let lease;
++		let deleted = false;
++		const failures = [];
++		try {
++			const selected = await this.findLog(id);
++			if (selected !== void 0) {
++				const before = await this.planDeletion(id, selected);
++				lease = await this.acquireLease(id, void 0, before.dir);
++				const current = await this.findLog(id);
++				if (current === void 0) throw new Error(`session "${id}" changed before deletion acquired ownership`);
++				const plan = await this.planDeletion(id, current);
++				if (before.identity !== plan.identity) throw new Error(`session "${id}" changed before deletion acquired ownership`);
++				const preparation = this.migrationPreparations.get(id);
++				if (preparation !== void 0) {
++					preparation.controller.abort();
++					// The observers own any decode failure; deletion only joins cancellation.
++					await Promise.allSettled([preparation.promise]);
++				}
++				await this.deleteGenerations(id, plan);
++				deleted = true;
++			}
++		} catch (error) {
++			failures.push(error);
++		} finally {
++			this.coldLogMemo.delete(id);
++			try {
++				await lease?.release();
++			} catch (error) {
++				failures.push(error);
++			} finally {
++				this.tracker.releaseClaim(id);
++			}
++		}
++		if (failures.length > 1) throw new AggregateError(failures, `session "${id}": deletion and lock release failed`);
++		if (failures.length === 1) throw failures[0];
++		return deleted;
++	}
++	/** Prove the exact directory and all committed artifacts before deleting any. */
++	async planDeletion(id, selected) {
++		const dir = dirname(selected.currentPath);
++		const directory = await this.deletionDirectoryIdentity(dir);
++		const lock = await lstat(join(dir, LEASE_FILENAME)).catch((error) => {
++			if (isENOENT(error)) return void 0;
++			throw error;
++		});
++		if (lock !== void 0 && (!lock.isFile() || lock.isSymbolicLink())) throw new Error(`refusing deletion through a non-regular or symbolic lock in "${dir}"`);
++		const files = [];
++		for (const name of await readdir(dir)) {
++			if (parseGenerationLogFilename(name, this.oppositeCompression()) !== void 0) throw this.encodingMismatch(join(dir, name));
++			const version = parseGenerationLogFilename(name, this.compression);
++			if (version === void 0) continue;
++			const path = join(dir, name);
++			const info = await lstat(path, { bigint: true });
++			if (!info.isFile() || info.isSymbolicLink()) throw new Error(`refusing deletion of non-regular or symbolic generation "${path}"`);
++			const header = await this.readGenerationHeader({ sourcePath: path, sourceVersion: version, currentPath: selected.currentPath }, id);
++			if (header === void 0) throw new SessionPersistenceCorruptionError(`session "${id}": generation has a malformed header: ${path}`);
++			files.push({ path, version, identity: identity(info) });
++		}
++		files.sort((left, right) => left.version - right.version);
++		if (files.length === 0) throw new Error(`session "${id}" changed during deletion preflight`);
++		return { dir, directory, files, identity: JSON.stringify([dir, directory, files]) };
+ 	}
++	/** Reject symlink directories and ensure the two-level layout stays under root. */
++	async deletionDirectoryIdentity(dir) {
++		for (const path of [this.root, dirname(dir), dir]) {
++			const info = await lstat(path);
++			if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`refusing deletion through a non-directory or symbolic path "${path}"`);
++		}
++		const [root, actual] = await Promise.all([realpath(this.root), realpath(dir)]);
++		if (dirname(dirname(actual)) !== root) throw new Error(`refusing deletion outside session root: "${dir}"`);
++		const info = await lstat(dir, { bigint: true });
++		return `${info.dev}:${info.ino}`;
++	}
+ 	/**
++	* Prune oldest first, syncing each removal before touching its successor.
++	* A crash or error therefore cannot expose an older generation as latest.
++	*/
++	async deleteGenerations(id, plan) {
++		for (const file of plan.files) {
++			if (await this.deletionDirectoryIdentity(plan.dir) !== plan.directory) throw new Error(`session "${id}" directory changed during deletion`);
++			const current = await lstat(file.path, { bigint: true });
++			if (!current.isFile() || current.isSymbolicLink() || identity(current) !== file.identity) throw new Error(`session "${id}" generation changed during deletion`);
++			await rm(file.path);
++			if (process.platform !== "win32") await this.syncDirPosix(plan.dir);
++		}
++	}
++	/**
+ 	* Open an existing stored session for `read` or single-writer `write`.
+ 	* @param id - the stored session to open.
+ 	* @param access - `read` (no ownership) or `write` (atomic in-process claim).
+diff --git a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
+--- a/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-session-persistence-jsonl/lib/types/index.d.ts
+@@ -89,6 +89,16 @@
+      * @returns the owned write handle.
+      */
+     create(header: SessionHeader, options?: SessionPersistenceCreateOptions): Promise<SessionHandle>;
++    /**
++     * Delete validated generations under exclusive write ownership. Keeps the
++     * stable lock inode, directories, unknown files and Workspace contents.
++     * Existing detached results and historical handles may retain read snapshots;
++     * fresh opens resolve disk. Explicit creation may reuse an id after deletion.
++     */
++    delete(id: SessionId): Promise<boolean>;
++    private planDeletion;
++    private deletionDirectoryIdentity;
++    private deleteGenerations;
+     /**
+      * Open an existing stored session for `read` or single-writer `write`.
+      * @param id - the stored session to open.
+@@ -272,4 +282,4 @@
+  * under the stable-read loop.
+  */
+ export default JsonlSessionPersistence;
+-//# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
++//# sourceMappingURL=index.d.ts.map
