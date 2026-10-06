@@ -59,6 +59,7 @@ import {
   serializeGpuFallbackState
 } from './gpu-fallback'
 import { secureWindow } from './security'
+import { createViralBrowserHandoffUrl } from './viral-browser-handoff'
 import { SafeModeOverlay } from './safe-mode-overlay'
 import { ensureLaunchRoot } from './state/launch-root'
 import {
@@ -2906,6 +2907,21 @@ async function bootstrap(): Promise<void> {
     desktopStorageManager = undefined
     clearProfileBootConfirmation()
     await showLoginPage()
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop:viral-open')
+  ipcMain.handle('desktop:viral-open', async (event) => {
+    assertTrustedMainWindowEvent(event)
+    const session = await desktopAuthController!.currentSession()
+    if (!session?.credential.accessToken) throw new Error('desktop_auth_required')
+    const url = await createViralBrowserHandoffUrl({
+      apiBaseUrl,
+      webBaseUrl: process.env.OPC_WEB_BASE_URL ?? apiBaseUrl,
+      sessionToken: session.credential.accessToken
+    })
+    const current = await desktopAuthController!.currentSession()
+    if (current?.credential.accessToken !== session.credential.accessToken) throw new Error('desktop_auth_account_changed')
+    await shell.openExternal(url)
     return { ok: true }
   })
   ipcMain.removeHandler('desktop:credit-balance')
