@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readlink, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -38,7 +38,8 @@ describe('ensureOpcDesktopProfile', () => {
     try {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toEqual({ changed: true, plugins: desktopPlugins.map(([name]) => name) })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
-      expect(manifest.dependencies).toEqual(Object.fromEntries(desktopPlugins.map(([name, artifact]) => [name, `file:${join(plugins, artifact)}`])))
+      expect(manifest.dependencies).toEqual(Object.fromEntries(desktopPlugins.map(([name, artifact]) => [name, `file:./.opc-desktop-bundles/${artifact}`])))
+      expect(await readlink(join(profile, '.opc-desktop-bundles'))).toBe(plugins)
       expect(manifest.dsh.profile.bundles).toEqual([
         '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', ...desktopPlugins.map(([name]) => name)
       ])
@@ -76,7 +77,7 @@ describe('ensureOpcDesktopProfile', () => {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(manifest.dependencies['@opc/dsh-realtime-voice']).toBe(
-        `file:${join(plugins, 'opc-dsh-realtime-voice-0.1.9.tgz')}`
+        'file:./.opc-desktop-bundles/opc-dsh-realtime-voice-0.1.9.tgz'
       )
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -93,6 +94,24 @@ describe('ensureOpcDesktopProfile', () => {
     try {
       await expect(ensureOpcDesktopProfile(root, plugins)).rejects.toThrow('opc_desktop_plugin_artifact_missing')
       expect(JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))).toEqual({ dependencies: {} })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('retargets the local artifact link when the desktop app moves', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opc-profile-bootstrap-'))
+    const profile = join(root, 'profiles', 'web')
+    const first = join(root, 'first-app-plugins')
+    const second = join(root, 'second-app-plugins')
+    await mkdir(profile, { recursive: true })
+    await mkdir(first)
+    await mkdir(second)
+    await Promise.all([materializePluginArtifacts(first), materializePluginArtifacts(second)])
+    try {
+      await ensureOpcDesktopProfile(root, first)
+      await ensureOpcDesktopProfile(root, second)
+      expect(await readlink(join(profile, '.opc-desktop-bundles'))).toBe(second)
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -195,7 +214,7 @@ describe('ensureOpcDesktopProfile', () => {
       await expect(ensureOpcDesktopProfile(root, plugins)).resolves.toMatchObject({ changed: true })
       const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
       expect(manifest.dependencies['@opc/dsh-viral-chase']).toBe(
-        `file:${join(plugins, 'opc-dsh-viral-chase-0.1.56.tgz')}`
+        'file:./.opc-desktop-bundles/opc-dsh-viral-chase-0.1.60.tgz'
       )
       expect(manifest.dependencies['@opc/dsh-inspiration']).toBeUndefined()
       expect(manifest.dependencies['community-plugin']).toBe('1.2.3')

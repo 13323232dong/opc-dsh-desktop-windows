@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { lstat, mkdir, readFile, readlink, symlink, unlink, writeFile } from 'node:fs/promises'
+import { basename, isAbsolute, join, resolve } from 'node:path'
 import { disableGeneration } from 'dsh-desktop-market-installer/generations/registry'
 import { profileCordisPatchPath, profilePackageJsonPath } from './plugin-recovery'
 
@@ -25,12 +25,13 @@ export const OPC_DESKTOP_PLUGINS = [
   ['@opc/dsh-realtime-voice', 'opc-dsh-realtime-voice-0.1.9.tgz'],
   ['@opc/dsh-session-context', 'opc-dsh-session-context-0.1.0.tgz'],
   ['@opc/dsh-task-tracker', 'opc-dsh-task-tracker-0.1.0.tgz'],
-  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.56.tgz'],
+  ['@opc/dsh-viral-chase', 'opc-dsh-viral-chase-0.1.60.tgz'],
   ['@opc/dsh-dev-status-control', 'opc-dsh-dev-status-control-0.2.8.tgz'],
   ['@opc/DSH-ai-customer-service', 'opc-DSH-ai-customer-service-0.1.30.tgz']
 ] as const
 
 const CORE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+const BUNDLED_ARTIFACT_LINK = '.opc-desktop-bundles'
 
 const RETIRED_OPC_DESKTOP_PLUGINS = [
   '@opc/DSH-dong-computer-use',
@@ -87,14 +88,18 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
   if (artifacts.length !== candidates.length) throw new Error('opc_desktop_plugin_artifact_missing')
 
   const manifestPath = profilePackageJsonPath(dshHome)
+  const profileDirectory = join(dshHome, 'profiles', 'web')
+  await mkdir(profileDirectory, { recursive: true })
+  await ensureBundledArtifactLink(profileDirectory, artifactDirectory)
   const patchPath = profileCordisPatchPath(dshHome)
-  await mkdir(join(dshHome, 'profiles', 'web'), { recursive: true })
   const manifest = await readManifest(manifestPath)
   const dependencies = { ...(manifest.dependencies ?? {}) }
   const bundles = [...new Set([...(manifest.dsh?.profile?.bundles ?? CORE_BUNDLES), ...CORE_BUNDLES])]
   let changed = removeRetiredOpcDesktopEntries(dependencies, bundles)
   for (const { name, path } of artifacts) {
-    const spec = `file:${path}`
+    // pnpm encodes a file dependency's path into its store index filename. A
+    // deep Dev.app path can exceed macOS NAME_MAX before installation starts.
+    const spec = `file:./${BUNDLED_ARTIFACT_LINK}/${basename(path)}`
     if (dependencies[name] !== spec) {
       dependencies[name] = spec
       changed = true
@@ -126,6 +131,22 @@ export async function ensureOpcDesktopProfile(dshHome: string, artifactDirectory
     changed = true
   }
   return { changed, plugins: artifacts.map(({ name }) => name) }
+}
+
+async function ensureBundledArtifactLink(profileDirectory: string, artifactDirectory: string): Promise<void> {
+  if (!isAbsolute(artifactDirectory)) throw new Error('opc_desktop_plugin_artifact_path_invalid')
+  const link = join(profileDirectory, BUNDLED_ARTIFACT_LINK)
+  const existing = await lstat(link).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return undefined
+    throw error
+  })
+  if (existing) {
+    if (!existing.isSymbolicLink()) throw new Error('opc_desktop_plugin_artifact_link_invalid')
+    const target = await readlink(link)
+    if (resolve(profileDirectory, target) === resolve(artifactDirectory)) return
+    await unlink(link)
+  }
+  await symlink(artifactDirectory, link, process.platform === 'win32' ? 'junction' : 'dir')
 }
 
 function removeRetiredOpcDesktopEntries(

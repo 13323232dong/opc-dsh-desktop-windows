@@ -383,6 +383,13 @@ contextBridge.exposeInMainWorld(
 )
 
 contextBridge.exposeInMainWorld(
+  'dshViralChase',
+  Object.freeze({
+    open: (): Promise<{ ok: true }> => ipcRenderer.invoke('desktop:viral-open')
+  })
+)
+
+contextBridge.exposeInMainWorld(
   'dshRecovery',
   Object.freeze({
     action: (action: string): Promise<{ ok: boolean }> => ipcRenderer.invoke('recovery:action', action)
