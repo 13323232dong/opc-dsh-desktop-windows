@@ -59,6 +59,7 @@ import {
   serializeGpuFallbackState
 } from './gpu-fallback'
 import { secureWindow } from './security'
+import { competitorBrowserUrl } from './competitor-browser'
 import { createViralBrowserHandoffUrl } from './viral-browser-handoff'
 import { SafeModeOverlay } from './safe-mode-overlay'
 import { ensureLaunchRoot } from './state/launch-root'
@@ -2907,6 +2908,15 @@ async function bootstrap(): Promise<void> {
     desktopStorageManager = undefined
     clearProfileBootConfirmation()
     await showLoginPage()
+    return { ok: true }
+  })
+  ipcMain.removeHandler('desktop:competitor-open')
+  ipcMain.handle('desktop:competitor-open', async (event, input: unknown) => {
+    assertTrustedMainWindowEvent(event)
+    const session = await desktopAuthController!.currentSession()
+    if (!session?.credential.accessToken) throw new Error('desktop_auth_required')
+    const url = competitorBrowserUrl(input, runtime.snapshot().url)
+    await shell.openExternal(url)
     return { ok: true }
   })
   ipcMain.removeHandler('desktop:viral-open')
